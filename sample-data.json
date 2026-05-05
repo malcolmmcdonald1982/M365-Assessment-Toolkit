@@ -1,0 +1,268 @@
+{
+  "clientName": "Contoso Ltd",
+  "assessDate": "2026-04-23",
+  "authMethod": "appreg",
+  "score": 42,
+  "modulesRun": 6,
+  "findings": [
+    {
+      "id": "CA-001",
+      "title": "No Conditional Access Policies Enabled",
+      "module": "security",
+      "severity": "critical",
+      "description": "No enabled Conditional Access policies were found. Access to M365 resources is not context-aware and cannot enforce MFA, compliant devices, or location restrictions.",
+      "recommendation": "Deploy a baseline set of Conditional Access policies covering MFA for all users, MFA for admins, block legacy authentication, and require compliant devices.",
+      "observed_value": 0
+    },
+    {
+      "id": "CA-002",
+      "title": "Legacy Authentication Not Blocked",
+      "module": "security",
+      "severity": "critical",
+      "description": "Legacy authentication protocols are not blocked. These protocols bypass MFA and are a primary vector in password spray and credential stuffing attacks.",
+      "recommendation": "Create a Conditional Access policy to block all legacy authentication. Audit any applications or workflows that rely on legacy auth before enforcing.",
+      "observed_value": false
+    },
+    {
+      "id": "SPO-001",
+      "title": "SharePoint Sharing Set to Anyone",
+      "module": "sharepoint",
+      "severity": "critical",
+      "description": "SharePoint and OneDrive external sharing is set to Anyone, allowing unauthenticated link sharing. Files can be shared with anyone on the internet without sign-in.",
+      "recommendation": "Restrict external sharing to New and existing guests at minimum. Review and tighten sharing settings per site collection where appropriate.",
+      "observed_value": "ExternalUserAndGuestSharing"
+    },
+    {
+      "id": "ID-001",
+      "title": "Low MFA Coverage",
+      "module": "identity",
+      "severity": "critical",
+      "description": "Fewer than 95% of licensed users have MFA registered. This significantly increases account compromise risk via phishing or credential stuffing.",
+      "recommendation": "Enable MFA for all users via Conditional Access. Consider enabling Security Defaults if no CA policies are currently in place.",
+      "observed_value": "78%"
+    },
+    {
+      "id": "EXO-001",
+      "title": "Auto-Forwarding to External Recipients Allowed",
+      "module": "exchange",
+      "severity": "high",
+      "description": "Automatic email forwarding to external recipients is not blocked. This is a common data exfiltration technique used following account compromise.",
+      "recommendation": "Block external auto-forwarding via the outbound spam filter policy or a mail flow transport rule.",
+      "observed_value": false
+    },
+    {
+      "id": "EXO-002",
+      "title": "Mailbox Auditing Not Fully Enabled",
+      "module": "exchange",
+      "severity": "high",
+      "description": "Mailbox auditing is not enabled across all mailboxes. Without audit logs, it is not possible to investigate suspicious activity or data access.",
+      "recommendation": "Enable organisation-wide mailbox auditing using Set-OrganizationConfig -AuditDisabled $false.",
+      "observed_value": "64%"
+    },
+    {
+      "id": "ID-002",
+      "title": "Excessive Global Administrators",
+      "module": "identity",
+      "severity": "high",
+      "description": "Seven Global Administrators were found. Global Admin is the highest-privilege role in M365 and should be assigned to a maximum of 2-3 break-glass accounts.",
+      "recommendation": "Reduce Global Admins to 2-3 emergency-access accounts. Assign least-privilege roles such as Exchange Admin or SharePoint Admin for day-to-day tasks.",
+      "observed_value": 7
+    },
+    {
+      "id": "MDM-001",
+      "title": "Low Device Compliance Rate",
+      "module": "intune",
+      "severity": "high",
+      "description": "Fewer than 80% of managed devices are compliant with Intune compliance policies. Non-compliant devices may lack encryption, current OS patches, or required security configuration.",
+      "recommendation": "Review non-compliant devices in the Intune portal. Identify common compliance failures and remediate. Consider blocking non-compliant device access to M365 via Conditional Access.",
+      "observed_value": "61%"
+    },
+    {
+      "id": "TEAMS-001",
+      "title": "Teams External Access Not Restricted",
+      "module": "teams",
+      "severity": "medium",
+      "description": "Teams external access is open to all domains. Users can communicate with any external Teams tenant, increasing the risk of phishing or data leakage.",
+      "recommendation": "Restrict Teams external access to approved domains only, or disable federation if not required for business operations.",
+      "observed_value": false
+    },
+    {
+      "id": "ID-004",
+      "title": "High Number of Guest Accounts",
+      "module": "identity",
+      "severity": "medium",
+      "description": "A large number of guest accounts exist in the tenant. Unreviewed guests may retain access to data long after a project or relationship has ended.",
+      "recommendation": "Implement an Entra ID access review policy for guest accounts. Remove guests who no longer require access.",
+      "observed_value": 87
+    },
+    {
+      "id": "EXO-003",
+      "title": "Anti-Phishing Intelligence Not Enabled",
+      "module": "exchange",
+      "severity": "medium",
+      "description": "Mailbox intelligence in the anti-phishing policy is not enabled, reducing protection against targeted impersonation attacks.",
+      "recommendation": "Enable mailbox intelligence and impersonation protection in the Defender for Office 365 anti-phishing policy.",
+      "observed_value": false
+    },
+    {
+      "id": "ID-003",
+      "title": "No Privileged Identity Management",
+      "module": "identity",
+      "severity": "high",
+      "description": "Privileged Identity Management is not in use. All admin role assignments are permanent, increasing the risk of privilege abuse or account compromise.",
+      "recommendation": "Enable Microsoft Entra PIM and convert permanent admin role assignments to eligible just-in-time assignments.",
+      "observed_value": false
+    },
+    {
+      "id": "ID-005",
+      "title": "High Number of Unused Licences",
+      "module": "identity",
+      "severity": "medium",
+      "description": "26% of purchased licences are unassigned, representing unnecessary recurring cost.",
+      "recommendation": "Audit unassigned licences and remove from the subscription where no longer required. Review licence assignment processes.",
+      "observed_value": "26%"
+    },
+    {
+      "id": "MDM-002",
+      "title": "No Intune Compliance Policies Configured",
+      "module": "intune",
+      "severity": "high",
+      "description": "No device compliance policies are configured in Intune. Without compliance policies, devices cannot be evaluated or blocked from accessing M365 resources.",
+      "recommendation": "Create compliance policies for each managed device platform covering minimum OS version, encryption, and antivirus requirements.",
+      "observed_value": 0
+    },
+    {
+      "id": "TEAMS-002",
+      "title": "Teams Consumer Access Enabled",
+      "module": "teams",
+      "severity": "medium",
+      "description": "Users can communicate with Teams personal and consumer accounts, increasing data leakage risk.",
+      "recommendation": "Disable Teams consumer access unless there is a specific approved business requirement.",
+      "observed_value": false
+    }
+  ],
+  "metrics": [
+    {
+      "label": "MFA Coverage",
+      "value": "78%",
+      "status": "bad",
+      "sub": "mfa_percentage"
+    },
+    {
+      "label": "Global Admins",
+      "value": "7",
+      "status": "bad",
+      "sub": "global_admin_count"
+    },
+    {
+      "label": "PIM Enabled",
+      "value": "False",
+      "status": "bad",
+      "sub": "pim_enabled"
+    },
+    {
+      "label": "Guest Users",
+      "value": "87",
+      "status": "warn",
+      "sub": "guest_user_count"
+    },
+    {
+      "label": "Unused Licences",
+      "value": "26%",
+      "status": "bad",
+      "sub": "unassigned_licence_percentage"
+    },
+    {
+      "label": "Secure Score",
+      "value": "44%",
+      "status": "bad",
+      "sub": "secure_score_percentage"
+    },
+    {
+      "label": "Security Defaults",
+      "value": "False",
+      "status": "bad",
+      "sub": "security_defaults_enabled"
+    },
+    {
+      "label": "CA Policies (enabled)",
+      "value": "0",
+      "status": "bad",
+      "sub": "ca_enabled_policy_count"
+    },
+    {
+      "label": "Legacy Auth Blocked",
+      "value": "False",
+      "status": "bad",
+      "sub": "legacy_auth_blocked"
+    },
+    {
+      "label": "Fwd Block",
+      "value": "False",
+      "status": "bad",
+      "sub": "external_forwarding_blocked"
+    },
+    {
+      "label": "Mailbox Audit",
+      "value": "64%",
+      "status": "bad",
+      "sub": "mailbox_audit_enabled_percentage"
+    },
+    {
+      "label": "Anti-Phish Intel",
+      "value": "False",
+      "status": "bad",
+      "sub": "antiphish_intelligence_enabled"
+    },
+    {
+      "label": "Teams Ext Restricted",
+      "value": "False",
+      "status": "bad",
+      "sub": "teams_external_access_restricted"
+    },
+    {
+      "label": "Consumer Access Off",
+      "value": "False",
+      "status": "bad",
+      "sub": "teams_consumer_access_blocked"
+    },
+    {
+      "label": "SPO Sharing",
+      "value": "ExternalUserAndGuestSharing",
+      "status": "bad",
+      "sub": "spo_sharing_level"
+    },
+    {
+      "label": "Device Compliance",
+      "value": "61%",
+      "status": "bad",
+      "sub": "intune_compliance_percentage"
+    },
+    {
+      "label": "Compliance Policies",
+      "value": "0",
+      "status": "bad",
+      "sub": "intune_compliance_policy_count"
+    }
+  ],
+  "rawMetrics": {
+    "mfa_percentage": 78,
+    "global_admin_count": 7,
+    "pim_enabled": false,
+    "guest_user_count": 87,
+    "unassigned_licence_percentage": 26,
+    "secure_score_percentage": 44,
+    "security_defaults_enabled": false,
+    "ca_enabled_policy_count": 0,
+    "legacy_auth_blocked": false,
+    "external_forwarding_blocked": false,
+    "mailbox_audit_enabled_percentage": 64,
+    "antiphish_intelligence_enabled": false,
+    "teams_external_access_restricted": false,
+    "teams_consumer_access_blocked": false,
+    "spo_sharing_level": "ExternalUserAndGuestSharing",
+    "intune_compliance_percentage": 61,
+    "intune_compliance_policy_count": 0
+  },
+  "orgName": "Contoso Ltd"
+}

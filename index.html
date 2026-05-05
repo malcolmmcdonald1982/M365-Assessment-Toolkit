@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234f9cf9' d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M365 Assessment Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e2a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #4f9cf9;
+    --accent2: #7c3aed;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg2);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+  .status-pill { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .status-dot.online { background: var(--success); }
+
+  main { flex: 1; display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 65px); }
+
+  aside { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar-section { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+  .sidebar-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+
+  /* Auth toggle */
+  .auth-toggle { display: flex; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 14px; }
+  .auth-btn { flex: 1; padding: 7px 8px; border-radius: 5px; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; letter-spacing: 0.03em; }
+  .auth-btn.active { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+  .auth-note { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.5; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+  .auth-note.warn { border-color: rgba(245,158,11,0.3); color: var(--warning); }
+
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-family: var(--mono); }
+  .field input, .field select { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field input::placeholder { color: var(--muted); }
+  .field.hidden { display: none; }
+  .field-optional { font-size: 9px; color: var(--muted); margin-left: 4px; }
+
+  .module-list { display: flex; flex-direction: column; gap: 6px; }
+  .module-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; user-select: none; }
+  .module-item:hover { border-color: var(--border2); background: var(--bg3); }
+  .module-item.checked { border-color: var(--accent); background: rgba(79,156,249,0.05); }
+  .module-item.disabled { opacity: 0.4; cursor: not-allowed; }
+  .module-check { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .module-item.checked .module-check { background: var(--accent); border-color: var(--accent); }
+  .module-check svg { width: 10px; height: 10px; fill: none; stroke: white; stroke-width: 2; display: none; }
+  .module-item.checked .module-check svg { display: block; }
+  .module-info { flex: 1; }
+  .module-name { font-size: 12px; font-weight: 600; }
+  .module-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+  .module-tag { font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 3px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); flex-shrink: 0; }
+  .module-tag.app-only { color: var(--warning); border-color: rgba(245,158,11,0.3); }
+  .select-all-btn { font-family: var(--mono); font-size: 10px; color: var(--accent); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 10px; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Interactive auth warning banner */
+  .interactive-warning { display: none; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-family: var(--mono); font-size: 10px; color: var(--warning); line-height: 1.6; }
+
+  .run-btn { margin: 1.25rem; width: calc(100% - 2.5rem); padding: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 8px; color: white; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .run-btn:hover { opacity: 0.9; }
+  .run-btn:active { transform: scale(0.98); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .run-btn svg { width: 16px; height: 16px; fill: none; stroke: white; stroke-width: 2; }
+
+  .panel { display: flex; flex-direction: column; overflow: hidden; }
+  /* Sessions panel */
+  .sessions-panel { display: none; position: fixed; top: 0; right: 0; width: 420px; height: 100vh; background: var(--bg2); border-left: 1px solid var(--border2); z-index: 1000; flex-direction: column; box-shadow: -8px 0 32px rgba(0,0,0,0.4); }
+  .sessions-panel.open { display: flex; }
+  .sessions-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sessions-header h3 { font-size: 13px; font-weight: 600; }
+  .sessions-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; }
+  .sessions-close:hover { color: var(--text); }
+  .sessions-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 8px; }
+  .session-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; position: relative; }
+  .session-card:hover { border-color: var(--accent); }
+  .session-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+  .session-client { font-size: 13px; font-weight: 600; color: var(--text); }
+  .session-score { font-size: 18px; font-weight: 700; }
+  .session-score.good { color: var(--success); }
+  .session-score.warn { color: var(--warning); }
+  .session-score.bad { color: var(--danger); }
+  .session-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.6; }
+  .session-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .session-btn { flex: 1; padding: 6px 10px; border-radius: 5px; font-family: var(--sans); font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--bg2); color: var(--text); transition: all 0.15s; }
+  .session-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .session-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .session-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .session-btn.primary:hover { opacity: 0.85; }
+  .sessions-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-family: var(--mono); font-size: 11px; line-height: 1.6; }
+  .sessions-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+  .sessions-overlay.open { display: block; }
+  .loaded-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--success); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 4px; padding: 2px 8px; margin-left: 8px; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); padding: 0 1.5rem; }
+  .tab { font-family: var(--mono); font-size: 11px; padding: 14px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; letter-spacing: 0.05em; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .content { flex: 1; overflow-y: auto; padding: 2rem; }
+
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--muted); }
+  .welcome-icon { width: 64px; height: 64px; border: 1px solid var(--border2); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
+  .welcome-icon svg { width: 32px; height: 32px; stroke: var(--muted); fill: none; stroke-width: 1.5; }
+  .welcome h2 { font-size: 16px; color: var(--text); margin-bottom: 8px; font-weight: 600; }
+  .welcome p { font-size: 13px; font-family: var(--mono); line-height: 1.6; max-width: 340px; }
+
+  .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+  .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.2s; position: relative; overflow: hidden; }
+  .metric-card:hover { border-color: var(--border2); }
+  .metric-card:hover .metric-tooltip { display: block; }
+  .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 10px; letter-spacing: 0.03em; line-height: 1.4; min-height: 28px; }
+  .metric-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; word-break: break-word; }
+  .metric-value.good { color: var(--success); }
+  .metric-value.warn { color: var(--warning); }
+  .metric-value.bad { color: var(--danger); }
+  .metric-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); line-height: 1.4; margin-top: 6px; }
+  .metric-status-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; }
+  .metric-status-bar.good { background: var(--success); }
+  .metric-status-bar.warn { background: var(--warning); }
+  .metric-status-bar.bad { background: var(--danger); }
+  .metric-tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-family: var(--mono); font-size: 10px; color: var(--text); width: 200px; z-index: 100; line-height: 1.5; white-space: normal; }
+
+  .findings-list { display: flex; flex-direction: column; gap: 10px; }
+  .finding-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; gap: 14px; align-items: flex-start; }
+  .finding-severity { width: 8px; border-radius: 4px; flex-shrink: 0; align-self: stretch; }
+  .finding-severity.critical { background: var(--danger); }
+  .finding-severity.high { background: var(--warning); }
+  .finding-severity.medium { background: var(--accent); }
+  .finding-severity.low { background: var(--success); }
+  .finding-body { flex: 1; }
+  .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .finding-title { font-size: 13px; font-weight: 600; }
+  .finding-badge { font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge-critical { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .badge-high { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .badge-medium { background: rgba(79,156,249,0.15); color: var(--accent); }
+  .badge-low { background: rgba(16,185,129,0.15); color: var(--success); }
+  .finding-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; font-family: var(--mono); }
+  .finding-rec { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .finding-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 6px; }
+
+  .log-console { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--muted); max-height: 500px; overflow-y: auto; }
+  .log-line { margin-bottom: 2px; }
+  .log-line .ts { color: #3a3f4f; margin-right: 8px; }
+  .log-line.info .msg { color: var(--text); }
+  .log-line.success .msg { color: var(--success); }
+  .log-line.warn .msg { color: var(--warning); }
+  .log-line.error .msg { color: var(--danger); }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .section-count { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--bg3); padding: 2px 8px; border-radius: 10px; }
+
+  .report-actions { display: flex; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap; }
+  .action-btn { padding: 9px 18px; border-radius: 7px; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--bg2); color: var(--text); transition: all 0.15s; display: flex; align-items: center; gap: 7px; }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .action-btn.primary:hover { opacity: 0.9; }
+  .action-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .report-preview { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 2rem; }
+  .report-preview h3 { font-size: 18px; margin-bottom: 6px; }
+  .report-preview .report-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 1.5rem; }
+  .report-section { margin-bottom: 1.5rem; }
+  .report-section h4 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .report-section p { font-size: 13px; line-height: 1.7; color: var(--text); }
+
+  .empty-state { text-align: center; padding: 3rem; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+  /* Remediation tab */
+  .rem-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
+  .rem-stats { display: flex; gap: 10px; }
+  .rem-stat { font-family: var(--mono); font-size: 11px; padding: 4px 12px; border-radius: 4px; }
+  .rem-stat.done { background: rgba(16,185,129,0.15); color: var(--success); }
+  .rem-stat.pending { background: rgba(79,156,249,0.1); color: var(--accent); }
+  .rem-stat.rolled { background: rgba(107,114,128,0.15); color: var(--muted); }
+  .rem-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rem-warning { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.5rem; font-family: var(--mono); font-size: 11px; color: var(--warning); line-height: 1.6; }
+  .rem-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; transition: border-color 0.2s; }
+  .rem-card:hover { border-color: var(--border2); }
+  .rem-card-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; }
+  .rem-card-header:hover { background: rgba(255,255,255,0.02); }
+  .rem-sev { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rem-sev.critical { background: var(--danger); }
+  .rem-sev.high { background: var(--warning); }
+  .rem-sev.medium { background: var(--accent); }
+  .rem-sev.low { background: var(--success); }
+  .rem-title { flex: 1; font-size: 13px; font-weight: 600; }
+  .rem-id { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .rem-tier { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+  .rem-tier.t1 { background: rgba(79,156,249,0.15); color: var(--accent); }
+  .rem-tier.t2 { background: rgba(107,114,128,0.1); color: var(--muted); }
+  .rem-status { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; }
+  .rem-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .rem-status-dot.pending { background: var(--muted); }
+  .rem-status-dot.checking { background: var(--warning); animation: pulse 1s infinite; }
+  .rem-status-dot.running { background: var(--accent); animation: pulse 1s infinite; }
+  .rem-status-dot.done { background: var(--success); }
+  .rem-status-dot.rolled { background: var(--muted); }
+  .rem-status-dot.error { background: var(--danger); }
+  .rem-body { padding: 0 16px 14px; border-top: 1px solid var(--border); display: none; }
+  .rem-body.open { display: block; }
+  .rem-desc { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.6; margin: 12px 0; }
+  .rem-check-result { background: var(--bg3); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-family: var(--mono); font-size: 11px; line-height: 1.6; display: none; }
+  .rem-check-result.warn { border-left: 3px solid var(--warning); color: var(--warning); }
+  .rem-check-result.ok { border-left: 3px solid var(--success); color: var(--success); }
+  .rem-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rem-btn { padding: 7px 14px; border-radius: 6px; font-family: var(--sans); font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .rem-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rem-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .rem-btn.primary:hover { opacity: 0.85; color: white; }
+  .rem-btn.danger { border-color: var(--danger); color: var(--danger); }
+  .rem-btn.danger:hover { background: var(--danger); color: white; }
+  .rem-btn.success { border-color: var(--success); color: var(--success); }
+  .rem-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .rem-guide-steps { margin-top: 10px; }
+  .rem-guide-step { display: flex; gap: 10px; padding: 6px 0; font-size: 12px; line-height: 1.5; border-bottom: 1px solid var(--border); }
+  .rem-guide-step:last-child { border-bottom: none; }
+  .rem-step-num { font-family: var(--mono); font-size: 10px; color: var(--accent); min-width: 20px; padding-top: 2px; }
+  .rem-log-entry { font-family: var(--mono); font-size: 10px; line-height: 1.7; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .rem-log-entry:last-child { border-bottom: none; }
+  .rem-log-entry .ts { color: var(--muted); margin-right: 8px; }
+  .rem-log-entry.success .action { color: var(--success); }
+  .rem-log-entry.rollback .action { color: var(--warning); }
+  .rem-log-entry.error .action { color: var(--danger); }
+  .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg3); border: 1px solid var(--border2); border-radius: 24px; transition: 0.3s; }
+  .toggle-slider:before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: var(--muted); border-radius: 50%; transition: 0.3s; }
+  .toggle-switch input:checked + .toggle-slider { background: var(--success); border-color: var(--success); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); background: white; }
+
+  /* Simulator */
+  .sim-layout { display: grid; grid-template-columns: 280px 1fr 1fr; gap: 16px; height: calc(100vh - 180px); }
+  .sim-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .sim-panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .sim-panel-title { font-size: 12px; font-weight: 600; }
+  .sim-panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+  .sim-score-banner { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  .sim-score-block { text-align: center; }
+  .sim-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .sim-score-val { font-size: 32px; font-weight: 700; line-height: 1; }
+  .sim-score-arrow { font-size: 24px; color: var(--muted); }
+  .sim-finding-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .sim-finding-row:hover { border-color: var(--border2); }
+  .sim-finding-row.fixed { opacity: 0.5; border-style: dashed; }
+  .sim-finding-sev { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sim-finding-sev.critical { background: var(--danger); }
+  .sim-finding-sev.high { background: var(--warning); }
+  .sim-finding-sev.medium { background: var(--accent); }
+  .sim-finding-sev.low { background: var(--success); }
+  .sim-finding-title { flex: 1; font-size: 11px; font-weight: 600; }
+  .sim-finding-id { font-family: var(--mono); font-size: 9px; color: var(--muted); }
+  .sim-toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .sim-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .sim-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--danger); border-radius: 20px; transition: 0.2s; }
+  .sim-toggle-slider:before { content: ""; position: absolute; width: 14px; height: 14px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .sim-toggle input:checked + .sim-toggle-slider { background: var(--success); }
+  .sim-toggle input:checked + .sim-toggle-slider:before { transform: translateX(16px); }
+  .chain-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+  .chain-card:hover { border-color: var(--border2); }
+  .chain-card.active { border-color: var(--danger); }
+  .chain-card.broken { border-color: var(--success); opacity: 0.7; }
+  .chain-card.partial { border-color: var(--warning); }
+  .chain-header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .chain-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .chain-status-dot.active { background: var(--danger); box-shadow: 0 0 6px var(--danger); animation: pulse 1.5s infinite; }
+  .chain-status-dot.broken { background: var(--success); }
+  .chain-status-dot.partial { background: var(--warning); }
+  .chain-name { flex: 1; font-size: 12px; font-weight: 600; }
+  .chain-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+  .chain-badge.active { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .chain-badge.broken { background: rgba(16,185,129,0.15); color: var(--success); }
+  .chain-badge.partial { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .chain-body { padding: 0 12px 10px; display: none; border-top: 1px solid var(--border); }
+  .chain-body.open { display: block; }
+  .chain-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.6; margin: 8px 0; }
+  .chain-steps { margin: 8px 0; }
+  .chain-step { display: flex; gap: 8px; font-size: 11px; line-height: 1.5; padding: 3px 0; }
+  .chain-step-num { font-family: var(--mono); font-size: 9px; color: var(--accent); min-width: 16px; padding-top: 2px; }
+  .chain-reqs { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .chain-req { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+  .chain-req.open { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .chain-req.fixed { background: rgba(16,185,129,0.15); color: var(--success); text-decoration: line-through; }
+  .chain-impact { font-size: 11px; color: var(--warning); margin-top: 8px; padding: 6px 10px; background: rgba(245,158,11,0.08); border-radius: 4px; border-left: 3px solid var(--warning); }
+  .chain-broken-by { font-family: var(--mono); font-size: 10px; color: var(--success); margin-top: 6px; }
+  .narrative-block { font-size: 12px; line-height: 1.8; color: var(--text); }
+  .narrative-block p { margin-bottom: 12px; }
+  .narrative-block .risk-high { color: var(--danger); font-weight: 600; }
+  .narrative-block .risk-med  { color: var(--warning); font-weight: 600; }
+  .narrative-block .risk-ok   { color: var(--success); font-weight: 600; }
+  .sim-controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .sim-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-family: var(--mono); font-size: 11px; line-height: 1.6; }
+
+  /* Approval gate */
+  .approval-gate { background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .approval-gate.approved { border-color: var(--success); background: rgba(16,185,129,0.05); }
+  .approval-gate.blocked { border-color: var(--danger); background: rgba(239,68,68,0.05); }
+  .approval-title { font-size: 12px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .approval-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .approval-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .approval-field { display: flex; flex-direction: column; gap: 4px; }
+  .approval-field label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .approval-field input, .approval-field select { background: var(--bg2); border: 1px solid var(--border2); border-radius: 5px; padding: 6px 10px; color: var(--text); font-family: var(--mono); font-size: 11px; outline: none; transition: border-color 0.15s; }
+  .approval-field input:focus, .approval-field select:focus { border-color: var(--accent); }
+  .approval-field input::placeholder { color: var(--muted); }
+  .approval-field.full { grid-column: 1 / -1; }
+  .approval-status { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; }
+  .approval-status.ok { color: var(--success); }
+  .approval-status.pending { color: var(--muted); }
+  .approval-status.denied { color: var(--danger); }
+  .approve-all-banner { background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 14px 16px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .approve-all-banner .banner-title { font-size: 13px; font-weight: 600; flex: 1; }
+  .approve-all-banner .banner-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Manual commands */
+  .rem-commands { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; display: none; }
+  .rem-commands.open { display: block; }
+  .rem-cmd-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .rem-cmd-tab { font-family: var(--mono); font-size: 10px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .rem-cmd-tab.active { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+  .rem-cmd-block { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 11px; color: #a8d8a8; line-height: 1.7; white-space: pre; overflow-x: auto; position: relative; }
+  .rem-cmd-copy { position: absolute; top: 6px; right: 8px; font-family: var(--mono); font-size: 9px; color: var(--muted); cursor: pointer; background: var(--bg2); border: 1px solid var(--border2); border-radius: 3px; padding: 2px 6px; }
+  .rem-cmd-copy:hover { color: var(--accent); border-color: var(--accent); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">M365 Assessment Tool</div>
+      <div class="logo-sub">M365 Assessment Toolkit</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button onclick="openSessionsPanel()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--text);font-family:var(--mono);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;" id="loadBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Load Assessment
+    </button>
+    <div class="status-pill">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">backend offline</span>
+    </div>
+  </div>
+</header>
+
+<!-- Sessions overlay -->
+<div class="sessions-overlay" id="sessionsOverlay" onclick="closeSessionsPanel()"></div>
+
+<!-- Sessions panel -->
+<div class="sessions-panel" id="sessionsPanel">
+  <div class="sessions-header">
+    <div>
+      <h3>Saved Assessments</h3>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;">Click to load a previous result</div>
+    </div>
+    <button class="sessions-close" onclick="closeSessionsPanel()">&#x2715;</button>
+  </div>
+  <div class="sessions-list" id="sessionsList">
+    <div class="sessions-empty">Loading saved assessments...</div>
+  </div>
+</div>
+
+<main>
+  <aside>
+
+    <!-- Assessment Details -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Assessment Details</div>
+      <div class="field">
+        <label>Organisation Name</label>
+        <input type="text" id="orgName" placeholder="e.g. Contoso Ltd">
+      </div>
+      <div class="field">
+        <label>Primary Contact</label>
+        <input type="text" id="contactName" placeholder="Jane Smith">
+      </div>
+      <div class="field">
+        <label>Assessment Date</label>
+        <input type="date" id="assessDate">
+      </div>
+    </div>
+
+    <!-- Consultant Settings -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Consultant</div>
+      <div class="field">
+        <label>Your Name</label>
+        <input type="text" id="consultantName" placeholder="e.g. Jane Smith" value="">
+      </div>
+      <div class="field">
+        <label>Your Role</label>
+        <input type="text" id="consultantRole" placeholder="e.g. IT Infrastructure Consultant" value="">
+      </div>
+      <div class="field">
+        <label>Your Email</label>
+        <input type="email" id="consultantEmail" placeholder="e.g. jane@example.com" value="">
+      </div>
+    </div>
+
+    <!-- Remediation Settings -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Remediation Settings</div>
+      <div class="field">
+        <label>Change Ref Label <span class="field-optional">(customise)</span></label>
+        <input type="text" id="changeRefLabel" placeholder="e.g. Change Request No." value="Change Reference">
+      </div>
+      <div class="field">
+        <label>Approver Label <span class="field-optional">(customise)</span></label>
+        <input type="text" id="approverLabel" placeholder="e.g. Approved By" value="Approved By">
+      </div>
+      <div class="field">
+        <label>Require Approval Before Fix</label>
+        <select id="requireApproval">
+          <option value="yes">Yes — block until approved</option>
+          <option value="warn">Warn only — allow without</option>
+          <option value="no">No — skip approval gate</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Authentication -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Authentication Method</div>
+
+      <div class="auth-toggle">
+        <button class="auth-btn active" id="btnInteractive" onclick="setAuth('interactive')">Interactive Login</button>
+        <button class="auth-btn" id="btnAppReg" onclick="setAuth('appreg')">App Registration</button>
+      </div>
+
+      <!-- Interactive fields -->
+      <div id="authInteractive">
+        <div class="auth-note">A browser popup will appear for each workload. Sign in with a read-access account. No setup required on the client side.</div>
+
+        <div class="field">
+          <label>Tenant ID <span class="field-optional">(optional — speeds up login)</span></label>
+          <input type="text" id="tenantIdInteractive" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>SharePoint Admin URL</label>
+          <input type="text" id="spAdminUrl" placeholder="https://contoso-admin.sharepoint.com">
+        </div>
+        <div class="interactive-warning" id="interactiveWarning">
+          Exchange, Teams &amp; SharePoint modules always use interactive login even in App Registration mode.
+        </div>
+      </div>
+
+      <!-- App Registration fields -->
+      <div id="authAppReg" style="display:none;">
+        <div class="auth-note">Client creates an App Registration in Entra ID. Read-only permissions only. Client can revoke access after the assessment.</div>
+        <div class="field">
+          <label>Tenant ID</label>
+          <input type="text" id="tenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>Client ID</label>
+          <input type="text" id="clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>Client Secret</label>
+          <input type="password" id="clientSecret" placeholder="••••••••••••••••••••">
+        </div>
+        <div class="field">
+          <label>SharePoint Admin URL</label>
+          <input type="text" id="spAdminUrlApp" placeholder="https://contoso-admin.sharepoint.com">
+        </div>
+        <div class="auth-note warn" style="margin-top:8px;">Exchange, Teams &amp; SharePoint will still prompt interactively — these workloads do not support app-only auth in the same way.</div>
+        <div id="permCheckResult" style="display:none;margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Modules -->
+    <div class="sidebar-section" style="border-bottom:none;">
+      <div class="sidebar-label">Assessment Modules</div>
+      <button class="select-all-btn" onclick="toggleAll()">select all</button>
+      <div class="module-list" id="moduleList">
+        <div class="module-item checked" data-module="identity" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">Identity &amp; MFA</div><div class="module-desc">Users, roles, MFA, licences</div></div>
+          <span class="module-tag">ENTRA</span>
+        </div>
+        <div class="module-item checked" data-module="security" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">Security &amp; CA</div><div class="module-desc">Secure Score, Conditional Access</div></div>
+          <span class="module-tag">SEC</span>
+        </div>
+        <div class="module-item checked" data-module="exchange" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">Exchange Online</div><div class="module-desc">Mail flow, anti-phish, audit</div></div>
+          <span class="module-tag">EXO</span>
+        </div>
+        <div class="module-item" data-module="teams" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">Teams</div><div class="module-desc">Tenant config, external access</div></div>
+          <span class="module-tag">TEAMS</span>
+        </div>
+        <div class="module-item" data-module="sharepoint" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">SharePoint</div><div class="module-desc">Sharing, sites, OneDrive</div></div>
+          <span class="module-tag">SPO</span>
+        </div>
+        <div class="module-item" data-module="intune" onclick="toggleModule(this)">
+          <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+          <div class="module-info"><div class="module-name">Intune / Devices</div><div class="module-desc">Compliance, enrolment, config</div></div>
+          <span class="module-tag">MDM</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runAssessment()">
+      <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      Run Assessment
+    </button>
+  </aside>
+
+  <div class="panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('overview', this)">Overview</div>
+      <div class="tab" onclick="switchTab('findings', this)">Findings</div>
+      <div class="tab" onclick="switchTab('log', this)">Run Log</div>
+      <div class="tab" onclick="switchTab('report', this)">Report</div>
+      <div class="tab" onclick="switchTab('remediation', this)" id="remediationTab">Remediation</div>
+      <div class="tab" onclick="switchTab('simulator', this)" id="simulatorTab">Simulator</div>
+      <div class="tab" onclick="switchTab('compare', this)" id="compareTab">Compare</div>
+    </div>
+
+    <!-- Overview -->
+    <div class="content" id="tab-overview">
+      <div class="welcome" id="welcomeState">
+        <div class="welcome-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2>Ready to assess</h2>
+        <p>Enter assessment details, choose your authentication method, select modules, then click Run Assessment.</p>
+      </div>
+      <div id="overviewResults" style="display:none;">
+        <div class="section-head" style="margin-bottom:1.5rem; align-items:flex-start;">
+          <div>
+            <div style="display:flex;align-items:center;"><div class="section-title" id="overviewClientName" style="font-size:16px;">—</div><span id="loadedBadge" class="loaded-badge" style="display:none;">&#x2713; Loaded from file</span></div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;" id="overviewDate">—</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="overviewAuthMethod">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:36px;font-weight:700;" id="overallScore">—</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">overall score</div>
+          </div>
+        </div>
+        <div class="metrics-grid" id="metricsGrid"></div>
+      </div>
+    </div>
+
+    <!-- Findings -->
+    <div class="content" id="tab-findings" style="display:none;">
+      <div class="section-head">
+        <div class="section-title">Triggered Findings</div>
+        <div class="section-count" id="findingsCount">0 findings</div>
+      </div>
+      <div class="findings-list" id="findingsList">
+        <div class="empty-state">No findings yet — run an assessment to see results.</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="content" id="tab-log" style="display:none;">
+      <div class="section-head" style="margin-bottom:1rem;">
+        <div class="section-title">Run Log</div>
+        <button class="action-btn" onclick="clearLog()" style="padding:5px 12px;font-size:11px;">Clear</button>
+      </div>
+      <div class="log-console" id="logConsole">
+        <div class="log-line info"><span class="ts">--:--:--</span><span class="msg">M365 Assessment Tool ready. Start backend.py first.</span></div>
+      </div>
+    </div>
+
+    <!-- Remediation -->
+    <div class="content" id="tab-remediation" style="display:none;">
+      <div class="rem-header">
+        <div>
+          <div class="section-title">Remediation</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;">Auto-fix and rollback for triggered findings</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="rem-stats">
+            <span class="rem-stat pending" id="remStatPending">0 pending</span>
+            <span class="rem-stat done" id="remStatDone">0 remediated</span>
+            <span class="rem-stat rolled" id="remStatRolled">0 rolled back</span>
+          </div>
+          <div class="rem-actions">
+            <button class="action-btn" id="rollbackAllBtn" onclick="rollbackAll()" disabled>
+              <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+              Rollback All
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="rem-warning">
+        <strong>Important:</strong> Ensure you have written approval before remediating.
+        Each change is snapshotted before it is made. Use Rollback to reverse any individual change.
+        Always verify changes worked before closing the session.
+      </div>
+
+      <!-- Global approval banner -->
+      <div class="approve-all-banner" id="approveAllBanner">
+        <div>
+          <div class="banner-title">Session Approval</div>
+          <div class="banner-desc">Enter who approved this change and the change reference, then click Record Approval. This records authorisation only — fixes must still be applied individually.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input type="text" id="globalApprover" placeholder="Approved by..." style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;width:160px;">
+          <input type="text" id="globalChangeRef" placeholder="Change ref..." style="background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;width:140px;">
+          <button class="rem-btn" onclick="applyGlobalApproval()" style="white-space:nowrap;border-color:var(--success);color:var(--success);" title="Records approval details against all findings. Does NOT apply any fixes.">
+            <svg viewBox="0 0 24 24" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
+            Record Approval for All
+          </button>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);align-self:center;max-width:140px;line-height:1.4;">Records approval only — does not apply fixes</div>
+        </div>
+      </div>
+      <div id="remediationList">
+        <div class="empty-state">Run an assessment first, then return to this tab to remediate findings.</div>
+      </div>
+    </div>
+
+    <!-- Simulator -->
+    <div class="content" id="tab-simulator" style="display:none;padding:1rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="section-title">Attack Path Simulator</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;">Toggle findings to simulate remediation and see which attack chains break</div>
+        </div>
+        <div class="sim-controls">
+          <button class="action-btn" onclick="simFixAll()">Fix All Findings</button>
+          <button class="action-btn" onclick="simResetAll()">Reset</button>
+          <button class="action-btn primary" onclick="exportSimReport()" id="simExportBtn" disabled>Export What-If Report</button>
+        </div>
+      </div>
+
+      <div id="simEmpty" class="sim-empty">Load or run an assessment first, then open the Simulator tab.</div>
+
+      <div id="simContent" style="display:none;">
+        <!-- Score banner -->
+        <div class="sim-score-banner">
+          <div class="sim-score-block">
+            <div class="sim-score-label">Current Score</div>
+            <div class="sim-score-val" id="simScoreCurrent" style="color:var(--danger)">—</div>
+          </div>
+          <div class="sim-score-arrow">→</div>
+          <div class="sim-score-block">
+            <div class="sim-score-label">Simulated Score</div>
+            <div class="sim-score-val" id="simScoreSim" style="color:var(--success)">—</div>
+          </div>
+          <div class="sim-score-block">
+            <div class="sim-score-label">Improvement</div>
+            <div class="sim-score-val" id="simScoreDiff" style="color:var(--accent)">—</div>
+          </div>
+          <div class="sim-score-block">
+            <div class="sim-score-label">Active Chains</div>
+            <div class="sim-score-val" id="simActiveChains" style="color:var(--danger)">—</div>
+          </div>
+          <div class="sim-score-block">
+            <div class="sim-score-label">Chains Broken</div>
+            <div class="sim-score-val" id="simBrokenChains" style="color:var(--success)">—</div>
+          </div>
+        </div>
+
+        <div class="sim-layout">
+          <!-- Findings panel -->
+          <div class="sim-panel">
+            <div class="sim-panel-header">
+              <div class="sim-panel-title">Findings</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Toggle to simulate fix</div>
+            </div>
+            <div class="sim-panel-body" id="simFindingsList"></div>
+          </div>
+
+          <!-- Attack chains panel -->
+          <div class="sim-panel">
+            <div class="sim-panel-header">
+              <div class="sim-panel-title">Attack Chains</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Click to expand</div>
+            </div>
+            <div class="sim-panel-body" id="simChainsList"></div>
+          </div>
+
+          <!-- Narrative panel -->
+          <div class="sim-panel">
+            <div class="sim-panel-header">
+              <div class="sim-panel-title">Risk Narrative</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Updates as you toggle</div>
+            </div>
+            <div class="sim-panel-body" id="simNarrative"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare -->
+    <div class="content" id="tab-compare" style="display:none;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div class="section-title">Assessment Comparison</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;">Compare two saved assessments to track progress over time</div>
+        </div>
+      </div>
+
+      <!-- Session selectors -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px;">First Assessment</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px;">The earlier / baseline assessment</div>
+          <select id="compareSessionA" onchange="updateCompareInfo()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;">
+            <option value="">-- Select saved assessment --</option>
+          </select>
+          <div id="compareInfoA" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;"></div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Latest Assessment</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px;">The more recent assessment to compare against</div>
+          <select id="compareSessionB" onchange="updateCompareInfo()" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-family:var(--mono);font-size:11px;outline:none;">
+            <option value="">-- Select saved assessment --</option>
+          </select>
+          <div id="compareInfoB" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:1.5rem;">
+        <button class="action-btn primary" onclick="runComparison()" id="compareRunBtn" disabled style="opacity:0.4;cursor:not-allowed;">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Compare Assessments
+        </button>
+        <button class="action-btn" onclick="downloadComparisonReport()" id="compareReportBtn" disabled>
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Comparison Report
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="compareResults" style="display:none;">
+        <!-- Score banner -->
+        <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1.5rem;">
+          <div style="text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;">First Assessment</div>
+            <div id="compareScoreA" style="font-size:40px;font-weight:700;"></div>
+            <div id="compareDateA" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;"></div>
+          </div>
+          <div style="font-size:24px;color:var(--muted);">→</div>
+          <div style="text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;">Change</div>
+            <div id="compareScoreDelta" style="font-size:40px;font-weight:700;"></div>
+            <div id="compareTrend" style="font-family:var(--mono);font-size:10px;margin-top:4px;"></div>
+          </div>
+          <div style="font-size:24px;color:var(--muted);">→</div>
+          <div style="text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;">Latest Assessment</div>
+            <div id="compareScoreB" style="font-size:40px;font-weight:700;"></div>
+            <div id="compareDateB" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- Finding counts -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--success);margin-bottom:6px;">RESOLVED</div>
+            <div id="compareResolved" style="font-size:32px;font-weight:700;color:var(--success);">0</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--danger);margin-bottom:6px;">NEW</div>
+            <div id="compareNew" style="font-size:32px;font-weight:700;color:var(--danger);">0</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--warning);margin-bottom:6px;">STILL OPEN</div>
+            <div id="compareOpen" style="font-size:32px;font-weight:700;color:var(--warning);">0</div>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center;">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:6px;">IMPROVED</div>
+            <div id="compareImproved" style="font-size:32px;font-weight:700;color:var(--accent);">0</div>
+          </div>
+        </div>
+
+        <!-- Detail sections -->
+        <div id="compareDetail"></div>
+      </div>
+
+      <div id="compareEmpty" class="empty-state">Select two saved assessments above and click Compare.</div>
+    </div>
+
+    <!-- Report -->
+    <div class="content" id="tab-report" style="display:none;">
+      <!-- Document selector -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:2rem;">
+
+        <!-- Assessment Report -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Assessment Report</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+            Findings, score, recommendations and metrics.<br>Present to client for approval before remediating.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="action-btn primary" id="generateReportBtn" onclick="generateReport()" disabled>
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Preview
+            </button>
+            <button class="action-btn" id="downloadWordBtn" onclick="downloadReport('docx')" disabled>
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Word
+            </button>
+            <button class="action-btn" id="downloadPdfBtn" onclick="downloadReport('pdf')" disabled>
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Remediation Report -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;" id="remReportPanel">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Remediation Report</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+            Before/after score, changes made, rollbacks, open findings.<br>Produced after remediation is complete.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="action-btn primary" id="downloadRemWordBtn" onclick="downloadRemediationReport('docx')" disabled
+              style="background:var(--success);border-color:var(--success);">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Word
+            </button>
+            <button class="action-btn" id="downloadRemPdfBtn" onclick="downloadRemediationReport('pdf')" disabled>
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF
+            </button>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center;" id="remReportStatus">
+              Complete a remediation first
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="report-preview" id="reportPreview">
+        <div class="empty-state" style="padding:3rem 0;">Run an assessment first, then generate your report.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const BACKEND = 'http://localhost:5000';
+let assessmentData = null;
+let allSelected = false;
+let currentAuthMethod = 'interactive';
+
+document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
+
+async function checkBackend() {
+  try {
+    const r = await fetch(`${BACKEND}/status`, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      document.getElementById('statusDot').className = 'status-dot online';
+      document.getElementById('statusText').textContent = 'backend online';
+    } else { setOffline(); }
+  } catch { setOffline(); }
+}
+function setOffline() {
+  document.getElementById('statusDot').className = 'status-dot';
+  document.getElementById('statusText').textContent = 'backend offline';
+}
+checkBackend();
+setInterval(checkBackend, 10000);
+
+function setAuth(method) {
+  currentAuthMethod = method;
+  document.getElementById('btnInteractive').className = 'auth-btn' + (method === 'interactive' ? ' active' : '');
+  document.getElementById('btnAppReg').className = 'auth-btn' + (method === 'appreg' ? ' active' : '');
+  document.getElementById('authInteractive').style.display = method === 'interactive' ? 'block' : 'none';
+  document.getElementById('authAppReg').style.display = method === 'appreg' ? 'block' : 'none';
+  // Show warning in interactive mode for Exchange/Teams/SharePoint modules
+  document.getElementById('interactiveWarning').style.display =
+    (method === 'interactive') ? 'none' : 'block';
+}
+
+function toggleModule(el) {
+  if (el.classList.contains('disabled')) return;
+  el.classList.toggle('checked');
+}
+
+function toggleAll() {
+  const items = document.querySelectorAll('.module-item:not(.disabled)');
+  allSelected = !allSelected;
+  items.forEach(i => allSelected ? i.classList.add('checked') : i.classList.remove('checked'));
+  document.querySelector('.select-all-btn').textContent = allSelected ? 'deselect all' : 'select all';
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.content').forEach(c => c.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).style.display = 'block';
+  el.classList.add('active');
+  if (name === 'remediation') buildRemediationTab();
+  if (name === 'simulator')   initSimulator();
+  if (name === 'compare')     initCompareTab();
+}
+
+function addLog(msg, type = 'info') {
+  const con = document.getElementById('logConsole');
+  const now = new Date().toTimeString().split(' ')[0];
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="ts">${now}</span><span class="msg">${msg}</span>`;
+  con.appendChild(line);
+  con.scrollTop = con.scrollHeight;
+}
+
+function clearLog() { document.getElementById('logConsole').innerHTML = ''; }
+
+function getAuthPayload() {
+  if (currentAuthMethod === 'interactive') {
+    return {
+      authMethod: 'interactive',
+      tenantId: document.getElementById('tenantIdInteractive').value.trim(),
+      spAdminUrl: document.getElementById('spAdminUrl').value.trim()
+    };
+  } else {
+    return {
+      authMethod: 'appreg',
+      tenantId: document.getElementById('tenantId').value.trim(),
+      clientId: document.getElementById('clientId').value.trim(),
+      clientSecret: document.getElementById('clientSecret').value.trim(),
+      spAdminUrl: document.getElementById('spAdminUrlApp').value.trim()
+    };
+  }
+}
+
+function validateInputs(auth) {
+  if (!document.getElementById('orgName').value.trim()) return 'Please enter a organisation name.';
+  if (auth.authMethod === 'appreg') {
+    if (!auth.tenantId) return 'Tenant ID is required for App Registration auth.';
+    if (!auth.clientId) return 'Client ID is required for App Registration auth.';
+    if (!auth.clientSecret) return 'Client Secret is required for App Registration auth.';
+  }
+  const modules = [...document.querySelectorAll('.module-item.checked')].map(m => m.dataset.module);
+  if (modules.length === 0) return 'Please select at least one module.';
+  return null;
+}
+
+async function runAssessment() {
+  const auth = getAuthPayload();
+  const error = validateInputs(auth);
+  if (error) { alert(error); return; }
+
+  const modules = [...document.querySelectorAll('.module-item.checked')].map(m => m.dataset.module);
+  const clientName = document.getElementById('orgName').value.trim();
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" style="animation:spin 1s linear infinite;stroke:white;fill:none;width:16px;height:16px;stroke-width:2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Running...`;
+
+  switchTab('log', document.querySelectorAll('.tab')[2]);
+  addLog(`Starting assessment for: ${clientName}`, 'info');
+  addLog(`Auth method: ${auth.authMethod === 'interactive' ? 'Interactive Login' : 'App Registration'}`, 'info');
+  addLog(`Modules: ${modules.join(', ')}`, 'info');
+
+  if (auth.authMethod === 'interactive') {
+    addLog('Browser login popups will appear for each workload — complete each sign-in to continue.', 'warn');
+  }
+
+  try {
+    const response = await fetch(`${BACKEND}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientName, modules, ...auth })
+    });
+    if (!response.ok) throw new Error(`Backend returned ${response.status}`);
+
+    const data = await response.json();
+    assessmentData = data;
+
+    (data.log || []).forEach(e => addLog(e.message, e.type || 'info'));
+    addLog(`Assessment complete — ${data.findings?.length || 0} findings triggered.`, 'success');
+
+    renderOverview(data);
+    renderFindings(data.findings || []);
+    document.getElementById('generateReportBtn').disabled = false;
+    switchTab('overview', document.querySelectorAll('.tab')[0]);
+
+  } catch (err) {
+    addLog(`Error: ${err.message}`, 'error');
+    addLog('Is backend.py running? Start it with: python backend.py', 'warn');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg> Run Assessment`;
+}
+
+function renderOverview(data) {
+  document.getElementById('welcomeState').style.display = 'none';
+  document.getElementById('overviewResults').style.display = 'block';
+  document.getElementById('overviewClientName').textContent = data.clientName;
+  document.getElementById('overviewDate').textContent = `Assessment: ${document.getElementById('assessDate').value}`;
+  document.getElementById('overviewAuthMethod').textContent =
+    `Auth: ${data.authMethod === 'interactive' ? 'Interactive Login' : 'App Registration'}`;
+
+  const score = data.score || 0;
+  const scoreEl = document.getElementById('overallScore');
+  scoreEl.textContent = `${score}/100`;
+  scoreEl.style.color = score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
+
+  const grid = document.getElementById('metricsGrid');
+  grid.innerHTML = '';
+  (data.metrics || []).forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    const cls = m.status === 'good' ? 'good' : m.status === 'warn' ? 'warn' : 'bad';
+    const statusIcon = m.status === 'good' ? '✓' : m.status === 'warn' ? '!' : '✗';
+    card.innerHTML = `
+      ${m.sub ? `<div class="metric-tooltip">${m.sub}</div>` : ''}
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value ${cls}">${m.value}</div>
+      <div class="metric-status-bar ${cls}"></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderFindings(findings) {
+  document.getElementById('findingsCount').textContent = `${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
+  const list = document.getElementById('findingsList');
+  if (findings.length === 0) {
+    list.innerHTML = '<div class="empty-state">No findings triggered — tenant looks healthy.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  findings.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
+  findings.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'finding-card';
+    card.innerHTML = `
+      <div class="finding-severity ${f.severity}"></div>
+      <div class="finding-body">
+        <div class="finding-header">
+          <div class="finding-title">${f.title}</div>
+          <span class="finding-badge badge-${f.severity}">${f.severity}</span>
+          <span class="finding-badge" style="background:var(--bg3);color:var(--muted);">${f.id}</span>
+        </div>
+        <div class="finding-desc">${f.description}</div>
+        <div class="finding-rec">${f.recommendation}</div>
+        <div class="finding-meta">Module: ${f.module} &nbsp;|&nbsp; Metric: ${f.metric} &nbsp;|&nbsp; Observed: ${f.observed_value}</div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+async function generateReport() {
+  if (!assessmentData) return;
+  addLog('Generating report preview...', 'info');
+  try {
+    const r = await fetch(`${BACKEND}/report`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(assessmentData)
+    });
+    if (!r.ok) throw new Error('Report generation failed');
+    const data = await r.json();
+    renderReportPreview(data);
+    document.getElementById('downloadWordBtn').disabled = false;
+        document.getElementById('downloadPdfBtn').disabled = false;
+    switchTab('report', document.querySelectorAll('.tab')[3]);
+    addLog('Report ready.', 'success');
+  } catch (err) { addLog(`Report error: ${err.message}`, 'error'); }
+}
+
+function renderReportPreview(data) {
+  const findings = assessmentData.findings || [];
+  const critical = findings.filter(f => f.severity === 'critical').length;
+  const high = findings.filter(f => f.severity === 'high').length;
+  document.getElementById('reportPreview').innerHTML = `
+    <h3>M365 Health Assessment</h3>
+    <div class="report-meta">${assessmentData.orgName || assessmentData.clientName} &nbsp;|&nbsp; ${document.getElementById('assessDate').value} &nbsp;|&nbsp; ${getConsultantDetails().name}</div>
+    <div class="report-section"><h4>Executive Summary</h4>
+      <p>This report presents the findings of a Microsoft 365 health assessment for ${assessmentData.clientName}. ${data.modulesRun} modules were assessed. Overall score: <strong>${assessmentData.score}/100</strong>. ${findings.length} findings identified — ${critical} critical, ${high} high priority.</p>
+    </div>
+    <div class="report-section"><h4>Top Recommendations</h4>
+      ${findings.slice(0, 5).map((f, i) => `<p style="margin-bottom:8px;"><strong>${i + 1}.</strong> ${f.recommendation}</p>`).join('')}
+    </div>
+    ${(assessmentData.remediationLog && assessmentData.remediationLog.length > 0) ? `
+    <div class="report-section"><h4>Remediation Log</h4>
+      <p>${assessmentData.remediationLog.filter(e => e.action === 'remediate' && e.success).length} finding(s) remediated during this engagement.
+      ${assessmentData.remediationLog.filter(e => e.action === 'rollback' && e.success).length > 0 ? assessmentData.remediationLog.filter(e => e.action === 'rollback' && e.success).length + ' rolled back.' : ''}
+      Full remediation log included in the downloaded report.</p>
+    </div>` : ''}
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2rem;border-top:1px solid var(--border);padding-top:1rem;">Full .docx report includes all evidence tables, metric data, and appendix.</div>`;
+}
+
+async function downloadReport(format = 'docx') {
+  if (!assessmentData) return;
+  const assessDate = document.getElementById('assessDate').value;
+
+  if (format === 'pdf') {
+    // PDF: generate HTML report and open in new tab for Print -> Save as PDF
+    addLog('Generating PDF-ready report...', 'info');
+    try {
+      const r = await fetch(`${BACKEND}/download-pdf`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...assessmentData, assessDate })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({error: 'Unknown error'}));
+        throw new Error(err.error || 'PDF generation failed');
+      }
+      const html = await r.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (!win) {
+        // Popup blocked - fall back to download
+        const a = document.createElement('a');
+        a.href = url; a.download = `M365_Assessment_${assessmentData.clientName.replace(/\s+/g,'_')}_${assessDate}.html`;
+        a.click();
+        addLog('PDF report saved as HTML file. Open it and use Print to save as PDF.', 'success');
+      } else {
+        addLog('PDF report opened in new tab. Use Print (Ctrl+P) and choose Save as PDF.', 'success');
+      }
+    } catch (err) { addLog(`PDF error: ${err.message}`, 'error'); }
+    return;
+  }
+
+  // Word .docx download
+  addLog('Generating Word report...', 'info');
+  try {
+    const r = await fetch(`${BACKEND}/download`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...assessmentData, assessDate })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Unknown error'}));
+      throw new Error(err.error || 'Download failed');
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `M365_Assessment_${assessmentData.clientName.replace(/\s+/g, '_')}_${assessDate}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('Word report downloaded.', 'success');
+  } catch (err) { addLog(`Download error: ${err.message}`, 'error'); }
+}
+
+// ── Manual Commands ────────────────────────────────────────────
+
+const cmdCache = {};
+
+async function toggleManualCommands(findingId) {
+  const el = document.getElementById(`rem-commands-${findingId}`);
+  if (!el) return;
+  const isOpen = el.classList.contains('open');
+  if (isOpen) { el.classList.remove('open'); return; }
+  el.classList.add('open');
+
+  // Load commands if not cached
+  if (!cmdCache[findingId]) {
+    try {
+      const r = await fetch(`${BACKEND}/remediate/commands/${findingId}`);
+      const data = await r.json();
+      cmdCache[findingId] = data;
+    } catch (err) {
+      cmdCache[findingId] = { manual_fix: 'Could not load commands', manual_rollback: 'Could not load commands' };
+    }
+  }
+
+  const cmd = cmdCache[findingId];
+  const fixEl = document.getElementById(`rem-cmd-fix-${findingId}`);
+  const rbEl  = document.getElementById(`rem-cmd-rollback-${findingId}`);
+
+  if (fixEl) {
+    fixEl.innerHTML = formatCommand(cmd.manual_fix || 'No manual command available') +
+      `<span class="rem-cmd-copy" onclick="copyCmd('rem-cmd-fix-${findingId}')">Copy</span>`;
+  }
+  if (rbEl) {
+    rbEl.innerHTML = formatCommand(cmd.manual_rollback || 'No rollback command available') +
+      `<span class="rem-cmd-copy" onclick="copyCmd('rem-cmd-rollback-${findingId}')">Copy</span>`;
+  }
+}
+
+function formatCommand(cmd) {
+  // Colour code PS commands
+  return cmd.split('\n').map(line => {
+    if (line.trim().startsWith('#')) return `<span style="color:var(--muted)">${line}</span>`;
+    if (line.trim().startsWith('Connect-') || line.trim().startsWith('Disconnect-')) return `<span style="color:#79c0ff">${line}</span>`;
+    if (line.trim().startsWith('Set-') || line.trim().startsWith('Get-') || line.trim().startsWith('Remove-')) return `<span style="color:#ffa657">${line}</span>`;
+    return line;
+  }).join('\n');
+}
+
+function showCmdTab(findingId, tab, el) {
+  document.querySelectorAll(`#rem-commands-${findingId} .rem-cmd-tab`).forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(`rem-cmd-fix-${findingId}`).style.display     = tab === 'fix'      ? 'block' : 'none';
+  document.getElementById(`rem-cmd-rollback-${findingId}`).style.display = tab === 'rollback' ? 'block' : 'none';
+}
+
+function copyCmd(elId) {
+  const el  = document.getElementById(elId);
+  const txt = el ? el.innerText.replace('Copy', '').trim() : '';
+  navigator.clipboard.writeText(txt).then(() => {
+    const copyBtn = el.querySelector('.rem-cmd-copy');
+    if (copyBtn) { copyBtn.textContent = 'Copied!'; setTimeout(() => copyBtn.textContent = 'Copy', 2000); }
+  });
+}
+
+// ── Remediation Report ────────────────────────────────────────
+
+async function downloadRemediationReport(format = 'docx') {
+  if (!assessmentData) return;
+  const assessDate = document.getElementById('assessDate').value;
+  addLog('Generating Remediation Report...', 'info');
+
+  if (format === 'pdf') {
+    // For PDF - generate via html endpoint
+    try {
+      const r = await fetch(`${BACKEND}/download-pdf`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...assessmentData, assessDate, reportType: 'remediation' })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({error: 'Unknown error'}));
+        throw new Error(err.error || 'Failed');
+      }
+      const html = await r.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      addLog('Remediation Report opened in new tab. Use Print to save as PDF.', 'success');
+    } catch (err) { addLog(`PDF error: ${err.message}`, 'error'); }
+    return;
+  }
+
+  try {
+    const r = await fetch(`${BACKEND}/download-remediation`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...assessmentData, assessDate })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Unknown error'}));
+      throw new Error(err.error || 'Download failed');
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `M365_RemediationReport_${assessmentData.clientName.replace(/\s+/g,'_')}_${assessDate}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('Remediation Report downloaded.', 'success');
+  } catch (err) { addLog(`Download error: ${err.message}`, 'error'); }
+}
+
+function checkRemediationReportAvailable() {
+  // Enable remediation report buttons if remediation log exists in session data
+  const hasRemLog = assessmentData?.remediationLog?.length > 0;
+  const remCount  = hasRemLog ? assessmentData.remediationLog.filter(e => e.action === 'remediate' && e.success).length : 0;
+  const wordBtn   = document.getElementById('downloadRemWordBtn');
+  const pdfBtn    = document.getElementById('downloadRemPdfBtn');
+  const status    = document.getElementById('remReportStatus');
+  if (wordBtn) wordBtn.disabled = remCount === 0;
+  if (pdfBtn)  pdfBtn.disabled  = remCount === 0;
+  if (status)  status.textContent = remCount > 0 ? `${remCount} remediation(s) recorded` : 'Complete a remediation first';
+}
+
+// ── Sessions / Load Assessment ─────────────────────────────────
+
+async function openSessionsPanel() {
+  document.getElementById('sessionsPanel').classList.add('open');
+  document.getElementById('sessionsOverlay').classList.add('open');
+  await refreshSessionsList();
+}
+
+function closeSessionsPanel() {
+  document.getElementById('sessionsPanel').classList.remove('open');
+  document.getElementById('sessionsOverlay').classList.remove('open');
+}
+
+async function refreshSessionsList() {
+  const list = document.getElementById('sessionsList');
+  list.innerHTML = '<div class="sessions-empty">Loading...</div>';
+  try {
+    const r = await fetch(`${BACKEND}/sessions`);
+    if (!r.ok) throw new Error('Could not reach backend');
+    const data = await r.json();
+    const sessions = data.sessions || [];
+    if (sessions.length === 0) {
+      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    sessions.forEach(s => {
+      const score = s.score || 0;
+      const scoreClass = score >= 70 ? 'good' : score >= 50 ? 'warn' : 'bad';
+      const savedAt = s.savedAt ? new Date(s.savedAt).toLocaleString('en-GB') : '';
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML = `
+        <div class="session-card-header">
+          <div>
+            <div class="session-client">${s.clientName}</div>
+            <div class="session-meta">${s.assessDate} &nbsp;|&nbsp; ${s.findingsCount} findings &nbsp;|&nbsp; ${s.modulesRun} modules</div>
+            ${savedAt ? `<div class="session-meta">Saved: ${savedAt}</div>` : ''}
+          </div>
+          <div class="session-score ${scoreClass}">${score}<span style="font-size:12px;font-weight:400">/100</span></div>
+        </div>
+        <div class="session-actions">
+          <button class="session-btn primary" onclick="loadSession('${s.filename}')">Load</button>
+          <button class="session-btn" onclick="generateReportFromSession('${s.filename}')">Report</button>
+          <button class="session-btn danger" onclick="deleteSession('${s.filename}', this)">Delete</button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  } catch (err) {
+    list.innerHTML = `<div class="sessions-empty">Could not load sessions.<br><br>${err.message}</div>`;
+  }
+}
+
+async function loadSession(filename) {
+  addLog(`Loading session: ${filename}`, 'info');
+  try {
+    const r = await fetch(`${BACKEND}/sessions/${filename}`);
+    if (!r.ok) throw new Error('Session not found');
+    const data = await r.json();
+    assessmentData = data;
+
+    // Restore organisation name fields
+    if (data.clientName) document.getElementById('orgName').value = data.clientName;
+    if (data.assessDate) document.getElementById('assessDate').value = data.assessDate;
+
+    // Render everything
+    renderOverview(data);
+    renderFindings(data.findings || []);
+
+    // Restore remediation state from session
+    if (data.remediationState) {
+      Object.keys(data.remediationState).forEach(findingId => {
+        remState[findingId] = data.remediationState[findingId];
+      });
+      const remCount = Object.keys(data.remediationState).length;
+      if (remCount > 0) {
+        addLog(`Remediation state restored: ${remCount} finding(s) with snapshots found`, 'success');
+      }
+    }
+
+    // Show remediation log summary if present
+    if (data.remediationLog && data.remediationLog.length > 0) {
+      const remediatedCount = data.remediationLog.filter(e => e.action === 'remediate' && e.success).length;
+      const rolledBackCount = data.remediationLog.filter(e => e.action === 'rollback' && e.success).length;
+      addLog(`Remediation history: ${remediatedCount} remediated, ${rolledBackCount} rolled back`, 'info');
+    }
+
+    // Enable report buttons
+    document.getElementById('generateReportBtn').disabled = false;
+    document.getElementById('downloadWordBtn').disabled = false;
+    document.getElementById('downloadPdfBtn').disabled = false;
+    checkRemediationReportAvailable();
+
+    // Show loaded badge
+    document.getElementById('loadedBadge').style.display = 'inline-flex';
+    // Refresh compare dropdowns
+    if (document.getElementById('compareSessionA').options.length <= 1) initCompareTab();
+
+    addLog(`Session loaded: ${data.clientName} (${data.assessDate}) — ${data.findings?.length || 0} findings`, 'success');
+
+    // Restore log if present
+    if (data.log && data.log.length > 0) {
+      document.getElementById('logConsole').innerHTML = '';
+      data.log.forEach(e => addLog(`[restored] ${e.message}`, e.type || 'info'));
+    }
+
+    closeSessionsPanel();
+    switchTab('overview', document.querySelectorAll('.tab')[0]);
+
+  } catch (err) {
+    addLog(`Load failed: ${err.message}`, 'error');
+  }
+}
+
+async function generateReportFromSession(filename) {
+  await loadSession(filename);
+  // Small delay to let the UI update then generate
+  setTimeout(() => generateReport(), 300);
+}
+
+async function deleteSession(filename, btn) {
+  if (!confirm(`Delete this saved assessment?\n\n${filename}\n\nThis cannot be undone.`)) return;
+  try {
+    const r = await fetch(`${BACKEND}/sessions/${filename}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Delete failed');
+    // Remove the card from the UI
+    btn.closest('.session-card').remove();
+    // Check if list is now empty
+    const list = document.getElementById('sessionsList');
+    if (list.children.length === 0) {
+      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
+    }
+  } catch (err) {
+    alert(`Could not delete: ${err.message}`);
+  }
+}
+
+
+
+
+// ── Permission Checker ─────────────────────────────────────────
+
+async function downloadRemediationReport(format = 'docx') {
+  if (!assessmentData) return;
+  const assessDate = document.getElementById('assessDate').value;
+  addLog('Generating Remediation Report...', 'info');
+
+  if (format === 'pdf') {
+    // For PDF - generate via html endpoint
+    try {
+      const r = await fetch(`${BACKEND}/download-pdf`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...assessmentData, assessDate, reportType: 'remediation' })
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({error: 'Unknown error'}));
+        throw new Error(err.error || 'Failed');
+      }
+      const html = await r.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      addLog('Remediation Report opened in new tab. Use Print to save as PDF.', 'success');
+    } catch (err) { addLog(`PDF error: ${err.message}`, 'error'); }
+    return;
+  }
+
+  try {
+    const r = await fetch(`${BACKEND}/download-remediation`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...assessmentData, assessDate })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Unknown error'}));
+      throw new Error(err.error || 'Download failed');
+    }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `M365_RemediationReport_${assessmentData.clientName.replace(/\s+/g,'_')}_${assessDate}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('Remediation Report downloaded.', 'success');
+  } catch (err) { addLog(`Download error: ${err.message}`, 'error'); }
+}
+
+function checkRemediationReportAvailable() {
+  // Enable remediation report buttons if remediation log exists in session data
+  const hasRemLog = assessmentData?.remediationLog?.length > 0;
+  const remCount  = hasRemLog ? assessmentData.remediationLog.filter(e => e.action === 'remediate' && e.success).length : 0;
+  const wordBtn   = document.getElementById('downloadRemWordBtn');
+  const pdfBtn    = document.getElementById('downloadRemPdfBtn');
+  const status    = document.getElementById('remReportStatus');
+  if (wordBtn) wordBtn.disabled = remCount === 0;
+  if (pdfBtn)  pdfBtn.disabled  = remCount === 0;
+  if (status)  status.textContent = remCount > 0 ? `${remCount} remediation(s) recorded` : 'Complete a remediation first';
+}
+
+// ── Sessions / Load Assessment ─────────────────────────────────
+
+async function openSessionsPanel() {
+  document.getElementById('sessionsPanel').classList.add('open');
+  document.getElementById('sessionsOverlay').classList.add('open');
+  await refreshSessionsList();
+}
+
+function closeSessionsPanel() {
+  document.getElementById('sessionsPanel').classList.remove('open');
+  document.getElementById('sessionsOverlay').classList.remove('open');
+}
+
+async function refreshSessionsList() {
+  const list = document.getElementById('sessionsList');
+  list.innerHTML = '<div class="sessions-empty">Loading...</div>';
+  try {
+    const r = await fetch(`${BACKEND}/sessions`);
+    if (!r.ok) throw new Error('Could not reach backend');
+    const data = await r.json();
+    const sessions = data.sessions || [];
+    if (sessions.length === 0) {
+      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    sessions.forEach(s => {
+      const score = s.score || 0;
+      const scoreClass = score >= 70 ? 'good' : score >= 50 ? 'warn' : 'bad';
+      const savedAt = s.savedAt ? new Date(s.savedAt).toLocaleString('en-GB') : '';
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML = `
+        <div class="session-card-header">
+          <div>
+            <div class="session-client">${s.clientName}</div>
+            <div class="session-meta">${s.assessDate} &nbsp;|&nbsp; ${s.findingsCount} findings &nbsp;|&nbsp; ${s.modulesRun} modules</div>
+            ${savedAt ? `<div class="session-meta">Saved: ${savedAt}</div>` : ''}
+          </div>
+          <div class="session-score ${scoreClass}">${score}<span style="font-size:12px;font-weight:400">/100</span></div>
+        </div>
+        <div class="session-actions">
+          <button class="session-btn primary" onclick="loadSession('${s.filename}')">Load</button>
+          <button class="session-btn" onclick="generateReportFromSession('${s.filename}')">Report</button>
+          <button class="session-btn danger" onclick="deleteSession('${s.filename}', this)">Delete</button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+  } catch (err) {
+    list.innerHTML = `<div class="sessions-empty">Could not load sessions.<br><br>${err.message}</div>`;
+  }
+}
+
+async function loadSession(filename) {
+  addLog(`Loading session: ${filename}`, 'info');
+  try {
+    const r = await fetch(`${BACKEND}/sessions/${filename}`);
+    if (!r.ok) throw new Error('Session not found');
+    const data = await r.json();
+    assessmentData = data;
+
+    // Restore organisation name fields
+    if (data.clientName) document.getElementById('orgName').value = data.clientName;
+    if (data.assessDate) document.getElementById('assessDate').value = data.assessDate;
+
+    // Render everything
+    renderOverview(data);
+    renderFindings(data.findings || []);
+
+    // Restore remediation state from session
+    if (data.remediationState) {
+      Object.keys(data.remediationState).forEach(findingId => {
+        remState[findingId] = data.remediationState[findingId];
+      });
+      const remCount = Object.keys(data.remediationState).length;
+      if (remCount > 0) {
+        addLog(`Remediation state restored: ${remCount} finding(s) with snapshots found`, 'success');
+      }
+    }
+
+    // Show remediation log summary if present
+    if (data.remediationLog && data.remediationLog.length > 0) {
+      const remediatedCount = data.remediationLog.filter(e => e.action === 'remediate' && e.success).length;
+      const rolledBackCount = data.remediationLog.filter(e => e.action === 'rollback' && e.success).length;
+      addLog(`Remediation history: ${remediatedCount} remediated, ${rolledBackCount} rolled back`, 'info');
+    }
+
+    // Enable report buttons
+    document.getElementById('generateReportBtn').disabled = false;
+    document.getElementById('downloadWordBtn').disabled = false;
+    document.getElementById('downloadPdfBtn').disabled = false;
+    checkRemediationReportAvailable();
+
+    // Show loaded badge
+    document.getElementById('loadedBadge').style.display = 'inline-flex';
+    // Refresh compare dropdowns
+    if (document.getElementById('compareSessionA').options.length <= 1) initCompareTab();
+
+    addLog(`Session loaded: ${data.clientName} (${data.assessDate}) — ${data.findings?.length || 0} findings`, 'success');
+
+    // Restore log if present
+    if (data.log && data.log.length > 0) {
+      document.getElementById('logConsole').innerHTML = '';
+      data.log.forEach(e => addLog(`[restored] ${e.message}`, e.type || 'info'));
+    }
+
+    closeSessionsPanel();
+    switchTab('overview', document.querySelectorAll('.tab')[0]);
+
+  } catch (err) {
+    addLog(`Load failed: ${err.message}`, 'error');
+  }
+}
+
+async function generateReportFromSession(filename) {
+  await loadSession(filename);
+  // Small delay to let the UI update then generate
+  setTimeout(() => generateReport(), 300);
+}
+
+async function deleteSession(filename, btn) {
+  if (!confirm(`Delete this saved assessment?\n\n${filename}\n\nThis cannot be undone.`)) return;
+  try {
+    const r = await fetch(`${BACKEND}/sessions/${filename}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Delete failed');
+    // Remove the card from the UI
+    btn.closest('.session-card').remove();
+    // Check if list is now empty
+    const list = document.getElementById('sessionsList');
+    if (list.children.length === 0) {
+      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
+    }
+  } catch (err) {
+    alert(`Could not delete: ${err.message}`);
+  }
+}
+
+
+
+
+// ── Permission Checker ─────────────────────────────────────────
+
+function initSimulator() {
+  if (!assessmentData || !assessmentData.findings) {
+    document.getElementById('simEmpty').style.display = 'block';
+    document.getElementById('simContent').style.display = 'none';
+    return;
+  }
+
+  simFindings = assessmentData.findings || [];
+  simState = {};
+  simFindings.forEach(f => { simState[f.id] = true; }); // all open by default
+
+  document.getElementById('simEmpty').style.display = 'none';
+  document.getElementById('simContent').style.display = 'block';
+
+  document.getElementById('simScoreCurrent').textContent = `${assessmentData.score || 0}/100`;
+  const col = (assessmentData.score || 0) >= 70 ? 'var(--success)' : (assessmentData.score || 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
+  document.getElementById('simScoreCurrent').style.color = col;
+
+  renderSimFindings();
+  runSimulation();
+  document.getElementById('simExportBtn').disabled = false;
+}
+
+function renderSimFindings() {
+  const list = document.getElementById('simFindingsList');
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sorted = [...simFindings].sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+
+  list.innerHTML = sorted.map(f => {
+    const isOpen = simState[f.id] !== false;
+    return `
+      <div class="sim-finding-row ${isOpen ? '' : 'fixed'}" onclick="toggleSimFinding('${f.id}')" id="sim-row-${f.id}">
+        <div class="sim-finding-sev ${f.severity}"></div>
+        <div class="sim-finding-title">${f.title}</div>
+        <div class="sim-finding-id">${f.id}</div>
+        <label class="sim-toggle" onclick="event.stopPropagation()">
+          <input type="checkbox" ${isOpen ? '' : 'checked'} onchange="toggleSimFinding('${f.id}')">
+          <span class="sim-toggle-slider"></span>
+        </label>
+      </div>`;
+  }).join('');
+}
+
+function toggleSimFinding(findingId) {
+  simState[findingId] = !simState[findingId];
+  // Update row appearance
+  const row      = document.getElementById(`sim-row-${findingId}`);
+  const checkbox = row?.querySelector('input[type=checkbox]');
+  if (row)      row.classList.toggle('fixed', !simState[findingId]);
+  if (checkbox) checkbox.checked = !simState[findingId];
+  runSimulation();
+}
+
+function simFixAll() {
+  simFindings.forEach(f => { simState[f.id] = false; });
+  renderSimFindings();
+  runSimulation();
+}
+
+function simResetAll() {
+  simFindings.forEach(f => { simState[f.id] = true; });
+  renderSimFindings();
+  runSimulation();
+}
+
+async function runSimulation() {
+  const openIds   = Object.entries(simState).filter(([,v]) => v).map(([k]) => k);
+  const openData  = simFindings.filter(f => openIds.includes(f.id));
+  const allIds    = simFindings.map(f => f.id);
+
+  try {
+    const r = await fetch(`${BACKEND}/simulator/chains`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ openFindings: openIds, allFindings: allIds, openFindingsData: openData })
+    });
+    if (!r.ok) throw new Error('Simulation failed');
+    simData = await r.json();
+    renderSimResults();
+  } catch (err) {
+    console.error('Simulation error:', err);
+  }
+}
+
+function renderSimResults() {
+  if (!simData) return;
+
+  // Update score banner
+  const simScore  = simData.simScore || 0;
+  const origScore = assessmentData?.score || 0;
+  const diff      = simScore - origScore;
+  const simCol    = simScore >= 70 ? 'var(--success)' : simScore >= 50 ? 'var(--warning)' : 'var(--danger)';
+
+  document.getElementById('simScoreSim').textContent   = `${simScore}/100`;
+  document.getElementById('simScoreSim').style.color   = simCol;
+  document.getElementById('simScoreDiff').textContent  = diff >= 0 ? `+${diff}` : `${diff}`;
+  document.getElementById('simScoreDiff').style.color  = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--muted)';
+  document.getElementById('simActiveChains').textContent = simData.activeCount || 0;
+  document.getElementById('simBrokenChains').textContent = simData.brokenCount || 0;
+
+  renderSimChains();
+  renderSimNarrative();
+}
+
+function renderSimChains() {
+  const list = document.getElementById('simChainsList');
+  const chains = simData?.chains || [];
+  const statusOrder = { active: 0, partial: 1, broken: 2 };
+  const sorted = [...chains].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9));
+
+  list.innerHTML = sorted.map(chain => {
+    const statusLabel = chain.status === 'active' ? 'ACTIVE' : chain.status === 'broken' ? 'BROKEN' : 'PARTIAL';
+    const reqsHtml = chain.requires.map(id => {
+      const isFixed = simState[id] === false;
+      return `<span class="chain-req ${isFixed ? 'fixed' : 'open'}">${id}</span>`;
+    }).join('');
+
+    const stepsHtml = (chain.steps || []).map((s, i) =>
+      `<div class="chain-step"><span class="chain-step-num">${i + 1}</span><span>${s}</span></div>`
+    ).join('');
+
+    return `
+      <div class="chain-card ${chain.status}" onclick="toggleChainCard('${chain.id}')">
+        <div class="chain-header">
+          <div class="chain-status-dot ${chain.status}"></div>
+          <div class="chain-name">${chain.name}</div>
+          <span class="chain-badge ${chain.status}">${statusLabel}</span>
+        </div>
+        <div class="chain-body" id="chain-body-${chain.id}">
+          <div class="chain-desc">${chain.description}</div>
+          <div class="chain-steps">${stepsHtml}</div>
+          <div class="chain-reqs">${reqsHtml}</div>
+          <div class="chain-impact">${chain.impact}</div>
+          ${chain.status !== 'broken' ? `<div class="chain-broken-by">To break this chain: ${chain.broken_by}</div>` : '<div class="chain-broken-by">Chain broken - this attack path is no longer viable.</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleChainCard(chainId) {
+  const body = document.getElementById(`chain-body-${chainId}`);
+  if (body) body.classList.toggle('open');
+}
+
+function renderSimNarrative() {
+  const chains   = simData?.chains || [];
+  const active   = chains.filter(c => c.status === 'active');
+  const broken   = chains.filter(c => c.status === 'broken');
+  const partial  = chains.filter(c => c.status === 'partial');
+  const openCount = Object.values(simState).filter(v => v).length;
+  const fixedCount = Object.values(simState).filter(v => !v).length;
+  const orgName  = assessmentData?.orgName || assessmentData?.clientName || 'this organisation';
+  const simScore = simData?.simScore || 0;
+
+  let html = '<div class="narrative-block">';
+
+  // Opening
+  if (fixedCount === 0) {
+    html += `<p>With all <span class="risk-high">${openCount} findings open</span>, ${orgName} is exposed to <span class="risk-high">${active.length} active attack chain${active.length !== 1 ? 's' : ''}</span>. An attacker with basic capabilities could exploit multiple paths simultaneously.</p>`;
+  } else if (openCount === 0) {
+    html += `<p><span class="risk-ok">All findings resolved.</span> All ${broken.length} attack chains have been broken. The tenant is significantly hardened against the modelled attack scenarios.</p>`;
+  } else {
+    html += `<p>With <span class="risk-high">${fixedCount} finding${fixedCount !== 1 ? 's' : ''} simulated as fixed</span>, the score improves to <span class="risk-ok">${simScore}/100</span>. <span class="risk-high">${active.length} attack chain${active.length !== 1 ? 's' : ''}</span> remain${active.length === 1 ? 's' : ''} active.</p>`;
+  }
+
+  // Active chains
+  if (active.length > 0) {
+    html += `<p><strong>Still exposed:</strong></p>`;
+    active.forEach(c => {
+      html += `<p style="padding-left:12px;border-left:3px solid var(--danger);margin-bottom:8px;">`;
+      html += `<span class="risk-high">${c.name}</span> — ${c.impact}`;
+      if (c.activeReqs && c.activeReqs.length > 0) {
+        html += `<br><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Fix ${c.activeReqs.join(', ')} to break this chain.</span>`;
+      }
+      html += `</p>`;
+    });
+  }
+
+  // Partial chains
+  if (partial.length > 0) {
+    html += `<p><strong>Partially mitigated:</strong></p>`;
+    partial.forEach(c => {
+      html += `<p style="padding-left:12px;border-left:3px solid var(--warning);margin-bottom:8px;">`;
+      html += `<span class="risk-med">${c.name}</span> — risk reduced but chain not fully broken.`;
+      if (c.activeReqs && c.activeReqs.length > 0) {
+        html += `<br><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Still needs: ${c.activeReqs.join(', ')}</span>`;
+      }
+      html += `</p>`;
+    });
+  }
+
+  // Broken chains
+  if (broken.length > 0) {
+    html += `<p><strong>Chains broken:</strong> <span class="risk-ok">${broken.map(c => c.name).join(', ')}</span></p>`;
+  }
+
+  // Recommendation
+  if (active.length > 0 && fixedCount < Object.keys(simState).length) {
+    // Find the finding that would break the most chains
+    const findingImpact = {};
+    active.forEach(chain => {
+      (chain.activeReqs || []).forEach(fid => {
+        findingImpact[fid] = (findingImpact[fid] || 0) + 1;
+      });
+    });
+    const topFinding = Object.entries(findingImpact).sort((a, b) => b[1] - a[1])[0];
+    if (topFinding) {
+      const f = simFindings.find(f => f.id === topFinding[0]);
+      html += `<p style="background:rgba(79,156,249,0.08);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 4px 4px 0;">`;
+      html += `<strong>Highest impact fix:</strong> Remediating <span style="color:var(--accent);font-family:var(--mono)">${topFinding[0]}</span>`;
+      if (f) html += ` (${f.title})`;
+      html += ` would affect ${topFinding[1]} active chain${topFinding[1] !== 1 ? 's' : ''}.`;
+      html += `</p>`;
+    }
+  }
+
+  html += '</div>';
+  document.getElementById('simNarrative').innerHTML = html;
+}
+
+async function exportSimReport() {
+  if (!simData || !assessmentData) return;
+  const openIds  = Object.entries(simState).filter(([,v]) => v).map(([k]) => k);
+  const fixedIds = Object.entries(simState).filter(([,v]) => !v).map(([k]) => k);
+  const origScore = assessmentData.score || 0;
+  const simScore  = simData.simScore || 0;
+
+  // Build a simple HTML what-if report
+  const chains   = simData.chains || [];
+  const active   = chains.filter(c => c.status === 'active');
+  const broken   = chains.filter(c => c.status === 'broken');
+  const orgName  = assessmentData.orgName || assessmentData.clientName || 'Organisation';
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>M365 Simulator What-If Report - ${orgName}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #212529; max-width: 900px; margin: 40px auto; padding: 20px; }
+  h1 { color: #1B2A4A; border-bottom: 3px solid #1B2A4A; padding-bottom: 8px; }
+  h2 { color: #2E4A7A; margin-top: 28px; }
+  .score-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .score-box { text-align: center; padding: 20px; border-radius: 8px; }
+  .score-num { font-size: 36pt; font-weight: bold; }
+  .chain { border: 1px solid #dee2e6; border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; }
+  .chain.active { border-left: 5px solid #C0392B; }
+  .chain.broken { border-left: 5px solid #27AE60; opacity: 0.8; }
+  .chain.partial { border-left: 5px solid #D4AC0D; }
+  .badge { padding: 2px 8px; border-radius: 3px; font-size: 9pt; font-weight: bold; }
+  .badge.active { background: #FDECEA; color: #C0392B; }
+  .badge.broken { background: #EAF7EE; color: #27AE60; }
+  .badge.partial { background: #FEFAE7; color: #D4AC0D; }
+  .finding-fixed { color: #27AE60; }
+  .finding-open  { color: #C0392B; }
+  .notice { background: #EBF5FB; border-left: 5px solid #2E4A7A; padding: 12px 16px; margin: 16px 0; font-size: 10pt; }
+  footer { margin-top: 40px; padding-top: 10px; border-top: 1px solid #dee2e6; color: #6c757d; font-size: 9pt; text-align: center; }
+  .print-btn { background: #1B2A4A; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-size: 12pt; cursor: pointer; margin-bottom: 20px; }
+</style>
+</head><body>
+<button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
+<h1>M365 Simulator What-If Report</h1>
+<p><strong>Organisation:</strong> ${orgName} &nbsp;|&nbsp; <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB')} &nbsp;|&nbsp; <strong>Prepared by:</strong> [Consultant Name], [Role]</p>
+<div class="notice">This is a simulation report showing the projected impact of remediating selected findings. No changes have been made to the live tenant.</div>
+<h2>Score Projection</h2>
+<div class="score-grid">
+  <div class="score-box" style="background:#FDECEA;">
+    <div style="color:#6c757d;font-size:10pt">Current Score</div>
+    <div class="score-num" style="color:#C0392B">${origScore}/100</div>
+  </div>
+  <div class="score-box" style="background:#EAF7EE;">
+    <div style="color:#6c757d;font-size:10pt">Projected Score</div>
+    <div class="score-num" style="color:#27AE60">${simScore}/100</div>
+  </div>
+  <div class="score-box" style="background:#EBF5FB;">
+    <div style="color:#6c757d;font-size:10pt">Improvement</div>
+    <div class="score-num" style="color:#2E4A7A">+${simScore - origScore}</div>
+  </div>
+</div>
+<h2>Simulated Fixes (${fixedIds.length})</h2>
+<p>${fixedIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-fixed">&#10003; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
+<h2>Still Open (${openIds.length})</h2>
+<p>${openIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-open">&#10007; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
+<h2>Attack Chain Impact</h2>
+${chains.map(c => `<div class="chain ${c.status}">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+    <strong>${c.name}</strong>
+    <span class="badge ${c.status}">${c.status.toUpperCase()}</span>
+  </div>
+  <div style="font-size:10pt;color:#495057">${c.impact}</div>
+  ${c.status !== 'broken' ? `<div style="font-size:9pt;color:#6c757d;margin-top:4px">To break: ${c.broken_by}</div>` : '<div style="font-size:9pt;color:#27AE60;margin-top:4px">This attack path has been eliminated by the simulated fixes.</div>'}
+</div>`).join('')}
+<footer>M365 Assessment Toolkit | [consultant@email.com] | This is a simulation only - no tenant changes were made.</footer>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (!win) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `M365_Simulator_${orgName.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.html`;
+    a.click();
+  }
+}
+
+
+// ── Permission Checker ─────────────────────────────────────────
+
+
+
+// ── Approval Gate ──────────────────────────────────────────────
+
+const approvalState = {};
+
+function updateApproval(findingId) {
+  const status   = document.getElementById(`approval-status-${findingId}`)?.value || '';
+  const approver = document.getElementById(`approval-approver-${findingId}`)?.value.trim() || '';
+  const ref      = document.getElementById(`approval-ref-${findingId}`)?.value.trim() || '';
+  const date     = document.getElementById(`approval-date-${findingId}`)?.value || '';
+  const notes    = document.getElementById(`approval-notes-${findingId}`)?.value.trim() || '';
+
+  approvalState[findingId] = { status, approver, ref, date, notes };
+
+  const gate  = document.getElementById(`approval-gate-${findingId}`);
+  const badge = document.getElementById(`approval-badge-${findingId}`);
+  const runBtn = document.getElementById(`rem-run-btn-${findingId}`);
+  const requireMode = document.getElementById('requireApproval')?.value || 'yes';
+
+  if (status === 'approved') {
+    gate?.classList.add('approved');
+    gate?.classList.remove('blocked');
+    if (badge) { badge.textContent = `Approved by ${approver || 'unnamed'} — Apply Fix is now unlocked`; badge.className = 'approval-status ok'; }
+    if (runBtn && remState[findingId]?.status !== 'done') {
+      runBtn.disabled = false;
+      runBtn.title = 'Click to apply fix';
+    }
+  } else if (status === 'denied') {
+    gate?.classList.add('blocked');
+    gate?.classList.remove('approved');
+    if (badge) { badge.textContent = 'Not approved — remediation blocked'; badge.className = 'approval-status denied'; }
+    if (runBtn) runBtn.disabled = true;
+  } else {
+    gate?.classList.remove('approved', 'blocked');
+    if (badge) { badge.textContent = 'Pending approval'; badge.className = 'approval-status pending'; }
+    // If approval required, keep locked
+    if (runBtn && requireMode === 'yes' && remState[findingId]?.status !== 'done') {
+      runBtn.disabled = true;
+    }
+  }
+}
+
+function applyGlobalApproval() {
+  const approver  = document.getElementById('globalApprover')?.value.trim() || '';
+  const changeRef = document.getElementById('globalChangeRef')?.value.trim() || '';
+  const today     = new Date().toISOString().split('T')[0];
+
+  if (!approver) { alert('Please enter who approved this change.'); return; }
+
+  // Apply to all finding approval fields
+  document.querySelectorAll('[id^="approval-status-"]').forEach(el => {
+    const findingId = el.id.replace('approval-status-', '');
+    el.value = 'approved';
+    const approverEl = document.getElementById(`approval-approver-${findingId}`);
+    const refEl      = document.getElementById(`approval-ref-${findingId}`);
+    const dateEl     = document.getElementById(`approval-date-${findingId}`);
+    if (approverEl) approverEl.value = approver;
+    if (refEl)      refEl.value      = changeRef;
+    if (dateEl)     dateEl.value     = today;
+    updateApproval(findingId);
+  });
+}
+
+function getApprovalForFinding(findingId) {
+  return approvalState[findingId] || { status: '', approver: '', ref: '', date: '', notes: '' };
+}
+
+function checkApprovalBeforeRun(findingId) {
+  const requireMode = document.getElementById('requireApproval')?.value || 'yes';
+  const approval    = getApprovalForFinding(findingId);
+
+  if (requireMode === 'no') return true;
+  if (approval.status === 'approved') return true;
+  if (approval.status === 'denied') {
+    alert(`This change has not been approved. Change the approval status to proceed.`);
+    return false;
+  }
+  if (requireMode === 'yes') {
+    alert(`Approval is required before remediating.\n\nPlease fill in the Change Approval section for this finding.`);
+    return false;
+  }
+  // warn mode - ask but allow
+  return confirm(`No approval recorded for ${findingId}.\n\nProceed without approval?`);
+}
+
+// ── Remediation ────────────────────────────────────────────────
+
+// Track remediation state per finding
+const remState = {};
+
+function buildRemediationTab() {
+  if (!assessmentData || !assessmentData.findings) return;
+  const findings = assessmentData.findings;
+  const list     = document.getElementById('remediationList');
+
+  if (findings.length === 0) {
+    list.innerHTML = '<div class="empty-state">No findings to remediate.</div>';
+    return;
+  }
+
+  // Tier 1 findings first, then Tier 2
+  const tier1Ids  = ['CA-002','EXO-001','EXO-002','EXO-003','SEC-003','SEC-004','SEC-005','TEAMS-002','SPO-002'];
+  const sorted    = [...findings].sort((a, b) => {
+    const aT = tier1Ids.includes(a.id) ? 0 : 1;
+    const bT = tier1Ids.includes(b.id) ? 0 : 1;
+    if (aT !== bT) return aT - bT;
+    const sevOrder = {critical:0,high:1,medium:2,low:3};
+    return (sevOrder[a.severity]??9) - (sevOrder[b.severity]??9);
+  });
+
+  list.innerHTML = '';
+  sorted.forEach(f => {
+    const isTier1 = tier1Ids.includes(f.id);
+    if (!remState[f.id]) remState[f.id] = { status: 'pending', snapshotFile: null, checkResult: null };
+    const card = document.createElement('div');
+    card.className = 'rem-card';
+    card.id = `rem-card-${f.id}`;
+    card.innerHTML = buildRemCard(f, isTier1);
+    // Init approval state
+    if (!approvalState[f.id]) {
+      approvalState[f.id] = { status: '', approver: '', ref: '', date: '', notes: '' };
+    }
+    // Set today's date on the approval date field after render
+    setTimeout(() => {
+      const dateEl = document.getElementById('approval-date-' + f.id);
+      if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      // Lock Apply Fix based on approval mode
+      const requireMode = document.getElementById('requireApproval')?.value || 'yes';
+      const runBtn = document.getElementById('rem-run-btn-' + f.id);
+      const isDone  = remState[f.id]?.status === 'done';
+      if (runBtn && !isDone) {
+        if (requireMode === 'yes') {
+          // Check if already approved
+          const currentApproval = approvalState[f.id];
+          const isApproved = currentApproval && currentApproval.status === 'approved';
+          runBtn.disabled = !isApproved;
+          runBtn.title = isApproved ? 'Click to apply fix' : 'Record approval above before applying fix';
+        } else if (requireMode === 'warn') {
+          runBtn.disabled = false;
+          runBtn.title = 'Click to apply fix (approval recommended)';
+        } else {
+          runBtn.disabled = false;
+          runBtn.title = 'Click to apply fix';
+        }
+      }
+    }, 50);
+    list.appendChild(card);
+  });
+  updateRemStats();
+}
+
+function buildRemCard(f, isTier1) {
+  const state   = remState[f.id] || { status: 'pending' };
+  const statusLabels = { pending:'Not remediated', checking:'Checking...', running:'Applying fix...', done:'Remediated', rolled:'Rolled back', error:'Error' };
+  const tierLabel = isTier1 ? '<span class="rem-tier t1">AUTO-FIX</span>' : '<span class="rem-tier t2">GUIDED</span>';
+
+  return `
+    <div class="rem-card-header" onclick="toggleRemCard('${f.id}')">
+      <div class="rem-sev ${f.severity}"></div>
+      <div class="rem-title">${f.title}</div>
+      <div class="rem-id">${f.id}</div>
+      ${tierLabel}
+      <div class="rem-status">
+        <div class="rem-status-dot ${state.status}" id="rem-dot-${f.id}"></div>
+        <span id="rem-status-text-${f.id}">${statusLabels[state.status]||'Pending'}</span>
+      </div>
+    </div>
+    <div class="rem-body" id="rem-body-${f.id}">
+      <div class="rem-desc">${f.description}</div>
+
+      <!-- Approval gate - required before Apply Fix -->
+      <div class="approval-gate" id="approval-gate-${f.id}">
+        <div class="approval-title">
+          <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Change Approval
+          <span id="approval-badge-${f.id}" class="approval-status pending">Pending approval — Apply Fix is locked</span>
+        </div>
+        <div class="approval-fields">
+          <div class="approval-field">
+            <label>Approval Status</label>
+            <select id="approval-status-${f.id}" onchange="updateApproval('${f.id}')">
+              <option value="">-- Select --</option>
+              <option value="approved">Approved</option>
+              <option value="denied">Not Approved</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div class="approval-field">
+            <label>${approverLabel}</label>
+            <input type="text" id="approval-approver-${f.id}" placeholder="Name / Role" oninput="updateApproval('${f.id}')">
+          </div>
+          <div class="approval-field">
+            <label>${changeRefLabel}</label>
+            <input type="text" id="approval-ref-${f.id}" placeholder="e.g. CHG0001234" oninput="updateApproval('${f.id}')">
+          </div>
+          <div class="approval-field">
+            <label>Approval Date</label>
+            <input type="date" id="approval-date-${f.id}" oninput="updateApproval('${f.id}')">
+          </div>
+          <div class="approval-field full">
+            <label>Notes <span class="field-optional">(optional)</span></label>
+            <input type="text" id="approval-notes-${f.id}" placeholder="Any additional context..." oninput="updateApproval('${f.id}')">
+          </div>
+        </div>
+      </div>
+
+      <div class="rem-check-result" id="rem-check-${f.id}"></div>
+      <div class="rem-btns" id="rem-btns-${f.id}">
+        ${isTier1 ? buildTier1Btns(f.id, state) : buildTier2Btns(f.id)}
+      </div>
+      <div id="rem-guide-${f.id}" style="display:none;"></div>
+      <div id="rem-log-${f.id}" style="margin-top:12px;"></div>
+    </div>`;
+}
+
+function buildTier1Btns(id, state) {
+  const isDone   = state.status === 'done';
+  const isRolled = state.status === 'rolled';
+  return `
+    <button class="rem-btn" onclick="runCheck('${id}')" id="rem-check-btn-${id}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Pre-check
+    </button>
+    <button class="rem-btn primary" onclick="runRemediation('${id}')" id="rem-run-btn-${id}" ${isDone ? 'disabled' : ''} title="${isDone ? 'Already fixed' : 'Record approval above before applying fix'}">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      ${isDone ? 'Already Fixed' : 'Apply Fix'}
+    </button>
+    <button class="rem-btn danger" onclick="runRollback('${id}')" id="rem-rollback-btn-${id}" ${!isDone?'disabled':''}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+      Rollback
+    </button>
+    <button class="rem-btn" onclick="toggleManualCommands('${id}')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Manual Commands
+    </button>
+    <div class="rem-commands" id="rem-commands-${id}">
+      <div class="rem-cmd-tabs">
+        <div class="rem-cmd-tab active" onclick="showCmdTab('${id}','fix',this)">Fix Command</div>
+        <div class="rem-cmd-tab" onclick="showCmdTab('${id}','rollback',this)">Rollback Command</div>
+      </div>
+      <div id="rem-cmd-fix-${id}" class="rem-cmd-block">Loading...</div>
+      <div id="rem-cmd-rollback-${id}" class="rem-cmd-block" style="display:none">Loading...</div>
+    </div>`;
+}
+
+function buildTier2Btns(id) {
+  return `
+    <button class="rem-btn primary" onclick="showGuidance('${id}')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Show Guidance
+    </button>`;
+}
+
+function toggleRemCard(id) {
+  const body = document.getElementById(`rem-body-${id}`);
+  body.classList.toggle('open');
+}
+
+async function runCheck(findingId) {
+  setRemStatus(findingId, 'checking', 'Checking...');
+  document.getElementById(`rem-check-btn-${findingId}`).disabled = true;
+  try {
+    const payload = { ...getAuthPayload(), clientName: assessmentData?.clientName || '' };
+    const r = await fetch(`${BACKEND}/remediate/check/${findingId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    const el = document.getElementById(`rem-check-${findingId}`);
+    el.style.display = 'block';
+    if (data.alreadyRemediated) {
+      el.className = 'rem-check-result ok';
+      el.textContent = 'Already remediated - this finding is already fixed in the tenant.';
+      setRemStatus(findingId, 'done', 'Already fixed');
+    } else if (data.warning) {
+      el.className = 'rem-check-result warn';
+      el.textContent = 'Warning: ' + data.warning;
+      setRemStatus(findingId, 'pending', 'Warning - review before fixing');
+    } else {
+      el.className = 'rem-check-result ok';
+      el.textContent = 'Pre-check passed - safe to apply fix.';
+      setRemStatus(findingId, 'pending', 'Ready to fix');
+    }
+  } catch (err) {
+    setRemStatus(findingId, 'error', 'Check failed');
+    document.getElementById(`rem-check-${findingId}`).textContent = 'Check failed: ' + err.message;
+    document.getElementById(`rem-check-${findingId}`).style.display = 'block';
+  }
+  document.getElementById(`rem-check-btn-${findingId}`).disabled = false;
+}
+
+async function runRemediation(findingId) {
+  const confirmed = confirm(
+    'Apply fix for: ' + findingId + '\n\n' +
+    'A snapshot of the current state will be saved before any changes are made.\n' +
+    'You can rollback at any time.\n\nProceed?'
+  );
+  if (!confirmed) return;
+
+  setRemStatus(findingId, 'running', 'Applying fix...');
+  document.getElementById(`rem-run-btn-${findingId}`).disabled = true;
+
+  try {
+    const payload = { ...getAuthPayload(), clientName: assessmentData?.clientName || '' };
+    const r = await fetch(`${BACKEND}/remediate/run/${findingId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    remState[findingId] = { status: 'done', snapshotFile: data.snapshotFile };
+    setRemStatus(findingId, 'done', 'Remediated');
+    document.getElementById(`rem-run-btn-${findingId}`).disabled = true;
+    document.getElementById(`rem-rollback-btn-${findingId}`).disabled = false;
+
+    if (data.warning) {
+      const el = document.getElementById(`rem-check-${findingId}`);
+      el.className = 'rem-check-result warn';
+      el.textContent = 'Post-fix warning: ' + data.warning;
+      el.style.display = 'block';
+    }
+    appendRemLog(findingId, 'Remediated: ' + (data.details || 'Success'), 'success');
+    updateRemStats();
+    // Update remediation log in assessmentData for report
+    if (!assessmentData.remediationLog) assessmentData.remediationLog = [];
+    const approval = getApprovalForFinding(findingId);
+    assessmentData.remediationLog.push({
+      findingId, action: 'remediate', success: true,
+      details: data.details || '', timestamp: new Date().toISOString(),
+      approvedBy: approval.approver || '',
+      changeRef: approval.ref || '',
+      approvalDate: approval.date || '',
+      approvalNotes: approval.notes || '',
+      approvalStatus: approval.status || '',
+    });
+    checkRemediationReportAvailable();
+
+  } catch (err) {
+    setRemStatus(findingId, 'error', 'Failed');
+    appendRemLog(findingId, 'Error: ' + err.message, 'error');
+    document.getElementById(`rem-run-btn-${findingId}`).disabled = false;
+  }
+}
+
+async function runRollback(findingId) {
+  const state = remState[findingId];
+  if (!state || !state.snapshotFile) {
+    alert('No snapshot found for rollback. This finding may not have been remediated in this session.');
+    return;
+  }
+  const confirmed = confirm(
+    'Rollback: ' + findingId + '\n\n' +
+    'This will restore the setting to its state before remediation.\n' +
+    'Snapshot: ' + state.snapshotFile + '\n\nProceed?'
+  );
+  if (!confirmed) return;
+
+  setRemStatus(findingId, 'running', 'Rolling back...');
+  document.getElementById(`rem-rollback-btn-${findingId}`).disabled = true;
+
+  try {
+    const payload = {
+      ...getAuthPayload(),
+      clientName: assessmentData?.clientName || '',
+      snapshotFile: state.snapshotFile
+    };
+    const r = await fetch(`${BACKEND}/remediate/rollback/${findingId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+
+    remState[findingId].status = 'rolled';
+    setRemStatus(findingId, 'rolled', 'Rolled back');
+    document.getElementById(`rem-run-btn-${findingId}`).disabled = false;
+    appendRemLog(findingId, 'Rolled back: ' + (data.details || 'Success'), 'rollback');
+    updateRemStats();
+
+  } catch (err) {
+    setRemStatus(findingId, 'error', 'Rollback failed');
+    appendRemLog(findingId, 'Rollback error: ' + err.message, 'error');
+    document.getElementById(`rem-rollback-btn-${findingId}`).disabled = false;
+  }
+}
+
+async function rollbackAll() {
+  const remediatedIds = Object.entries(remState)
+    .filter(([, s]) => s.status === 'done' && s.snapshotFile)
+    .map(([id]) => id);
+
+  if (remediatedIds.length === 0) {
+    alert('No remediated findings to roll back in this session.');
+    return;
+  }
+
+  const confirmed = confirm(
+    'Rollback ALL remediated findings?\n\n' +
+    'This will reverse: ' + remediatedIds.join(', ') + '\n\n' +
+    'Changes will be reversed in order. This cannot be undone automatically.\n\nProceed?'
+  );
+  if (!confirmed) return;
+
+  document.getElementById('rollbackAllBtn').disabled = true;
+  for (const id of remediatedIds.reverse()) {
+    await runRollback(id);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  document.getElementById('rollbackAllBtn').disabled = false;
+}
+
+async function showGuidance(findingId) {
+  const guideDiv = document.getElementById(`rem-guide-${findingId}`);
+  if (guideDiv.style.display !== 'none') { guideDiv.style.display = 'none'; return; }
+  try {
+    const r = await fetch(`${BACKEND}/remediate/guidance/${findingId}`);
+    const data = await r.json();
+    if (data.guidance) {
+      const steps = (data.guidance.steps || []).map((s, i) =>
+        `<div class="rem-guide-step"><span class="rem-step-num">${i+1}</span><span>${s}</span></div>`
+      ).join('');
+      const portalLink = data.guidance.portal
+        ? `<a href="${data.guidance.portal}" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--accent);display:block;margin-bottom:10px;">Open in portal &#x2197;</a>`
+        : '';
+      guideDiv.innerHTML = `<div style="margin-top:12px;">${portalLink}<div class="rem-guide-steps">${steps}</div></div>`;
+      guideDiv.style.display = 'block';
+    }
+  } catch (err) {
+    guideDiv.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--danger);margin-top:10px;">Could not load guidance: ${err.message}</div>`;
+    guideDiv.style.display = 'block';
+  }
+}
+
+function setRemStatus(findingId, status, label) {
+  const dot  = document.getElementById(`rem-dot-${findingId}`);
+  const text = document.getElementById(`rem-status-text-${findingId}`);
+  if (dot)  dot.className  = `rem-status-dot ${status}`;
+  if (text) text.textContent = label;
+}
+
+function appendRemLog(findingId, message, type) {
+  const logDiv = document.getElementById(`rem-log-${findingId}`);
+  if (!logDiv) return;
+  const now = new Date().toTimeString().split(' ')[0];
+  const entry = document.createElement('div');
+  entry.className = `rem-log-entry ${type}`;
+  entry.innerHTML = `<span class="ts">${now}</span><span class="action">${message}</span>`;
+  logDiv.appendChild(entry);
+}
+
+function updateRemStats() {
+  const statuses = Object.values(remState).map(s => s.status);
+  const done     = statuses.filter(s => s === 'done').length;
+  const rolled   = statuses.filter(s => s === 'rolled').length;
+  const pending  = statuses.filter(s => s === 'pending' || s === 'error').length;
+  document.getElementById('remStatDone').textContent    = `${done} remediated`;
+  document.getElementById('remStatRolled').textContent  = `${rolled} rolled back`;
+  document.getElementById('remStatPending').textContent = `${pending} pending`;
+  document.getElementById('rollbackAllBtn').disabled    = done === 0;
+}
+
+// Build remediation tab when switching to it - patch the tab click directly
+document.addEventListener('DOMContentLoaded', () => {
+  const remTab = document.getElementById('remediationTab');
+  if (remTab) remTab.addEventListener('click', () => buildRemediationTab());
+});
+</script>
+</body>
+</html>

@@ -153,8 +153,18 @@
   .finding-severity.high { background: var(--warning); }
   .finding-severity.medium { background: var(--accent); }
   .finding-severity.low { background: var(--success); }
-  .finding-body { flex: 1; }
+  .finding-body { flex: 1; min-width: 0; }
   .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .invest-btn { font-family: var(--mono); font-size: 10px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg3); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; margin-left: auto; }
+  .invest-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .invest-btn.open { border-color: var(--accent); color: var(--accent); background: rgba(79,156,249,0.08); }
+  .invest-block { display: none; margin-top: 12px; background: var(--bg); border: 1px solid var(--border2); border-radius: 6px; overflow: hidden; }
+  .invest-block.open { display: block; }
+  .invest-block-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+  .invest-block-title { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .invest-copy-btn { font-family: var(--mono); font-size: 10px; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; }
+  .invest-copy-btn:hover { text-decoration: underline; }
+  .invest-script { padding: 12px 14px; font-family: var(--mono); font-size: 11px; line-height: 1.6; white-space: pre; overflow-x: auto; max-height: 320px; overflow-y: auto; color: #c9d1d9; }
   .finding-title { font-size: 13px; font-weight: 600; }
   .finding-badge { font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge-critical { background: rgba(239,68,68,0.15); color: var(--danger); }
@@ -1054,6 +1064,10 @@ function renderOverview(data) {
   });
 }
 
+// Finding IDs that have a server-side investigation script available
+const INVESTIGATE_IDS = new Set(['ID-001','ID-002','ID-003','ID-004','ID-005','APP-001','MON-001','EXO-001','MDM-001']);
+const investCache = {};
+
 function renderFindings(findings) {
   document.getElementById('findingsCount').textContent = `${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
   const list = document.getElementById('findingsList');
@@ -1065,6 +1079,7 @@ function renderFindings(findings) {
   const order = { critical: 0, high: 1, medium: 2, low: 3 };
   findings.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
   findings.forEach(f => {
+    const hasScript = INVESTIGATE_IDS.has(f.id);
     const card = document.createElement('div');
     card.className = 'finding-card';
     card.innerHTML = `
@@ -1074,12 +1089,78 @@ function renderFindings(findings) {
           <div class="finding-title">${f.title}</div>
           <span class="finding-badge badge-${f.severity}">${f.severity}</span>
           <span class="finding-badge" style="background:var(--bg3);color:var(--muted);">${f.id}</span>
+          ${hasScript ? `<button class="invest-btn" id="invest-btn-${f.id}" onclick="toggleInvestScript('${f.id}')">&#x1F50D; Investigate</button>` : ''}
         </div>
         <div class="finding-desc">${f.description}</div>
         <div class="finding-rec">${f.recommendation}</div>
         <div class="finding-meta">Module: ${f.module} &nbsp;|&nbsp; Metric: ${f.metric} &nbsp;|&nbsp; Observed: ${f.observed_value}</div>
+        ${hasScript ? `
+        <div class="invest-block" id="invest-block-${f.id}">
+          <div class="invest-block-header">
+            <span class="invest-block-title" id="invest-block-title-${f.id}">Loading script...</span>
+            <button class="invest-copy-btn" onclick="copyInvestScript('${f.id}')">Copy</button>
+          </div>
+          <div class="invest-script" id="invest-script-${f.id}"></div>
+        </div>` : ''}
       </div>`;
     list.appendChild(card);
+  });
+}
+
+async function toggleInvestScript(findingId) {
+  const block  = document.getElementById(`invest-block-${findingId}`);
+  const btn    = document.getElementById(`invest-btn-${findingId}`);
+  const isOpen = block.classList.contains('open');
+
+  if (isOpen) {
+    block.classList.remove('open');
+    btn.classList.remove('open');
+    btn.textContent = '🔍 Investigate';
+    return;
+  }
+
+  block.classList.add('open');
+  btn.classList.add('open');
+  btn.textContent = '🔍 Investigate ▲';
+
+  // Serve from cache if already fetched
+  if (investCache[findingId]) {
+    renderInvestScript(findingId, investCache[findingId]);
+    return;
+  }
+
+  try {
+    const r    = await fetch(`${BACKEND}/investigate/${findingId}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed');
+    investCache[findingId] = data;
+    renderInvestScript(findingId, data);
+  } catch (err) {
+    document.getElementById(`invest-script-${findingId}`).textContent = `Error loading script: ${err.message}`;
+    document.getElementById(`invest-block-title-${findingId}`).textContent = 'Error';
+  }
+}
+
+function renderInvestScript(findingId, data) {
+  document.getElementById(`invest-block-title-${findingId}`).textContent = data.title;
+  const scriptEl = document.getElementById(`invest-script-${findingId}`);
+  // Syntax-colour the script using the same formatter as the remediation tab
+  scriptEl.innerHTML = data.script.split('\n').map(line => {
+    const t = line.trim();
+    if (t.startsWith('#'))                    return `<span style="color:var(--muted)">${line}</span>`;
+    if (t.startsWith('Connect-') || t.startsWith('Disconnect-')) return `<span style="color:#79c0ff">${line}</span>`;
+    if (/^(Get-|Set-|New-|Remove-|Export-|Import-|Write-|ForEach-)/.test(t)) return `<span style="color:#ffa657">${line}</span>`;
+    if (t.startsWith('$'))                    return `<span style="color:#a5d6ff">${line}</span>`;
+    return line;
+  }).join('\n');
+}
+
+function copyInvestScript(findingId) {
+  const data = investCache[findingId];
+  if (!data) return;
+  navigator.clipboard.writeText(data.script).then(() => {
+    const btn = document.querySelector(`#invest-block-${findingId} .invest-copy-btn`);
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 2000); }
   });
 }
 
@@ -1438,210 +1519,6 @@ async function deleteSession(filename, btn) {
 }
 
 
-
-
-// ── Permission Checker ─────────────────────────────────────────
-
-async function downloadRemediationReport(format = 'docx') {
-  if (!assessmentData) return;
-  const assessDate = document.getElementById('assessDate').value;
-  addLog('Generating Remediation Report...', 'info');
-
-  if (format === 'pdf') {
-    // For PDF - generate via html endpoint
-    try {
-      const r = await fetch(`${BACKEND}/download-pdf`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...assessmentData, assessDate, reportType: 'remediation' })
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({error: 'Unknown error'}));
-        throw new Error(err.error || 'Failed');
-      }
-      const html = await r.text();
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      addLog('Remediation Report opened in new tab. Use Print to save as PDF.', 'success');
-    } catch (err) { addLog(`PDF error: ${err.message}`, 'error'); }
-    return;
-  }
-
-  try {
-    const r = await fetch(`${BACKEND}/download-remediation`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...assessmentData, assessDate })
-    });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({error: 'Unknown error'}));
-      throw new Error(err.error || 'Download failed');
-    }
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `M365_RemediationReport_${assessmentData.clientName.replace(/\s+/g,'_')}_${assessDate}.docx`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addLog('Remediation Report downloaded.', 'success');
-  } catch (err) { addLog(`Download error: ${err.message}`, 'error'); }
-}
-
-function checkRemediationReportAvailable() {
-  // Enable remediation report buttons if remediation log exists in session data
-  const hasRemLog = assessmentData?.remediationLog?.length > 0;
-  const remCount  = hasRemLog ? assessmentData.remediationLog.filter(e => e.action === 'remediate' && e.success).length : 0;
-  const wordBtn   = document.getElementById('downloadRemWordBtn');
-  const pdfBtn    = document.getElementById('downloadRemPdfBtn');
-  const status    = document.getElementById('remReportStatus');
-  if (wordBtn) wordBtn.disabled = remCount === 0;
-  if (pdfBtn)  pdfBtn.disabled  = remCount === 0;
-  if (status)  status.textContent = remCount > 0 ? `${remCount} remediation(s) recorded` : 'Complete a remediation first';
-}
-
-// ── Sessions / Load Assessment ─────────────────────────────────
-
-async function openSessionsPanel() {
-  document.getElementById('sessionsPanel').classList.add('open');
-  document.getElementById('sessionsOverlay').classList.add('open');
-  await refreshSessionsList();
-}
-
-function closeSessionsPanel() {
-  document.getElementById('sessionsPanel').classList.remove('open');
-  document.getElementById('sessionsOverlay').classList.remove('open');
-}
-
-async function refreshSessionsList() {
-  const list = document.getElementById('sessionsList');
-  list.innerHTML = '<div class="sessions-empty">Loading...</div>';
-  try {
-    const r = await fetch(`${BACKEND}/sessions`);
-    if (!r.ok) throw new Error('Could not reach backend');
-    const data = await r.json();
-    const sessions = data.sessions || [];
-    if (sessions.length === 0) {
-      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
-      return;
-    }
-    list.innerHTML = '';
-    sessions.forEach(s => {
-      const score = s.score || 0;
-      const scoreClass = score >= 70 ? 'good' : score >= 50 ? 'warn' : 'bad';
-      const savedAt = s.savedAt ? new Date(s.savedAt).toLocaleString('en-GB') : '';
-      const card = document.createElement('div');
-      card.className = 'session-card';
-      card.innerHTML = `
-        <div class="session-card-header">
-          <div>
-            <div class="session-client">${s.clientName}</div>
-            <div class="session-meta">${s.assessDate} &nbsp;|&nbsp; ${s.findingsCount} findings &nbsp;|&nbsp; ${s.modulesRun} modules</div>
-            ${savedAt ? `<div class="session-meta">Saved: ${savedAt}</div>` : ''}
-          </div>
-          <div class="session-score ${scoreClass}">${score}<span style="font-size:12px;font-weight:400">/100</span></div>
-        </div>
-        <div class="session-actions">
-          <button class="session-btn primary" onclick="loadSession('${s.filename}')">Load</button>
-          <button class="session-btn" onclick="generateReportFromSession('${s.filename}')">Report</button>
-          <button class="session-btn danger" onclick="deleteSession('${s.filename}', this)">Delete</button>
-        </div>
-      `;
-      list.appendChild(card);
-    });
-  } catch (err) {
-    list.innerHTML = `<div class="sessions-empty">Could not load sessions.<br><br>${err.message}</div>`;
-  }
-}
-
-async function loadSession(filename) {
-  addLog(`Loading session: ${filename}`, 'info');
-  try {
-    const r = await fetch(`${BACKEND}/sessions/${filename}`);
-    if (!r.ok) throw new Error('Session not found');
-    const data = await r.json();
-    assessmentData = data;
-
-    // Restore organisation name fields
-    if (data.clientName) document.getElementById('orgName').value = data.clientName;
-    if (data.assessDate) document.getElementById('assessDate').value = data.assessDate;
-
-    // Render everything
-    renderOverview(data);
-    renderFindings(data.findings || []);
-
-    // Restore remediation state from session
-    if (data.remediationState) {
-      Object.keys(data.remediationState).forEach(findingId => {
-        remState[findingId] = data.remediationState[findingId];
-      });
-      const remCount = Object.keys(data.remediationState).length;
-      if (remCount > 0) {
-        addLog(`Remediation state restored: ${remCount} finding(s) with snapshots found`, 'success');
-      }
-    }
-
-    // Show remediation log summary if present
-    if (data.remediationLog && data.remediationLog.length > 0) {
-      const remediatedCount = data.remediationLog.filter(e => e.action === 'remediate' && e.success).length;
-      const rolledBackCount = data.remediationLog.filter(e => e.action === 'rollback' && e.success).length;
-      addLog(`Remediation history: ${remediatedCount} remediated, ${rolledBackCount} rolled back`, 'info');
-    }
-
-    // Enable report buttons
-    document.getElementById('generateReportBtn').disabled = false;
-    document.getElementById('downloadWordBtn').disabled = false;
-    document.getElementById('downloadPdfBtn').disabled = false;
-    checkRemediationReportAvailable();
-
-    // Show loaded badge
-    document.getElementById('loadedBadge').style.display = 'inline-flex';
-    // Refresh compare dropdowns
-    if (document.getElementById('compareSessionA').options.length <= 1) initCompareTab();
-
-    addLog(`Session loaded: ${data.clientName} (${data.assessDate}) — ${data.findings?.length || 0} findings`, 'success');
-
-    // Restore log if present
-    if (data.log && data.log.length > 0) {
-      document.getElementById('logConsole').innerHTML = '';
-      data.log.forEach(e => addLog(`[restored] ${e.message}`, e.type || 'info'));
-    }
-
-    closeSessionsPanel();
-    switchTab('overview', document.querySelectorAll('.tab')[0]);
-
-  } catch (err) {
-    addLog(`Load failed: ${err.message}`, 'error');
-  }
-}
-
-async function generateReportFromSession(filename) {
-  await loadSession(filename);
-  // Small delay to let the UI update then generate
-  setTimeout(() => generateReport(), 300);
-}
-
-async function deleteSession(filename, btn) {
-  if (!confirm(`Delete this saved assessment?\n\n${filename}\n\nThis cannot be undone.`)) return;
-  try {
-    const r = await fetch(`${BACKEND}/sessions/${filename}`, { method: 'DELETE' });
-    if (!r.ok) throw new Error('Delete failed');
-    // Remove the card from the UI
-    btn.closest('.session-card').remove();
-    // Check if list is now empty
-    const list = document.getElementById('sessionsList');
-    if (list.children.length === 0) {
-      list.innerHTML = '<div class="sessions-empty">No saved assessments yet.<br><br>Run an assessment and it will automatically be saved here.</div>';
-    }
-  } catch (err) {
-    alert(`Could not delete: ${err.message}`);
-  }
-}
-
-
-
-
-// ── Permission Checker ─────────────────────────────────────────
-
 function initSimulator() {
   if (!assessmentData || !assessmentData.findings) {
     document.getElementById('simEmpty').style.display = 'block';
@@ -1944,9 +1821,6 @@ ${chains.map(c => `<div class="chain ${c.status}">
     a.click();
   }
 }
-
-
-// ── Permission Checker ─────────────────────────────────────────
 
 
 

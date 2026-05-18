@@ -2,6 +2,8 @@
 
 A free, open-source Microsoft 365 security assessment tool for IT consultants and administrators. Runs locally on Windows — no data leaves your machine.
 
+![Dashboard](docs/screenshots/dashboard.png)
+
 ## What it does
 
 - Runs a security assessment against any M365 tenant across 6 workloads
@@ -11,6 +13,23 @@ A free, open-source Microsoft 365 security assessment tool for IT consultants an
 - Produces professional Word reports (Assessment Report, Remediation Report, Comparison Report)
 - Simulates attack chains to show which findings enable which attacks
 - Compares two assessments to track improvement over time
+
+## What it looks like
+
+### Assessment Dashboard
+The dashboard shows a live risk score, colour-coded findings by severity, and module run status. Each finding card explains the risk, the recommended fix, and — for key findings — an inline PowerShell investigation script you can run directly.
+
+![Findings panel with investigation script](docs/screenshots/findings-investigate.png)
+
+### Generated Reports
+One click produces a professionally formatted Word document ready to hand to a client. The report covers executive summary, findings detail, risk scoring rationale, and a remediation priority list.
+
+![Word report sample](docs/screenshots/report-sample.png)
+
+### Attack Simulation
+The attack simulation panel maps your open findings to real attack chains — showing exactly which combination of misconfigurations an attacker would exploit, in sequence.
+
+![Attack simulation](docs/screenshots/attack-simulation.png)
 
 ## Quick Install
 

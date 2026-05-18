@@ -18,6 +18,7 @@ client credential auth via PowerShell in the same way as Graph.
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import subprocess, json, os, datetime, csv, io
+import urllib.request, urllib.parse, urllib.error
 
 app = Flask(__name__)
 CORS(app)
@@ -68,7 +69,7 @@ def build_findings_library():
          "recommendation":"Review the Secure Score dashboard in Defender portal. Prioritise high-impact, low-effort recommendations first."},
 
         {"id":"SEC-002","title":"Security Defaults Disabled — No CA Policies","module":"security","metric":"security_defaults_enabled","severity":"critical",
-         "threshold": lambda v: v is False,
+         "threshold": lambda v, m: v is False and m.get("ca_enabled_policy_count", 0) == 0,
          "description":"Security Defaults are disabled and no compensating Conditional Access policies may be in place.",
          "recommendation":"Either re-enable Security Defaults or implement an equivalent baseline CA policy set covering MFA and legacy auth blocking."},
 
@@ -300,7 +301,11 @@ def evaluate_findings(all_metrics):
             continue
         value = all_metrics[metric]
         try:
-            if f["threshold"](value):
+            try:
+                triggered_flag = f["threshold"](value, all_metrics)
+            except TypeError:
+                triggered_flag = f["threshold"](value)
+            if triggered_flag:
                 triggered.append({
                     "id": f["id"], "title": f["title"], "module": f["module"],
                     "metric": metric, "severity": f["severity"],
@@ -531,7 +536,7 @@ def run_assessment():
         "modulesRun": len(modules),
         "log": log,
         "savedAt": datetime.datetime.now().isoformat(),
-        "toolVersion": "2.1.0",
+        "toolVersion": "2.0.0",
         "remediationLog": rem_log,
     }
 
@@ -650,12 +655,7 @@ def download_remediation_report():
     rolledBackIds = {e["findingId"] for e in rem_log if e.get("action") == "rollback" and e.get("success")}
     netFixed      = remediatedIds - rolledBackIds
     openFindings  = [f for f in body.get("findings", []) if f["id"] not in netFixed]
-    score_after   = max(10, 100 - (
-        min(len([f for f in openFindings if f["severity"] == "critical"]) * 8, 32) +
-        min(len([f for f in openFindings if f["severity"] == "high"])     * 5, 20) +
-        min(len([f for f in openFindings if f["severity"] == "medium"])   * 3, 12) +
-        min(len([f for f in openFindings if f["severity"] == "low"])      * 1,  4)
-    ))
+    score_after   = calculate_score(openFindings)
 
     # Build data payload for remediation report
     report_data = {
@@ -844,7 +844,7 @@ def generate_html_pdf(data, assess_date):
   <h1>Microsoft 365 Health Assessment</h1>
   <p style="font-size:18pt;font-weight:bold;color:#2E4A7A">{client}</p>
   <p>Assessment Date: {assess_date}</p>
-  <p>Prepared by [Consultant Name] &nbsp;|&nbsp; IT Infrastructure Consultant</p>
+  <p>Prepared by {consultant_name} &nbsp;|&nbsp; {consultant_role}</p>
   <p style="color:#C0392B;font-weight:bold">CONFIDENTIAL</p>
 </div>
 
@@ -874,7 +874,7 @@ def generate_html_pdf(data, assess_date):
   {metrics_html}
 </table>
 
-<footer>[Consultant Name] &nbsp;|&nbsp; IT Infrastructure Consultant &nbsp;|&nbsp; [consultant@email.com]</footer>
+<footer>{consultant_name} &nbsp;|&nbsp; {consultant_role} &nbsp;|&nbsp; {consultant_email}</footer>
 </body></html>"""
 
 
@@ -928,7 +928,6 @@ def test_connection():
         if not all([tenant_id, client_id, client_secret]):
             return jsonify({"connected": False, "error": "Tenant ID, Client ID and Client Secret are all required"})
 
-        import urllib.request, urllib.parse, urllib.error
         try:
             token_url  = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
             token_data = urllib.parse.urlencode({
@@ -986,8 +985,6 @@ def check_permissions():
         return jsonify({"error": "Tenant ID, Client ID and Client Secret are required"}), 400
 
     # Get an access token using client credentials
-    import urllib.request, urllib.parse, urllib.error
-
     token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     token_data = urllib.parse.urlencode({
         "grant_type":    "client_credentials",
@@ -1229,6 +1226,37 @@ def delete_session(filename):
         return jsonify({"deleted": filename})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/sessions", methods=["GET"])
+def list_sessions():
+    """List all saved assessment sessions, newest first."""
+    sessions = []
+    try:
+        files = sorted(
+            [f for f in os.listdir(OUTPUT_DIR) if f.startswith("Session_") and f.endswith(".json")],
+            reverse=True
+        )
+        for fname in files:
+            filepath = os.path.join(OUTPUT_DIR, fname)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                sessions.append({
+                    "filename":     fname,
+                    "clientName":   data.get("clientName", data.get("orgName", "Unknown")),
+                    "assessDate":   data.get("assessDate", ""),
+                    "score":        data.get("score", 0),
+                    "findingsCount": len(data.get("findings", [])),
+                    "modulesRun":   data.get("modulesRun", 0),
+                    "savedAt":      data.get("savedAt", ""),
+                    "toolVersion":  data.get("toolVersion", ""),
+                })
+            except Exception:
+                pass
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"sessions": sessions})
 
 
 
@@ -1867,6 +1895,361 @@ def build_ps_args_remediation(auth):
         if auth.get("tenantId"):
             args += ["-TenantId", auth["tenantId"]]
     return args
+
+# =================================================================
+#  INVESTIGATION SCRIPTS
+#  Ready-to-run PowerShell scripts returned per finding so the
+#  consultant can dig deeper without leaving the tool.
+# =================================================================
+
+INVESTIGATION_SCRIPTS = {
+
+    "ID-001": {
+        "title": "Who is missing MFA?",
+        "description": "Lists every enabled user without a registered MFA method and exports to CSV.",
+        "script": r"""# ID-001 — Users Without MFA
+# Requires: Microsoft.Graph module
+# Permissions: User.Read.All, UserAuthenticationMethod.Read.All
+
+Connect-MgGraph -Scopes "User.Read.All", "UserAuthenticationMethod.Read.All" -NoWelcome
+
+$users = Get-MgUser -All -Filter "accountEnabled eq true" `
+         -Property Id,DisplayName,UserPrincipalName | Sort-Object UserPrincipalName
+
+$noMFA  = [System.Collections.Generic.List[object]]::new()
+$i = 0
+foreach ($user in $users) {
+    $i++
+    Write-Progress -Activity "Checking MFA" -Status $user.UserPrincipalName `
+                   -PercentComplete ($i / $users.Count * 100)
+    $methods = Get-MgUserAuthenticationMethod -UserId $user.Id
+    $hasMFA  = ($methods | Where-Object {
+        $_.'@odata.type' -ne '#microsoft.graph.passwordAuthenticationMethod'
+    }).Count -gt 0
+    if (-not $hasMFA) {
+        $noMFA.Add([PSCustomObject]@{
+            UserPrincipalName = $user.UserPrincipalName
+            DisplayName       = $user.DisplayName
+        })
+    }
+}
+Write-Progress -Completed -Activity "Checking MFA"
+
+$csv = "NoMFA_Users_$(Get-Date -Format yyyyMMdd).csv"
+$noMFA | Export-Csv $csv -NoTypeInformation
+$noMFA | Format-Table -AutoSize
+Write-Host "$($noMFA.Count) of $($users.Count) users have no MFA. Exported: $csv" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "ID-002": {
+        "title": "Global Administrator details",
+        "description": "Lists every Global Admin with last sign-in date to identify stale or excessive accounts.",
+        "script": r"""# ID-002 — Global Administrator Audit
+# Requires: Microsoft.Graph module
+# Permissions: Directory.Read.All, AuditLog.Read.All
+
+Connect-MgGraph -Scopes "Directory.Read.All", "AuditLog.Read.All" -NoWelcome
+
+$gaRole   = Get-MgDirectoryRole -Filter "displayName eq 'Global Administrator'"
+$members  = Get-MgDirectoryRoleMember -DirectoryRoleId $gaRole.Id -All
+$report   = [System.Collections.Generic.List[object]]::new()
+
+foreach ($m in $members) {
+    $user   = Get-MgUser -UserId $m.Id `
+              -Property DisplayName,UserPrincipalName,AccountEnabled,CreatedDateTime `
+              -ErrorAction SilentlyContinue
+    if (-not $user) { continue }
+    $signIn = (Get-MgAuditLogSignIn -Filter "userId eq '$($m.Id)'" -Top 1 |
+               Select-Object -First 1).CreatedDateTime
+    $report.Add([PSCustomObject]@{
+        UserPrincipalName = $user.UserPrincipalName
+        DisplayName       = $user.DisplayName
+        AccountEnabled    = $user.AccountEnabled
+        AccountCreated    = $user.CreatedDateTime
+        LastSignIn        = $signIn ?? 'No record'
+    })
+}
+
+$csv = "GlobalAdmins_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+$col = if ($report.Count -gt 3) { 'Red' } else { 'Green' }
+Write-Host "$($report.Count) Global Administrators found. Target: 2-3. Exported: $csv" -ForegroundColor $col
+Disconnect-MgGraph"""
+    },
+
+    "ID-003": {
+        "title": "Permanent privileged role assignments",
+        "description": "Lists all permanent (non-PIM-eligible) admin role assignments across the tenant.",
+        "script": r"""# ID-003 — Permanent Role Assignment Audit
+# Requires: Microsoft.Graph module
+# Permissions: RoleManagement.Read.Directory, Directory.Read.All
+
+Connect-MgGraph -Scopes "RoleManagement.Read.Directory", "Directory.Read.All" -NoWelcome
+
+$assignments = Get-MgRoleManagementDirectoryRoleAssignment -All `
+               -ExpandProperty Principal,RoleDefinition
+
+$report = $assignments | Where-Object { $_.Principal } | ForEach-Object {
+    $upn = $_.Principal.AdditionalProperties['userPrincipalName'] `
+        ?? $_.Principal.AdditionalProperties['displayName'] `
+        ?? $_.PrincipalId
+    [PSCustomObject]@{
+        Principal    = $upn
+        Role         = $_.RoleDefinition.DisplayName
+        Assignment   = 'Permanent (not PIM-eligible)'
+        CreatedDate  = $_.CreatedDateTime
+    }
+} | Sort-Object Role, Principal
+
+$csv = "PermanentRoles_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+Write-Host "$($report.Count) permanent assignments. Use PIM to convert high-risk roles to eligible. Exported: $csv" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "ID-004": {
+        "title": "Guest user inventory",
+        "description": "Lists all guest accounts with invite date and last sign-in to identify stale access.",
+        "script": r"""# ID-004 — Guest User Review
+# Requires: Microsoft.Graph module
+# Permissions: User.Read.All, AuditLog.Read.All
+
+Connect-MgGraph -Scopes "User.Read.All", "AuditLog.Read.All" -NoWelcome
+
+$guests = Get-MgUser -Filter "userType eq 'Guest'" -All `
+          -Property Id,DisplayName,UserPrincipalName,AccountEnabled,CreatedDateTime
+
+$report = [System.Collections.Generic.List[object]]::new()
+foreach ($g in $guests) {
+    $signIn = (Get-MgAuditLogSignIn -Filter "userId eq '$($g.Id)'" -Top 1 |
+               Select-Object -First 1).CreatedDateTime
+    $days   = if ($signIn) { [math]::Round(((Get-Date) - [datetime]$signIn).TotalDays) } else { $null }
+    $report.Add([PSCustomObject]@{
+        UserPrincipalName = $g.UserPrincipalName
+        DisplayName       = $g.DisplayName
+        AccountEnabled    = $g.AccountEnabled
+        InvitedDate       = $g.CreatedDateTime
+        LastSignIn        = $signIn ?? 'Never'
+        DaysSinceSignIn   = $days   ?? 'Never'
+    })
+}
+
+$csv = "GuestUsers_$(Get-Date -Format yyyyMMdd).csv"
+$report | Sort-Object DaysSinceSignIn -Descending | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object DaysSinceSignIn -Descending | Format-Table -AutoSize
+$stale = ($report | Where-Object { $_.DaysSinceSignIn -is [int] -and $_.DaysSinceSignIn -gt 90 }).Count
+Write-Host "$($report.Count) guests — $stale inactive 90+ days. Exported: $csv" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "ID-005": {
+        "title": "Licence allocation breakdown",
+        "description": "Shows assigned vs. unassigned licence counts per SKU so unused licences can be identified and removed.",
+        "script": r"""# ID-005 — Licence Usage Breakdown
+# Requires: Microsoft.Graph module
+# Permissions: Organization.Read.All
+
+Connect-MgGraph -Scopes "Organization.Read.All" -NoWelcome
+
+$skus   = Get-MgSubscribedSku -All
+$report = $skus | Where-Object { $_.PrepaidUnits.Enabled -gt 0 } | ForEach-Object {
+    $pct = [math]::Round($_.ConsumedUnits / $_.PrepaidUnits.Enabled * 100, 1)
+    [PSCustomObject]@{
+        SKU              = $_.SkuPartNumber
+        Total            = $_.PrepaidUnits.Enabled
+        Assigned         = $_.ConsumedUnits
+        Unassigned       = $_.PrepaidUnits.Enabled - $_.ConsumedUnits
+        UtilisationPct   = "$pct%"
+    }
+} | Sort-Object Unassigned -Descending
+
+$csv = "LicenceUsage_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+$total = ($report | Measure-Object Unassigned -Sum).Sum
+Write-Host "$total total unassigned licences across $($report.Count) SKUs. Exported: $csv" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "APP-001": {
+        "title": "High-privilege OAuth application inventory",
+        "description": "Lists third-party apps with tenant-wide Graph permissions that could be used for persistent access.",
+        "script": r"""# APP-001 — High-Privilege OAuth App Review
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All", "Directory.Read.All" -NoWelcome
+
+# Permissions considered high-risk for tenant-wide app access
+$highRisk = @(
+    'Mail.ReadWrite.All','Files.ReadWrite.All','Directory.ReadWrite.All',
+    'User.ReadWrite.All','RoleManagement.ReadWrite.Directory',
+    'Mail.Read.All','Calendars.ReadWrite.All','Notes.ReadWrite.All',
+    'MailboxSettings.ReadWrite','TeamSettings.ReadWrite.All'
+)
+
+# Get the Microsoft Graph service principal to resolve role names
+$graphSP = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+
+# Build role ID → name lookup
+$roleMap = @{}
+$graphSP.AppRoles | ForEach-Object { $roleMap[$_.Id.ToString()] = $_.Value }
+
+# Check all non-Microsoft service principals
+$sps = Get-MgServicePrincipal -All -Filter "tags/any(t:t eq 'WindowsAzureActiveDirectoryIntegratedApp')"
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($sp in $sps) {
+    $assignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $sp.Id -ErrorAction SilentlyContinue |
+                   Where-Object { $_.ResourceId -eq $graphSP.Id }
+    $dangerous   = $assignments | Where-Object { $highRisk -contains $roleMap[$_.AppRoleId.ToString()] }
+    if ($dangerous) {
+        $report.Add([PSCustomObject]@{
+            AppName     = $sp.DisplayName
+            AppId       = $sp.AppId
+            Publisher   = $sp.PublisherName ?? 'Unknown'
+            Permissions = ($dangerous | ForEach-Object { $roleMap[$_.AppRoleId.ToString()] }) -join ', '
+            Created     = $sp.CreatedDateTime
+        })
+    }
+}
+
+$csv = "HighPrivApps_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize -Wrap
+Write-Host "$($report.Count) apps with high-privilege permissions. Review each in Entra ID > Enterprise Applications > Permissions. Exported: $csv" -ForegroundColor Red
+Disconnect-MgGraph"""
+    },
+
+    "MON-001": {
+        "title": "Defender alert policy status",
+        "description": "Shows all Microsoft Defender for Office 365 alert policies and which are disabled.",
+        "script": r"""# MON-001 — Defender Alert Policy Review
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+$policies = Get-ProtectionAlert | Select-Object Name, IsEnabled, Severity, Category, NotifyUser
+$enabled  = $policies | Where-Object { $_.IsEnabled }
+$disabled = $policies | Where-Object { -not $_.IsEnabled }
+
+Write-Host "`nEnabled  alert policies: $($enabled.Count)" -ForegroundColor Green
+Write-Host "Disabled alert policies: $($disabled.Count)" -ForegroundColor $(if($disabled.Count -gt 0){'Yellow'}else{'Green'})
+
+if ($disabled) {
+    Write-Host "`nDisabled policies (consider enabling):" -ForegroundColor Yellow
+    $disabled | Format-Table Name, Severity, Category -AutoSize
+}
+
+$csv = "AlertPolicies_$(Get-Date -Format yyyyMMdd).csv"
+$policies | Export-Csv $csv -NoTypeInformation
+Write-Host "Full policy list exported: $csv" -ForegroundColor Cyan
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "EXO-001": {
+        "title": "Active forwarding rules inventory",
+        "description": "Finds mailbox-level forwarding and inbox rules that redirect mail externally.",
+        "script": r"""# EXO-001 — External Forwarding Rule Discovery
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+$report = [System.Collections.Generic.List[object]]::new()
+
+# 1. Mailbox-level ForwardingAddress / ForwardingSmtpAddress
+Write-Host "Checking mailbox forwarding settings..." -ForegroundColor Cyan
+$fwdMailboxes = Get-Mailbox -ResultSize Unlimited |
+                Where-Object { $_.ForwardingAddress -or $_.ForwardingSmtpAddress }
+foreach ($mbx in $fwdMailboxes) {
+    $report.Add([PSCustomObject]@{
+        Mailbox         = $mbx.UserPrincipalName
+        ForwardTo       = $mbx.ForwardingAddress ?? $mbx.ForwardingSmtpAddress
+        KeepCopy        = $mbx.DeliverToMailboxAndForward
+        Type            = 'Mailbox Forwarding'
+    })
+}
+
+# 2. Inbox rules with forwarding or redirect actions
+Write-Host "Scanning inbox rules for forwarding actions..." -ForegroundColor Cyan
+Get-Mailbox -ResultSize Unlimited | ForEach-Object {
+    $rules = Get-InboxRule -Mailbox $_.Identity -ErrorAction SilentlyContinue |
+             Where-Object { $_.ForwardTo -or $_.ForwardAsAttachmentTo -or $_.RedirectTo }
+    foreach ($rule in $rules) {
+        $dest = ($rule.ForwardTo + $rule.ForwardAsAttachmentTo + $rule.RedirectTo) -join '; '
+        $report.Add([PSCustomObject]@{
+            Mailbox   = $_.UserPrincipalName
+            ForwardTo = $dest
+            KeepCopy  = -not [bool]$rule.RedirectTo
+            Type      = "Inbox Rule: $($rule.Name)"
+        })
+    }
+}
+
+if ($report.Count -eq 0) {
+    Write-Host "No forwarding rules found." -ForegroundColor Green
+} else {
+    $report | Format-Table -AutoSize
+    $csv = "ForwardingRules_$(Get-Date -Format yyyyMMdd).csv"
+    $report | Export-Csv $csv -NoTypeInformation
+    Write-Host "$($report.Count) forwarding rule(s) found. Exported: $csv" -ForegroundColor Red
+}
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "MDM-001": {
+        "title": "Non-compliant device list",
+        "description": "Lists all Intune-managed devices that are not compliant, with last sync date and OS version.",
+        "script": r"""# MDM-001 — Non-Compliant Device Inventory
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementManagedDevices.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementManagedDevices.Read.All" -NoWelcome
+
+$all     = Get-MgDeviceManagementManagedDevice -All `
+           -Property DeviceName,UserPrincipalName,ComplianceState,OperatingSystem,OsVersion,LastSyncDateTime,ManagementState
+$nonComp = $all | Where-Object { $_.ComplianceState -ne 'compliant' }
+
+$report = $nonComp | ForEach-Object {
+    [PSCustomObject]@{
+        DeviceName      = $_.DeviceName
+        User            = $_.UserPrincipalName
+        OS              = "$($_.OperatingSystem) $($_.OsVersion)"
+        ComplianceState = $_.ComplianceState
+        ManagementState = $_.ManagementState
+        LastSync        = $_.LastSyncDateTime
+        DaysSinceSync   = if ($_.LastSyncDateTime) {
+                              [math]::Round(((Get-Date) - [datetime]$_.LastSyncDateTime).TotalDays)
+                          } else { 'Never' }
+    }
+} | Sort-Object ComplianceState, OS
+
+$csv = "NonCompliantDevices_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+$col = if ($nonComp.Count -gt 0) { 'Red' } else { 'Green' }
+Write-Host "$($nonComp.Count) non-compliant of $($all.Count) total managed devices. Exported: $csv" -ForegroundColor $col
+Disconnect-MgGraph"""
+    },
+}
+
+
+@app.route("/investigate/<finding_id>", methods=["GET"])
+def get_investigation_script(finding_id):
+    """Return a ready-to-run PowerShell investigation script for a finding."""
+    data = INVESTIGATION_SCRIPTS.get(finding_id)
+    if not data:
+        return jsonify({"error": f"No investigation script for {finding_id}"}), 404
+    return jsonify({
+        "findingId":   finding_id,
+        "title":       data["title"],
+        "description": data["description"],
+        "script":      data["script"],
+    })
+
 
 @app.route("/findings-library", methods=["GET"])
 def get_findings_library():

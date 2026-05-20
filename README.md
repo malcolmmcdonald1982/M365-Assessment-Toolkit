@@ -36,7 +36,8 @@ The attack simulation panel maps your open findings to real attack chains — sh
 Open PowerShell as Administrator and run:
 
 ```powershell
-irm https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main/install.ps1 | iex
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main/install.ps1" -OutFile "$env:TEMP\install.ps1"
+& "$env:TEMP\install.ps1"
 ```
 
 The installer will check for and install all prerequisites automatically.

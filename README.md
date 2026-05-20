@@ -31,16 +31,33 @@ The attack simulation panel maps your open findings to real attack chains — sh
 
 ![Attack simulation](docs/screenshots/attack-simulation.png)
 
-## Quick Install
+## Installation
 
-Open PowerShell as Administrator and run:
+### Option 1 — Download and run (recommended)
+
+1. Click the green **Code** button on this page and select **Download ZIP**
+2. Extract the ZIP — you should have a folder containing `install.ps1`, `backend.py`, `index.html` etc.
+3. Open PowerShell as Administrator
+4. Run:
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main/install.ps1" -OutFile "$env:TEMP\install.ps1"
-& "$env:TEMP\install.ps1"
+cd "C:\path\to\extracted-folder"
+.\install.ps1
 ```
 
-The installer will check for and install all prerequisites automatically.
+The installer copies all files to `C:\M365 Assessment Toolkit`, installs all prerequisites, and creates a desktop shortcut.
+
+> **Note:** Running the script directly from a URL (`irm ... | iex`) will not work — the installer needs the tool files alongside it. Always download the ZIP first.
+
+### Option 2 — Clone the repo
+
+If you have Git installed:
+
+```powershell
+git clone https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit.git C:\AssetTool
+cd C:\AssetTool
+.\install.ps1
+```
 
 ## Prerequisites
 
@@ -56,14 +73,6 @@ The installer handles all of these automatically:
 | ExchangeOnlineManagement | 3.0+ | Exchange Online |
 | MicrosoftTeams | 5.0+ | Microsoft Teams |
 | Microsoft.Online.SharePoint.PowerShell | 16.0+ | SharePoint Online |
-
-## Manual Installation
-
-If the one-line installer doesn't work in your environment:
-
-1. Download and extract the zip from the [Releases](../../releases) page
-2. Open PowerShell as Administrator in the extracted folder
-3. Run `.\install.ps1`
 
 ## Authentication
 

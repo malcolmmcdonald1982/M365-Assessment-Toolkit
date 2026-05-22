@@ -478,6 +478,7 @@
       <!-- Interactive fields -->
       <div id="authInteractive">
         <div class="auth-note">A browser popup will appear for each workload. Sign in with a read-access account. No setup required on the client side.</div>
+        <div class="auth-note" style="margin-top:6px;">Minimum role required: <strong style="color:var(--text)">Global Reader</strong> covers most modules. Exchange also accepts <strong style="color:var(--text)">Exchange Administrator</strong>.</div>
 
         <div class="field">
           <label>Tenant ID <span class="field-optional">(optional — speeds up login)</span></label>
@@ -552,6 +553,10 @@
           <span class="module-tag">MDM</span>
         </div>
       </div>
+    </div>
+
+    <div style="margin: 0 1.25rem; padding: 8px 10px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; font-family: var(--mono); font-size: 10px; color: var(--success); line-height: 1.5;">
+      🔒 Assessment is read-only. No changes are made to your tenant during a scan. Remediation requires explicit approval.
     </div>
 
     <button class="run-btn" id="runBtn" onclick="runAssessment()">
@@ -886,6 +891,11 @@
   </div>
 </main>
 
+<footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.1 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
+</footer>
+
 <script>
 const BACKEND = 'http://localhost:5000';
 let assessmentData = null;
@@ -1168,9 +1178,15 @@ async function generateReport() {
   if (!assessmentData) return;
   addLog('Generating report preview...', 'info');
   try {
+    const payload = {
+      ...assessmentData,
+      consultantName:  (document.getElementById('consultantName')?.value  || '').trim() || '[Consultant Name]',
+      consultantRole:  (document.getElementById('consultantRole')?.value  || '').trim() || '[Role]',
+      consultantEmail: (document.getElementById('consultantEmail')?.value || '').trim() || '[Email]',
+    };
     const r = await fetch(`${BACKEND}/report`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(assessmentData)
+      body: JSON.stringify(payload)
     });
     if (!r.ok) throw new Error('Report generation failed');
     const data = await r.json();
@@ -1204,6 +1220,25 @@ function renderReportPreview(data) {
     <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2rem;border-top:1px solid var(--border);padding-top:1rem;">Full .docx report includes all evidence tables, metric data, and appendix.</div>`;
 }
 
+function getConsultantDetails() {
+  return {
+    name:  (document.getElementById('consultantName')?.value  || '').trim() || '[Consultant Name]',
+    role:  (document.getElementById('consultantRole')?.value  || '').trim() || '[Role]',
+    email: (document.getElementById('consultantEmail')?.value || '').trim() || '[Email]',
+  };
+}
+
+function buildReportPayload(base = {}) {
+  const c = getConsultantDetails();
+  return {
+    ...assessmentData,
+    ...base,
+    consultantName:  c.name,
+    consultantRole:  c.role,
+    consultantEmail: c.email,
+  };
+}
+
 async function downloadReport(format = 'docx') {
   if (!assessmentData) return;
   const assessDate = document.getElementById('assessDate').value;
@@ -1214,7 +1249,7 @@ async function downloadReport(format = 'docx') {
     try {
       const r = await fetch(`${BACKEND}/download-pdf`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...assessmentData, assessDate })
+        body: JSON.stringify(buildReportPayload({ assessDate }))
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({error: 'Unknown error'}));
@@ -1242,7 +1277,7 @@ async function downloadReport(format = 'docx') {
   try {
     const r = await fetch(`${BACKEND}/download`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...assessmentData, assessDate })
+      body: JSON.stringify(buildReportPayload({ assessDate }))
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({error: 'Unknown error'}));
@@ -1333,7 +1368,7 @@ async function downloadRemediationReport(format = 'docx') {
     try {
       const r = await fetch(`${BACKEND}/download-pdf`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...assessmentData, assessDate, reportType: 'remediation' })
+        body: JSON.stringify(buildReportPayload({ assessDate, reportType: 'remediation' }))
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({error: 'Unknown error'}));
@@ -1351,7 +1386,7 @@ async function downloadRemediationReport(format = 'docx') {
   try {
     const r = await fetch(`${BACKEND}/download-remediation`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...assessmentData, assessDate })
+      body: JSON.stringify(buildReportPayload({ assessDate }))
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({error: 'Unknown error'}));
@@ -1778,7 +1813,7 @@ async function exportSimReport() {
 </head><body>
 <button class="print-btn no-print" onclick="window.print()">Print / Save as PDF</button>
 <h1>M365 Simulator What-If Report</h1>
-<p><strong>Organisation:</strong> ${orgName} &nbsp;|&nbsp; <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB')} &nbsp;|&nbsp; <strong>Prepared by:</strong> [Consultant Name], [Role]</p>
+<p><strong>Organisation:</strong> ${orgName} &nbsp;|&nbsp; <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB')} &nbsp;|&nbsp; <strong>Prepared by:</strong> ${getConsultantDetails().name}, ${getConsultantDetails().role}</p>
 <div class="notice">This is a simulation report showing the projected impact of remediating selected findings. No changes have been made to the live tenant.</div>
 <h2>Score Projection</h2>
 <div class="score-grid">
@@ -1808,7 +1843,7 @@ ${chains.map(c => `<div class="chain ${c.status}">
   <div style="font-size:10pt;color:#495057">${c.impact}</div>
   ${c.status !== 'broken' ? `<div style="font-size:9pt;color:#6c757d;margin-top:4px">To break: ${c.broken_by}</div>` : '<div style="font-size:9pt;color:#27AE60;margin-top:4px">This attack path has been eliminated by the simulated fixes.</div>'}
 </div>`).join('')}
-<footer>M365 Assessment Toolkit | [consultant@email.com] | This is a simulation only - no tenant changes were made.</footer>
+<footer>M365 Assessment Toolkit | ${getConsultantDetails().email} | This is a simulation only - no tenant changes were made.</footer>
 </body></html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
@@ -2011,11 +2046,11 @@ function buildRemCard(f, isTier1) {
             </select>
           </div>
           <div class="approval-field">
-            <label>${approverLabel}</label>
+            <label>${document.getElementById('approverLabel')?.value || 'Approved By'}</label>
             <input type="text" id="approval-approver-${f.id}" placeholder="Name / Role" oninput="updateApproval('${f.id}')">
           </div>
           <div class="approval-field">
-            <label>${changeRefLabel}</label>
+            <label>${document.getElementById('changeRefLabel')?.value || 'Change Reference'}</label>
             <input type="text" id="approval-ref-${f.id}" placeholder="e.g. CHG0001234" oninput="updateApproval('${f.id}')">
           </div>
           <div class="approval-field">
@@ -2290,6 +2325,186 @@ document.addEventListener('DOMContentLoaded', () => {
   const remTab = document.getElementById('remediationTab');
   if (remTab) remTab.addEventListener('click', () => buildRemediationTab());
 });
+
+// ── Comparison Tab ─────────────────────────────────────────────
+
+let compareSessionCache = null; // stores last /compare response for download
+
+async function initCompareTab() {
+  try {
+    const r = await fetch(`${BACKEND}/sessions`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const sessions = data.sessions || [];
+
+    ['compareSessionA', 'compareSessionB'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      const current = sel.value;
+      sel.innerHTML = '<option value="">-- Select saved assessment --</option>';
+      sessions.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.filename;
+        opt.textContent = `${s.clientName} — ${s.assessDate} (${s.score}/100)`;
+        if (s.filename === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+
+    updateCompareInfo();
+    updateCompareRunBtn();
+  } catch (err) {
+    console.error('Could not load sessions for compare:', err);
+  }
+}
+
+function updateCompareInfo() {
+  // No-op for now — info divs are left blank until comparison runs
+  updateCompareRunBtn();
+}
+
+function updateCompareRunBtn() {
+  const a = document.getElementById('compareSessionA').value;
+  const b = document.getElementById('compareSessionB').value;
+  const btn = document.getElementById('compareRunBtn');
+  if (btn) {
+    const ready = a && b && a !== b;
+    btn.disabled = !ready;
+    btn.style.opacity = ready ? '1' : '0.4';
+    btn.style.cursor  = ready ? 'pointer' : 'not-allowed';
+  }
+}
+
+async function runComparison() {
+  const sessionA = document.getElementById('compareSessionA').value;
+  const sessionB = document.getElementById('compareSessionB').value;
+  if (!sessionA || !sessionB || sessionA === sessionB) {
+    alert('Please select two different saved assessments.'); return;
+  }
+
+  const btn = document.getElementById('compareRunBtn');
+  btn.disabled = true;
+  btn.textContent = 'Comparing...';
+
+  try {
+    const r = await fetch(`${BACKEND}/compare`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionA, sessionB })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Comparison failed');
+    }
+    const data = await r.json();
+    compareSessionCache = data;
+    renderComparisonResults(data);
+    document.getElementById('compareReportBtn').disabled = false;
+  } catch (err) {
+    alert(`Comparison failed: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Compare Assessments`;
+  }
+}
+
+function renderComparisonResults(data) {
+  const sA    = data.sessionA;
+  const sB    = data.sessionB;
+  const delta = data.scoreDelta || 0;
+  const sum   = data.summary   || {};
+
+  // Score banner
+  const colA    = sA.score >= 70 ? 'var(--success)' : sA.score >= 50 ? 'var(--warning)' : 'var(--danger)';
+  const colB    = sB.score >= 70 ? 'var(--success)' : sB.score >= 50 ? 'var(--warning)' : 'var(--danger)';
+  const colDelta = delta > 0 ? 'var(--success)' : delta < 0 ? 'var(--danger)' : 'var(--muted)';
+
+  document.getElementById('compareScoreA').textContent = `${sA.score}/100`;
+  document.getElementById('compareScoreA').style.color = colA;
+  document.getElementById('compareDateA').textContent  = sA.assessDate;
+
+  document.getElementById('compareScoreDelta').textContent = delta >= 0 ? `+${delta}` : `${delta}`;
+  document.getElementById('compareScoreDelta').style.color = colDelta;
+  document.getElementById('compareTrend').textContent = data.summary?.overallTrend || '';
+
+  document.getElementById('compareScoreB').textContent = `${sB.score}/100`;
+  document.getElementById('compareScoreB').style.color = colB;
+  document.getElementById('compareDateB').textContent  = sB.assessDate;
+
+  // Counts
+  document.getElementById('compareResolved').textContent = sum.resolvedCount  || 0;
+  document.getElementById('compareNew').textContent      = sum.newCount       || 0;
+  document.getElementById('compareOpen').textContent     = sum.stillOpenCount || 0;
+  document.getElementById('compareImproved').textContent = sum.improvedCount  || 0;
+
+  // Detail sections
+  const detail = document.getElementById('compareDetail');
+  const sev    = { critical: 'var(--danger)', high: 'var(--warning)', medium: '#D4AC0D', low: 'var(--success)' };
+
+  function findingRows(findings, label, col) {
+    if (!findings || findings.length === 0) return '';
+    return `
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:12px;font-weight:600;color:${col};font-family:var(--mono);margin-bottom:10px;letter-spacing:0.05em;">${label} (${findings.length})</div>
+        ${findings.map(f => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+            <span style="font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;background:${sev[f.severity]||'var(--muted)'}22;color:${sev[f.severity]||'var(--muted)'};">${(f.severity||'').toUpperCase()}</span>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted);">${f.id}</span>
+            <span style="font-size:12px;">${f.title}</span>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  let html = '';
+  html += findingRows(data.resolved,    '✓ RESOLVED',    'var(--success)');
+  html += findingRows(data.newFindings, '! NEW FINDINGS', 'var(--danger)');
+  html += findingRows(data.stillOpen,   '— STILL OPEN',  'var(--warning)');
+  html += findingRows(data.improved,    '↑ IMPROVED',    'var(--accent)');
+
+  if (data.metricChanges && data.metricChanges.length > 0) {
+    html += `<div style="margin-bottom:1.5rem;">
+      <div style="font-size:12px;font-weight:600;color:var(--accent);font-family:var(--mono);margin-bottom:10px;letter-spacing:0.05em;">METRIC CHANGES (${data.metricChanges.length})</div>
+      ${data.metricChanges.map(m => {
+        const colA2 = m.statusA === 'good' ? 'var(--success)' : m.statusA === 'warn' ? 'var(--warning)' : 'var(--danger)';
+        const colB2 = m.statusB === 'good' ? 'var(--success)' : m.statusB === 'warn' ? 'var(--warning)' : 'var(--danger)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+          <span style="font-size:12px;flex:1;">${m.label}</span>
+          <span style="font-family:var(--mono);font-size:11px;color:${colA2};">${m.before}</span>
+          <span style="color:var(--muted);">→</span>
+          <span style="font-family:var(--mono);font-size:11px;color:${colB2};">${m.after}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  detail.innerHTML = html || '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:1rem 0;">No differences found between the two assessments.</div>';
+
+  document.getElementById('compareResults').style.display = 'block';
+  document.getElementById('compareEmpty').style.display   = 'none';
+}
+
+async function downloadComparisonReport() {
+  if (!compareSessionCache) { alert('Run a comparison first.'); return; }
+  addLog('Generating Comparison Report...', 'info');
+  try {
+    const r = await fetch(`${BACKEND}/compare/report`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comparisonData: compareSessionCache })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Report failed');
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `M365_Comparison_${compareSessionCache.sessionA?.orgName?.replace(/\s+/g,'_') || 'Report'}_${new Date().toISOString().split('T')[0]}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('Comparison Report downloaded.', 'success');
+  } catch (err) {
+    addLog(`Comparison Report error: ${err.message}`, 'error');
+  }
+}
 </script>
 </body>
 </html>

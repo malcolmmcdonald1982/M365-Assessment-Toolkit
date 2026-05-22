@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     M365 Assessment Toolkit - Updater
 .DESCRIPTION
@@ -6,14 +6,14 @@
     Preserves all saved sessions, reports and output files.
 
     Usage:
-        irm https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main/update.ps1 | iex
+        irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/update.ps1 | iex
 #>
 
 [CmdletBinding()]
 param(
     [string]$InstallPath  = "C:\M365 Assessment Toolkit",
-    [string]$RepoUrl      = "https://github.com/malcolmmcdonald1982/m365-assessment-toolkit",
-    [string]$RawBaseUrl   = "https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main",
+    [string]$RepoUrl      = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit",
+    [string]$RawBaseUrl   = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main",
     [switch]$Force
 )
 

@@ -148,7 +148,7 @@ A tenant can have a high Microsoft Secure Score and still score poorly here — 
 ## Updating
 
 ```powershell
-irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/update.ps1 | iex
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/update.ps1" -OutFile "$env:TEMP\update.ps1"; & "$env:TEMP\update.ps1"
 ```
 
 The updater downloads the latest files from GitHub and applies them. Your saved sessions, reports and output files are never touched.
@@ -156,7 +156,7 @@ The updater downloads the latest files from GitHub and applies them. Your saved 
 ## Uninstalling
 
 ```powershell
-irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/uninstall.ps1 | iex
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/uninstall.ps1" -OutFile "$env:TEMP\uninstall.ps1"; & "$env:TEMP\uninstall.ps1"
 ```
 
 The uninstaller offers to back up your saved sessions and reports before removing.

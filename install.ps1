@@ -190,9 +190,19 @@ foreach ($Folder in $Folders) {
 $RepoBase = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main"
 
 $SourcePath = $PSScriptRoot
-if (-not $SourcePath) { $SourcePath = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+if (-not $SourcePath) {
+    try {
+        $def = $MyInvocation.MyCommand.Definition
+        if ($def -and (Test-Path (Split-Path -Parent $def) -ErrorAction SilentlyContinue)) {
+            $SourcePath = Split-Path -Parent $def
+        }
+    } catch {}
+}
 
-$UseGitHub = (-not $SourcePath) -or (-not (Test-Path (Join-Path $SourcePath "backend.py")))
+$UseGitHub = $true
+if ($SourcePath) {
+    try { $UseGitHub = -not (Test-Path (Join-Path $SourcePath "backend.py") -ErrorAction SilentlyContinue) } catch {}
+}
 
 if ($UseGitHub) {
     Write-Step "Downloading tool files from GitHub..."

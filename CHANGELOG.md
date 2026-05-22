@@ -2,6 +2,34 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.1.0] - 2026-05-22
+
+### Bug Fixes
+
+**Consultant details not appearing in Word reports**
+- generateReport() was sending the raw scan result to the backend without the consultant name, role and email fields entered in the UI
+- Fixed by reading those three fields from the DOM at report generation time and merging them into the request payload
+- Consultant details now populate correctly in all generated Word reports
+
+### Transparency & Trust
+
+**Minimum role documentation**
+- Interactive login section now shows minimum roles required (Global Reader for most modules, Exchange Administrator for Exchange)
+- Removes ambiguity for users without Global Admin access
+
+**Read-only banner**
+- Green notice added directly above Run Assessment button confirming assessment is read-only
+- Makes clear that no tenant changes occur during scanning — only explicit remediation actions write to the tenant
+
+**AI disclosure**
+- Footer added across the full UI showing version, MIT licence, GitHub link and AI development disclosure
+- Addresses community questions about development transparency
+
+**Version bump**
+- Tool version updated to 1.1.0 in status endpoint and saved session files
+
+---
+
 ## [1.0.0] - 2026-05-05
 
 ### Initial Release

@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     M365 Assessment Toolkit - Installer
@@ -24,7 +24,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"
-$VERSION               = "1.0.0"
+$VERSION               = "1.1.0"
 
 function Write-Header { param($t) Write-Host "" ; Write-Host $t -ForegroundColor Cyan }
 function Write-OK      { param($t) Write-Host "  [OK]  $t" -ForegroundColor Green }
@@ -187,51 +187,106 @@ foreach ($Folder in $Folders) {
     }
 }
 
+$RepoBase = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main"
+
 $SourcePath = $PSScriptRoot
 if (-not $SourcePath) { $SourcePath = Split-Path -Parent $MyInvocation.MyCommand.Definition }
-if (-not $SourcePath) { $SourcePath = Get-Location }
 
-$CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx")
-foreach ($File in $CoreFiles) {
-    $Src = Join-Path $SourcePath $File
-    $Dst = Join-Path $InstallPath $File
-    if (Test-Path $Src) {
-        Copy-Item -Path $Src -Destination $Dst -Force
-        Write-OK "Copied: $File"
+$UseGitHub = (-not $SourcePath) -or (-not (Test-Path (Join-Path $SourcePath "backend.py")))
+
+if ($UseGitHub) {
+    Write-Step "Downloading tool files from GitHub..."
+
+    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx")
+    foreach ($File in $CoreFiles) {
+        try {
+            Invoke-WebRequest -Uri "$RepoBase/$File" -OutFile (Join-Path $InstallPath $File) -UseBasicParsing
+            Write-OK "Downloaded: $File"
+        } catch {
+            Write-Warn "Could not download: $File"
+            $Warnings++
+        }
     }
-}
 
-$AssessScripts = @(
-    "Get-IdentityMetrics.ps1","Get-SecurityMetrics.ps1","Get-ExchangeMetrics.ps1",
-    "Get-TeamsMetrics.ps1","Get-SharePointMetrics.ps1","Get-IntuneMetrics.ps1",
-    "Test-AppRegistrationPermissions.ps1"
-)
-foreach ($Script in $AssessScripts) {
-    $Src = Join-Path $SourcePath "scripts\$Script"
-    $Dst = Join-Path $InstallPath "scripts\$Script"
-    if (Test-Path $Src) {
-        Copy-Item -Path $Src -Destination $Dst -Force
-        Write-OK "Copied: scripts\$Script"
+    $AssessScripts = @(
+        "Get-IdentityMetrics.ps1","Get-SecurityMetrics.ps1","Get-ExchangeMetrics.ps1",
+        "Get-TeamsMetrics.ps1","Get-SharePointMetrics.ps1","Get-IntuneMetrics.ps1",
+        "Test-AppRegistrationPermissions.ps1"
+    )
+    foreach ($Script in $AssessScripts) {
+        try {
+            Invoke-WebRequest -Uri "$RepoBase/scripts/$Script" -OutFile (Join-Path $InstallPath "scripts\$Script") -UseBasicParsing
+            Write-OK "Downloaded: scripts\$Script"
+        } catch {
+            Write-Warn "Could not download: scripts\$Script"
+            $Warnings++
+        }
     }
-}
 
-$RemScripts = @(
-    "Remediate-LegacyAuth.ps1","Rollback-LegacyAuth.ps1",
-    "Remediate-MailboxAudit.ps1","Rollback-MailboxAudit.ps1",
-    "Remediate-ExternalForwarding.ps1","Rollback-ExternalForwarding.ps1",
-    "Remediate-AntiPhish.ps1","Rollback-AntiPhish.ps1",
-    "Remediate-MFAFatigue.ps1","Rollback-MFAFatigue.ps1",
-    "Remediate-WeakAuth.ps1","Rollback-WeakAuth.ps1",
-    "Remediate-UserConsent.ps1","Rollback-UserConsent.ps1",
-    "Remediate-TeamsConsumer.ps1","Rollback-TeamsConsumer.ps1",
-    "Remediate-SPOLegacyAuth.ps1","Rollback-SPOLegacyAuth.ps1"
-)
-foreach ($Script in $RemScripts) {
-    $Src = Join-Path $SourcePath "remediation\$Script"
-    $Dst = Join-Path $InstallPath "remediation\$Script"
-    if (Test-Path $Src) {
-        Copy-Item -Path $Src -Destination $Dst -Force
-        Write-OK "Copied: remediation\$Script"
+    $RemScripts = @(
+        "Remediate-LegacyAuth.ps1","Rollback-LegacyAuth.ps1",
+        "Remediate-MailboxAudit.ps1","Rollback-MailboxAudit.ps1",
+        "Remediate-ExternalForwarding.ps1","Rollback-ExternalForwarding.ps1",
+        "Remediate-AntiPhish.ps1","Rollback-AntiPhish.ps1",
+        "Remediate-MFAFatigue.ps1","Rollback-MFAFatigue.ps1",
+        "Remediate-WeakAuth.ps1","Rollback-WeakAuth.ps1",
+        "Remediate-UserConsent.ps1","Rollback-UserConsent.ps1",
+        "Remediate-TeamsConsumer.ps1","Rollback-TeamsConsumer.ps1",
+        "Remediate-SPOLegacyAuth.ps1","Rollback-SPOLegacyAuth.ps1"
+    )
+    foreach ($Script in $RemScripts) {
+        try {
+            Invoke-WebRequest -Uri "$RepoBase/remediation/$Script" -OutFile (Join-Path $InstallPath "remediation\$Script") -UseBasicParsing
+            Write-OK "Downloaded: remediation\$Script"
+        } catch {
+            Write-Warn "Could not download: remediation\$Script"
+        }
+    }
+} else {
+    Write-Step "Copying tool files from local source: $SourcePath"
+
+    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx")
+    foreach ($File in $CoreFiles) {
+        $Src = Join-Path $SourcePath $File
+        $Dst = Join-Path $InstallPath $File
+        if (Test-Path $Src) {
+            Copy-Item -Path $Src -Destination $Dst -Force
+            Write-OK "Copied: $File"
+        }
+    }
+
+    $AssessScripts = @(
+        "Get-IdentityMetrics.ps1","Get-SecurityMetrics.ps1","Get-ExchangeMetrics.ps1",
+        "Get-TeamsMetrics.ps1","Get-SharePointMetrics.ps1","Get-IntuneMetrics.ps1",
+        "Test-AppRegistrationPermissions.ps1"
+    )
+    foreach ($Script in $AssessScripts) {
+        $Src = Join-Path $SourcePath "scripts\$Script"
+        $Dst = Join-Path $InstallPath "scripts\$Script"
+        if (Test-Path $Src) {
+            Copy-Item -Path $Src -Destination $Dst -Force
+            Write-OK "Copied: scripts\$Script"
+        }
+    }
+
+    $RemScripts = @(
+        "Remediate-LegacyAuth.ps1","Rollback-LegacyAuth.ps1",
+        "Remediate-MailboxAudit.ps1","Rollback-MailboxAudit.ps1",
+        "Remediate-ExternalForwarding.ps1","Rollback-ExternalForwarding.ps1",
+        "Remediate-AntiPhish.ps1","Rollback-AntiPhish.ps1",
+        "Remediate-MFAFatigue.ps1","Rollback-MFAFatigue.ps1",
+        "Remediate-WeakAuth.ps1","Rollback-WeakAuth.ps1",
+        "Remediate-UserConsent.ps1","Rollback-UserConsent.ps1",
+        "Remediate-TeamsConsumer.ps1","Rollback-TeamsConsumer.ps1",
+        "Remediate-SPOLegacyAuth.ps1","Rollback-SPOLegacyAuth.ps1"
+    )
+    foreach ($Script in $RemScripts) {
+        $Src = Join-Path $SourcePath "remediation\$Script"
+        $Dst = Join-Path $InstallPath "remediation\$Script"
+        if (Test-Path $Src) {
+            Copy-Item -Path $Src -Destination $Dst -Force
+            Write-OK "Copied: remediation\$Script"
+        }
     }
 }
 

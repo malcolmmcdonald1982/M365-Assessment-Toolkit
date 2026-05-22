@@ -455,7 +455,7 @@ def save_session(session_data):
 
 @app.route("/status", methods=["GET"])
 def status():
-    return jsonify({"status": "online", "version": "2.0.0",
+    return jsonify({"status": "online", "version": "1.1.0",
                     "findings_loaded": len(FINDINGS_LIBRARY), "scripts_dir": SCRIPTS_DIR})
 
 
@@ -536,7 +536,7 @@ def run_assessment():
         "modulesRun": len(modules),
         "log": log,
         "savedAt": datetime.datetime.now().isoformat(),
-        "toolVersion": "2.0.0",
+        "toolVersion": "1.1.0",
         "remediationLog": rem_log,
     }
 

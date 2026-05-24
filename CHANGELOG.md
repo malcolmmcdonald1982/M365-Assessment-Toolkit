@@ -2,6 +2,17 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.2.1] - 2026-05-24
+
+### New Features
+
+**Auto Update Checker**
+- Tool silently checks GitHub for a newer version on every startup
+- Banner appears at the top of the UI when an update is available
+- Update Now button applies the update directly from within the tool — no need to visit GitHub manually
+- What's New links to the GitHub releases page so users can see what changed
+- Dismiss closes the banner for the session
+
 ## [1.2.0] - 2026-05-23
 
 ### New Features

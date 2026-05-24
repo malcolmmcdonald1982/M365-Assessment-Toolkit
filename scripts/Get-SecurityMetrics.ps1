@@ -15,10 +15,14 @@
     Outputs JSON to stdout. Exit 0 = success.
 #>
 param(
-    [Parameter(Mandatory=$false)] [string]$AuthMethod   = "Interactive",
-    [Parameter(Mandatory=$false)] [string]$TenantId     = "",
-    [Parameter(Mandatory=$false)] [string]$ClientId     = "",
-    [Parameter(Mandatory=$false)] [string]$ClientSecret = ""
+    [Parameter(Mandatory=$false)] [string]$AuthMethod     = "Interactive",
+    [Parameter(Mandatory=$false)] [string]$TenantId       = "",
+    [Parameter(Mandatory=$false)] [string]$ClientId       = "",
+    [Parameter(Mandatory=$false)] [string]$ClientSecret   = "",
+    [Parameter(Mandatory=$false)] [string]$CertThumbprint = "",
+    [Parameter(Mandatory=$false)] [string]$GraphEndpoint  = "https://graph.microsoft.com",
+    [Parameter(Mandatory=$false)] [string]$LoginEndpoint  = "https://login.microsoftonline.com",
+    [Parameter(Mandatory=$false)] [string]$Environment    = "commercial"
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,30 +43,35 @@ $HighPrivilegePerms = @(
 try {
     # ── Authenticate ──────────────────────────────────────────
     if ($AuthMethod -eq "AppReg") {
-        # Get token via REST - works with any module version, no Az.Accounts needed
+        # App Registration — client credentials via REST token
         $TokenBody = @{
             grant_type    = "client_credentials"
             client_id     = $ClientId
             client_secret = $ClientSecret
-            scope         = "https://graph.microsoft.com/.default"
+            scope         = "$GraphEndpoint/.default"
         }
-        $TokenResponse = Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" `
+        $TokenResponse = Invoke-RestMethod -Uri "$LoginEndpoint/$TenantId/oauth2/v2.0/token" `
             -Method POST -Body $TokenBody -ContentType "application/x-www-form-urlencoded" `
             -ErrorAction Stop
         $AccessToken = $TokenResponse.access_token
         Connect-MgGraph -AccessToken (ConvertTo-SecureString $AccessToken -AsPlainText -Force) -NoWelcome -WarningAction SilentlyContinue | Out-Null
+    } elseif ($AuthMethod -eq "Certificate") {
+        # Certificate auth — certificate must be installed in the local certificate store
+        Connect-MgGraph -ClientId $ClientId -TenantId $TenantId -CertificateThumbprint $CertThumbprint `
+            -Environment $(if ($GraphEndpoint -match 'microsoft.us') { 'USGov' } else { 'Global' }) `
+            -NoWelcome -WarningAction SilentlyContinue | Out-Null
     } else {
+        # Interactive auth — browser popup
         $Scopes = @(
             'Policy.Read.All',
             'SecurityEvents.Read.All',
             'Organization.Read.All',
             'Application.Read.All'
         )
-        if ($TenantId -ne "") {
-            Connect-MgGraph -TenantId $TenantId -Scopes $Scopes -NoWelcome -WarningAction SilentlyContinue | Out-Null
-        } else {
-            Connect-MgGraph -Scopes $Scopes -NoWelcome -WarningAction SilentlyContinue | Out-Null
-        }
+        $ConnectArgs = @{ Scopes = $Scopes; NoWelcome = $true; WarningAction = 'SilentlyContinue' }
+        if ($TenantId -ne "") { $ConnectArgs['TenantId'] = $TenantId }
+        if ($GraphEndpoint -match 'microsoft.us') { $ConnectArgs['Environment'] = 'USGov' }
+        Connect-MgGraph @ConnectArgs | Out-Null
     }
 
     # ── Secure Score ───────────────────────────────────────────
@@ -183,6 +192,15 @@ try {
         }
     } catch {}
 
+    # Microsoft Sentinel — check for Sentinel alert activity via Security API
+    $SentinelConnected = $false
+    try {
+        $SecurityAlerts = Get-MgSecurityAlert -All -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
+        $SentinelConnected = ($SecurityAlerts | Where-Object {
+            $_.VendorInformation.Provider -match 'Sentinel|Azure Sentinel'
+        }).Count -gt 0
+    } catch {}
+
     Disconnect-MgGraph -WarningAction SilentlyContinue | Out-Null
 
     # ── Output JSON ────────────────────────────────────────────
@@ -196,6 +214,7 @@ try {
         mfa_number_matching_enabled = $NumberMatchingEnabled
         weak_auth_methods_enabled   = $WeakAuthMethodsEnabled
         user_consent_unrestricted   = $UserConsentUnrestricted
+        sentinel_connected          = $SentinelConnected
     } | ConvertTo-Json -Compress
 
     [Console]::Out.WriteLine($result)

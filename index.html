@@ -367,6 +367,19 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* Update banner */
+  #updateBanner { display: none; background: rgba(79,156,249,0.08); border-bottom: 1px solid rgba(79,156,249,0.25); padding: 9px 2rem; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; flex-shrink: 0; }
+  #updateBanner.visible { display: flex; }
+  .update-badge { color: var(--accent); font-weight: 600; }
+  .update-link-btn { color: var(--accent); text-decoration: none; border: 1px solid rgba(79,156,249,0.3); border-radius: 5px; padding: 4px 10px; transition: background 0.15s; white-space: nowrap; }
+  .update-link-btn:hover { background: rgba(79,156,249,0.1); }
+  .update-now-btn { background: var(--accent); border: none; border-radius: 5px; padding: 5px 12px; color: white; font-family: var(--mono); font-size: 11px; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+  .update-now-btn:hover { opacity: 0.85; }
+  .update-now-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .update-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; flex-shrink: 0; }
+  .update-dismiss:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -382,6 +395,14 @@
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
+    <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases" target="_blank" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;transition:color 0.15s,border-color 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+      What's New
+    </a>
+    <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;transition:color 0.15s,border-color 0.15s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border2)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
     <button onclick="openSessionsPanel()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;color:var(--text);font-family:var(--mono);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px;" id="loadBtn">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Load Assessment
@@ -392,6 +413,17 @@
     </div>
   </div>
 </header>
+
+<!-- Update banner — shown only when a newer version is available on GitHub -->
+<div id="updateBanner">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+  <span>Update available: <span class="update-badge" id="updateVersionText"></span></span>
+  <span style="color:var(--muted);">You are on <span id="currentVersionText"></span></span>
+  <div style="flex:1;"></div>
+  <a id="whatsNewLink" href="#" target="_blank" class="update-link-btn">What's New</a>
+  <button class="update-now-btn" id="updateNowBtn" onclick="applyUpdate()">Update Now</button>
+  <button class="update-dismiss" onclick="dismissUpdate()" title="Dismiss">&#x2715;</button>
+</div>
 
 <!-- Sessions overlay -->
 <div class="sessions-overlay" id="sessionsOverlay" onclick="closeSessionsPanel()"></div>
@@ -923,7 +955,7 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.2 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.2.1 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -951,6 +983,66 @@ function setOffline() {
 }
 checkBackend();
 setInterval(checkBackend, 10000);
+
+// ── Auto-update check ───────────────────────────────────────────
+async function checkForUpdates() {
+  try {
+    const r = await fetch(`${BACKEND}/check-update`, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.update_available) {
+      document.getElementById('updateVersionText').textContent = 'v' + data.latest;
+      document.getElementById('currentVersionText').textContent = 'v' + data.current;
+      const link = document.getElementById('whatsNewLink');
+      if (link && data.releases_url) link.href = data.releases_url;
+      document.getElementById('updateBanner').classList.add('visible');
+    }
+  } catch { /* silent — don't surface network errors to user */ }
+}
+
+async function applyUpdate() {
+  const btn = document.getElementById('updateNowBtn');
+  const banner = document.getElementById('updateBanner');
+  btn.textContent = 'Updating...';
+  btn.disabled = true;
+  addLog('Downloading and applying update...', 'info');
+  try {
+    const r = await fetch(`${BACKEND}/apply-update`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(130000)
+    });
+    const data = await r.json();
+    if (data.success) {
+      banner.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <span style="color:var(--success);font-weight:600;">Update applied.</span>
+        <span style="color:var(--muted);">Close the PowerShell window and reopen the tool to use the new version.</span>
+        <div style="flex:1;"></div>
+        <button class="update-dismiss" onclick="dismissUpdate()" title="Dismiss">&#x2715;</button>`;
+      banner.style.background = 'rgba(16,185,129,0.08)';
+      banner.style.borderBottomColor = 'rgba(16,185,129,0.25)';
+      addLog('Update applied successfully. Restart the tool to use the new version.', 'success');
+    } else {
+      btn.textContent = 'Update Now';
+      btn.disabled = false;
+      const msg = data.error || 'Update failed';
+      addLog('Update failed: ' + msg, 'error');
+      alert('Update failed:\n\n' + msg);
+    }
+  } catch (err) {
+    btn.textContent = 'Update Now';
+    btn.disabled = false;
+    addLog('Update error: ' + err.message, 'error');
+    alert('Update error: ' + err.message);
+  }
+}
+
+function dismissUpdate() {
+  document.getElementById('updateBanner').classList.remove('visible');
+}
+
+// Check silently on load — 3 s delay lets the backend come online first
+setTimeout(checkForUpdates, 3000);
 
 // Environment is fixed to commercial — no dropdown needed
 

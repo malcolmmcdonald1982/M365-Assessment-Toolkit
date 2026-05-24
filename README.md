@@ -7,7 +7,7 @@ This tool is not intended to replace enterprise security platforms. It fills a g
 ## What it does
 
 - Runs a security assessment against any M365 tenant across 6 workloads
-- Evaluates 23 findings covering identity, conditional access, Exchange, Teams, SharePoint and Intune
+- Evaluates 30 findings covering identity, conditional access, Exchange, Teams, SharePoint and Intune
 - Scores the tenant based on real attack paths — not just Microsoft Secure Score
 - Remediates findings with one click, with full rollback capability
 - Produces professional Word reports (Assessment Report, Remediation Report, Comparison Report)
@@ -97,6 +97,8 @@ Double-click the **M365 Assessment Toolkit** shortcut on your desktop. The tool 
 
 **App Registration** — Requires setup in Entra ID. Silent authentication for Graph-based modules. Recommended for repeat assessments.
 
+**Certificate** — Uses a certificate installed in the local Windows certificate store. No client secret stored in the UI. Recommended for recurring assessments where security policy prohibits stored secrets.
+
 ### Setting up App Registration
 
 1. Go to [Entra ID > App registrations](https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps)
@@ -125,6 +127,105 @@ IdentityRiskyUser.Read.All
 7. Click **Grant admin consent**
 
 > Exchange, Teams and SharePoint always use interactive login — these PowerShell modules do not support app-only authentication.
+
+### Setting up Certificate Authentication
+
+Certificate authentication uses a certificate installed in your local Windows certificate store instead of a client secret. No secret is ever stored in the tool UI, making it suitable for environments where security policy prohibits stored credentials.
+
+> The same Graph API permissions apply as App Registration. Exchange, Teams and SharePoint always use interactive login regardless of auth method.
+
+#### Step 1 — Create an App Registration
+
+1. Go to [Entra ID > App registrations](https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/RegisteredApps)
+2. Click **New registration** — name it `M365 Assessment Toolkit`
+3. Supported account types → **Single tenant**
+4. Click **Register**
+5. Copy the **Application (client) ID** and **Directory (tenant) ID** — you will need both
+
+#### Step 2 — Grant API permissions
+
+1. Go to **API permissions** > **Add a permission** > **Microsoft Graph** > **Application permissions**
+2. Add the following permissions:
+
+```
+User.Read.All
+Directory.Read.All
+RoleManagement.Read.Directory
+AuditLog.Read.All
+Organization.Read.All
+Policy.Read.All
+SecurityEvents.Read.All
+Application.Read.All
+IdentityRiskyUser.Read.All
+DeviceManagementManagedDevices.Read.All
+DeviceManagementConfiguration.Read.All
+```
+
+3. Click **Grant admin consent** — required, the tool will not work without this
+
+#### Step 3 — Generate a self-signed certificate
+
+Run the following in PowerShell on the machine that will run the tool:
+
+```powershell
+$cert = New-SelfSignedCertificate `
+    -Subject "CN=M365AssessmentTool" `
+    -CertStoreLocation "Cert:\CurrentUser\My" `
+    -KeyExportPolicy Exportable `
+    -KeySpec Signature `
+    -KeyLength 2048 `
+    -HashAlgorithm SHA256 `
+    -NotAfter (Get-Date).AddYears(2)
+
+Write-Host "Thumbprint: $($cert.Thumbprint)"
+```
+
+Copy the thumbprint from the output — this goes in the tool later.
+
+The certificate is automatically installed in **Current User > Personal** (the correct store for this tool).
+
+#### Step 4 — Export the public key
+
+```powershell
+Export-Certificate `
+    -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+    -FilePath "$env:USERPROFILE\Desktop\M365AssessmentTool.cer"
+```
+
+This saves a `.cer` file to your desktop. This is the public key only — safe to upload to Entra.
+
+#### Step 5 — Upload the certificate to Entra
+
+1. Go to your App Registration in Entra
+2. Click **Certificates & secrets** > **Certificates** tab
+3. Click **Upload certificate**
+4. Select the `.cer` file from your desktop
+5. Click **Add**
+
+You should see the certificate listed with its thumbprint. Confirm it matches the one from Step 3.
+
+#### Step 6 — Run an assessment
+
+In the tool:
+
+- Select **Certificate** as the authentication method
+- Enter your **Tenant ID** (Directory ID from Step 1)
+- Enter your **Client ID** (Application ID from Step 1)
+- Enter the **Certificate Thumbprint** from Step 3
+
+Click **Run Assessment**. Graph-based modules (Identity, Security, Intune) will authenticate silently. Exchange, Teams and SharePoint will prompt interactively as normal.
+
+#### Verifying the certificate is installed
+
+If you need to check the certificate is present on the machine, open PowerShell and run:
+
+```powershell
+Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "*M365AssessmentTool*" } | Select-Object Subject, Thumbprint, NotAfter
+```
+
+#### Certificate expiry
+
+The self-signed certificate created in Step 3 is valid for 2 years. When it expires, repeat Steps 3–5 to generate a new certificate and upload it to the App Registration. The Client ID and Tenant ID remain the same — only the thumbprint changes.
 
 ## Understanding the Score
 
@@ -204,12 +305,12 @@ C:\M365 Assessment Toolkit\
 
 | Module | Tag | Auth | Findings |
 |---|---|---|---|
-| Identity & MFA | ENTRA | App Reg or Interactive | 5 |
-| Security & CA | SEC | App Reg or Interactive | 7 |
-| Exchange Online | EXO | Interactive only | 3 |
+| Identity & MFA | ENTRA | App Reg, Certificate or Interactive | 7 |
+| Security & CA | SEC | App Reg, Certificate or Interactive | 8 |
+| Exchange Online | EXO | Interactive only | 5 |
 | Teams | TEAMS | Interactive only | 2 |
 | SharePoint | SPO | Interactive only | 2 |
-| Intune / Devices | MDM | App Reg or Interactive | 4 |
+| Intune / Devices | MDM | App Reg, Certificate or Interactive | 6 |
 
 ## Licence
 

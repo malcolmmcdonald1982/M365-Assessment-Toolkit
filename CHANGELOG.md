@@ -2,6 +2,38 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.2.0] - 2026-05-23
+
+### New Features
+
+**Certificate-Based Authentication**
+- Third authentication option added alongside Interactive and App Registration
+- User provides Tenant ID, Client ID, and Certificate Thumbprint
+- Certificate must be installed in the local Windows certificate store (Current User\My or Local Machine\My)
+- Applies to Graph-based modules (Identity, Security, Intune) — Exchange, Teams and SharePoint continue to use interactive login
+- No client secret stored in the UI — cleaner for repeat assessments where security policy prohibits stored credentials
+
+**Environment Selector**
+- Environment dropdown added to the UI
+- Commercial / GCC — single option covering all global commercial tenants and US GCC (both use identical endpoints)
+- GCCH and DoD listed as Coming Soon — endpoint switching is built in but not yet validated without access to a government high tenant
+
+**7 New Findings (23 → 30)**
+- ID-006 — Risky Users Not Reviewed (High)
+- ID-007 — No Emergency Access Account Detected (High)
+- SEC-006 — No Microsoft Sentinel Connected (Medium)
+- EXO-004 — DMARC Not Configured (High)
+- EXO-005 — SPF or DKIM Not Configured (High)
+- MDM-003 — No Windows Update Ring Configured (Medium)
+- MDM-004 — BitLocker Not Enforced (High)
+
+**Full Investigation Script Coverage**
+- All 30 findings now have an Investigate button with a ready-to-run PowerShell script
+- Previously 14 findings had no investigation script — all gaps filled
+- New scripts cover: SEC-001–005, CA-001–002, EXO-002–003, TEAMS-001–002, SPO-001–002, MDM-002, and all 7 new findings
+
+---
+
 ## [1.1.0] - 2026-05-22
 
 ### Bug Fixes

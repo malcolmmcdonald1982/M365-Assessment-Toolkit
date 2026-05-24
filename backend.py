@@ -531,10 +531,60 @@ def save_session(session_data):
 #  ROUTES
 # ─────────────────────────────────────────────────────────────
 
+CURRENT_VERSION = "1.2.1"
+VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
+RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
+
+
 @app.route("/status", methods=["GET"])
 def status():
-    return jsonify({"status": "online", "version": "1.2.0",
+    return jsonify({"status": "online", "version": CURRENT_VERSION,
                     "findings_loaded": len(FINDINGS_LIBRARY), "scripts_dir": SCRIPTS_DIR})
+
+
+@app.route("/check-update", methods=["GET"])
+def check_update():
+    """Check GitHub for a newer version."""
+    try:
+        req = urllib.request.Request(VERSION_URL,
+              headers={"User-Agent": "M365-Assessment-Toolkit"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            latest = r.read().decode().strip()
+        update_available = latest != CURRENT_VERSION
+        return jsonify({
+            "current":          CURRENT_VERSION,
+            "latest":           latest,
+            "update_available": update_available,
+            "releases_url":     RELEASES_URL
+        })
+    except Exception as e:
+        return jsonify({
+            "current":          CURRENT_VERSION,
+            "latest":           CURRENT_VERSION,
+            "update_available": False,
+            "error":            str(e)
+        })
+
+
+@app.route("/apply-update", methods=["POST"])
+def apply_update():
+    """Run the local update.ps1 script to pull latest files from GitHub."""
+    update_script = os.path.join(BASE_DIR, "update.ps1")
+    if not os.path.exists(update_script):
+        return jsonify({"success": False, "error": "update.ps1 not found"}), 500
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+             "-File", update_script, "-Force"],
+            capture_output=True, text=True, timeout=120
+        )
+        if result.returncode != 0:
+            return jsonify({"success": False, "error": result.stderr.strip() or result.stdout.strip()})
+        return jsonify({"success": True, "output": result.stdout.strip()})
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Update timed out after 120 seconds"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 @app.route("/run", methods=["POST"])

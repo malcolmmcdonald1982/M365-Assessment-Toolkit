@@ -24,7 +24,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"
-$VERSION               = "1.1.0"
+$VERSION               = "1.2.0"
 
 function Write-Header { param($t) Write-Host "" ; Write-Host $t -ForegroundColor Cyan }
 function Write-OK      { param($t) Write-Host "  [OK]  $t" -ForegroundColor Green }

@@ -158,6 +158,42 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Intune device compliance policies are in place. Devices cannot be evaluated for compliance.",
          "recommendation":"Create compliance policies for each device platform (Windows, iOS, Android) covering OS version, encryption, and antivirus requirements."},
+
+        # New v1.2 findings
+        {"id":"ID-006","title":"Risky Users Not Reviewed","module":"identity","metric":"risky_users_count","severity":"high",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more users are flagged as high or medium risk by Entra ID Identity Protection and have not been remediated or dismissed. Risky users indicate potential compromised accounts.",
+         "recommendation":"Review risky users in Entra ID > Protection > Risky users. Require password reset or MFA re-registration for at-risk accounts. Investigate the risk events behind each flagged user."},
+
+        {"id":"ID-007","title":"No Emergency Access Account Detected","module":"identity","metric":"emergency_access_exists","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"No break-glass (emergency access) account was detected. Without an emergency access account, a misconfigured Conditional Access policy or MFA outage could lock administrators out of the tenant.",
+         "recommendation":"Create at least two emergency access accounts. Exclude them from all CA policies. Store credentials securely offline. Monitor for any sign-in activity on these accounts as an indicator of compromise."},
+
+        {"id":"SEC-006","title":"No Microsoft Sentinel Connected","module":"security","metric":"sentinel_connected","severity":"medium",
+         "threshold": lambda v: v is False,
+         "description":"Microsoft Sentinel does not appear to be connected or generating security alerts. Without a SIEM, threats across M365 services may not be correlated or retained for investigation.",
+         "recommendation":"Deploy Microsoft Sentinel and connect the Microsoft 365 Defender data connector. Configure analytics rules for high-priority scenarios and set up a regular alert review process."},
+
+        {"id":"EXO-004","title":"DMARC Not Configured","module":"exchange","metric":"dmarc_configured","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"DMARC is not configured on the primary domain. Without DMARC, attackers can spoof your domain in phishing emails, impersonating your organisation to external recipients.",
+         "recommendation":"Publish a DMARC TXT record at _dmarc.yourdomain.com. Start with p=none for monitoring, then progress to p=quarantine and p=reject once SPF and DKIM are confirmed working."},
+
+        {"id":"EXO-005","title":"SPF or DKIM Not Configured","module":"exchange","metric":"spf_dkim_configured","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"SPF or DKIM email authentication is not fully configured on the primary domain. Without both controls, outbound emails may be rejected by recipients and the domain can be spoofed.",
+         "recommendation":"Ensure an SPF TXT record exists for your domain. Enable DKIM signing in Exchange Online Admin > Email authentication. Both must pass before DMARC enforcement is safe to enable."},
+
+        {"id":"MDM-003","title":"No Windows Update Ring Configured","module":"intune","metric":"update_ring_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
+         "description":"No Windows Update for Business rings are configured in Intune. Without update rings, Windows devices may receive patches inconsistently or too late, leaving known vulnerabilities unpatched.",
+         "recommendation":"Create at least one Windows Update ring in Intune targeting Windows devices. Consider a Pilot ring and a Production ring with a deferral period to catch problematic updates before broad rollout."},
+
+        {"id":"MDM-004","title":"BitLocker Not Enforced","module":"intune","metric":"bitlocker_enforced","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"BitLocker disk encryption does not appear to be required by Intune compliance or configuration policies. Devices without encryption expose all data if lost or stolen.",
+         "recommendation":"Create an Intune device configuration profile enabling BitLocker on Windows devices. Add a compliance policy condition requiring device encryption, and block non-compliant devices from accessing M365."},
     ]
 
 FINDINGS_LIBRARY = build_findings_library()
@@ -188,6 +224,13 @@ METRIC_DISPLAY = {
     "weak_auth_methods_enabled":       {"label":"Weak MFA Methods Active",         "format":"{}",    "desc":"Whether SMS, voice, or email OTP auth is enabled"},
     "user_consent_unrestricted":       {"label":"Users Can Consent to Apps",       "format":"{}",    "desc":"Whether users can grant app permissions without admin approval"},
     "teams_email_into_channel":        {"label":"Teams Email-to-Channel",          "format":"{}",    "desc":"Whether external emails can be sent into Teams channels"},
+    "risky_users_count":               {"label":"Risky Users (High/Medium)",       "format":"{}",    "desc":"Users flagged as high or medium risk by Identity Protection"},
+    "emergency_access_exists":         {"label":"Emergency Access Account",        "format":"{}",    "desc":"Whether a break-glass account is detectable in the tenant"},
+    "sentinel_connected":              {"label":"Microsoft Sentinel Connected",    "format":"{}",    "desc":"Whether Sentinel appears to be active and generating alerts"},
+    "dmarc_configured":                {"label":"DMARC Configured",               "format":"{}",    "desc":"Whether a DMARC record exists for the primary domain"},
+    "spf_dkim_configured":             {"label":"SPF and DKIM Configured",        "format":"{}",    "desc":"Whether SPF and DKIM are both set up for the primary domain"},
+    "update_ring_count":               {"label":"Windows Update Rings",            "format":"{}",    "desc":"Number of Windows Update for Business rings in Intune"},
+    "bitlocker_enforced":              {"label":"BitLocker Enforced",              "format":"{}",    "desc":"Whether BitLocker is required by Intune policies"},
 }
 
 
@@ -212,20 +255,47 @@ INTERACTIVE_ONLY_MODULES = {"exchange", "teams", "sharepoint"}
 def build_ps_args(module, auth):
     """Build the PowerShell parameter list for a given module and auth config."""
     auth_method = auth.get("authMethod", "interactive")
+    environment = auth.get("environment", "commercial").lower()
     args = []
 
+    # Government cloud endpoint overrides
+    # GCC uses the same endpoints as Commercial — no change needed
+    # GCCH uses graph.microsoft.us / login.microsoftonline.us
+    # DoD uses dod-graph.microsoft.us / login.microsoftonline.us
+    if environment == "gcch":
+        graph_endpoint = "https://graph.microsoft.us"
+        login_endpoint = "https://login.microsoftonline.us"
+    elif environment == "dod":
+        graph_endpoint = "https://dod-graph.microsoft.us"
+        login_endpoint = "https://login.microsoftonline.us"
+    else:
+        # Commercial and GCC both use standard endpoints
+        graph_endpoint = "https://graph.microsoft.com"
+        login_endpoint = "https://login.microsoftonline.com"
+
     if auth_method == "appreg" and module not in INTERACTIVE_ONLY_MODULES:
-        # App Registration auth for Graph-based modules
         args += ["-AuthMethod", "AppReg"]
         args += ["-TenantId", auth.get("tenantId", "")]
         args += ["-ClientId", auth.get("clientId", "")]
         args += ["-ClientSecret", auth.get("clientSecret", "")]
+        args += ["-GraphEndpoint", graph_endpoint]
+        args += ["-LoginEndpoint", login_endpoint]
+    elif auth_method == "certificate" and module not in INTERACTIVE_ONLY_MODULES:
+        args += ["-AuthMethod", "Certificate"]
+        args += ["-TenantId", auth.get("tenantId", "")]
+        args += ["-ClientId", auth.get("clientId", "")]
+        args += ["-CertThumbprint", auth.get("certThumbprint", "")]
+        args += ["-GraphEndpoint", graph_endpoint]
+        args += ["-LoginEndpoint", login_endpoint]
     else:
-        # Interactive auth
+        # Interactive auth (also fallback for cert/appreg on interactive-only modules)
         args += ["-AuthMethod", "Interactive"]
         tenant_id = auth.get("tenantId", "")
         if tenant_id:
             args += ["-TenantId", tenant_id]
+
+    # Pass environment to all modules so Exchange/Teams/SPO can switch endpoints
+    args += ["-Environment", environment]
 
     # SharePoint admin URL for SPO module
     if module == "sharepoint":
@@ -370,7 +440,8 @@ def format_metric(key, value):
         percentage_good_low  = {"unassigned_licence_percentage"}
         count_good_low       = {"global_admin_count", "guest_user_count"}
         count_good_high      = {"ca_enabled_policy_count", "intune_compliance_policy_count", "defender_alert_policy_count", "intune_config_policy_count"}
-        count_good_zero      = {"high_privilege_app_count"}
+        count_good_zero      = {"high_privilege_app_count", "risky_users_count"}
+        count_good_nonzero   = {"update_ring_count"}
 
         if key in percentage_good_high:
             status = "good" if value >= 90 else ("warn" if value >= 70 else "bad")
@@ -382,6 +453,8 @@ def format_metric(key, value):
             status = "good" if value >= 3 else ("warn" if value >= 1 else "bad")
         elif key in count_good_zero:
             status = "good" if value == 0 else ("warn" if value <= 2 else "bad")
+        elif key in count_good_nonzero:
+            status = "good" if value >= 1 else "bad"
     elif isinstance(value, str):
         bad_values = {"ExternalUserAndGuestSharing", "anyone"}
         warn_values = {"ExternalUserSharingOnly", "new_and_existing"}
@@ -403,6 +476,11 @@ def format_metric(key, value):
             "weak_auth_methods_enabled": ("Yes - Review", "No"),
             "user_consent_unrestricted": ("Yes - Review", "Restricted"),
             "teams_email_into_channel": ("Allowed", "Blocked"),
+            "emergency_access_exists": ("Detected", "Not Detected"),
+            "sentinel_connected": ("Connected", "Not Connected"),
+            "dmarc_configured": ("Configured", "Not Configured"),
+            "spf_dkim_configured": ("Configured", "Not Configured"),
+            "bitlocker_enforced": ("Enforced", "Not Enforced"),
         }
         if key in friendly_map:
             display = friendly_map[key][0] if value else friendly_map[key][1]
@@ -455,7 +533,7 @@ def save_session(session_data):
 
 @app.route("/status", methods=["GET"])
 def status():
-    return jsonify({"status": "online", "version": "1.1.0",
+    return jsonify({"status": "online", "version": "1.2.0",
                     "findings_loaded": len(FINDINGS_LIBRARY), "scripts_dir": SCRIPTS_DIR})
 
 
@@ -465,7 +543,7 @@ def run_assessment():
     client_name   = body.get("orgName", body.get("clientName", "Unknown"))
     modules       = body.get("modules", [])
     auth          = {k: body.get(k,"") for k in
-                     ["authMethod","tenantId","clientId","clientSecret","spAdminUrl"]}
+                     ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
 
     log = []
     all_metrics = {}
@@ -483,7 +561,12 @@ def run_assessment():
             L(f"Unknown module: {module}", "warn"); continue
 
         is_interactive_only = module in INTERACTIVE_ONLY_MODULES
-        effective_auth = "interactive" if (auth["authMethod"] == "interactive" or is_interactive_only) else "appreg"
+        if auth["authMethod"] == "interactive" or is_interactive_only:
+            effective_auth = "interactive"
+        elif auth["authMethod"] == "certificate":
+            effective_auth = "certificate"
+        else:
+            effective_auth = "appreg"
 
         if is_interactive_only and auth["authMethod"] == "appreg":
             L(f"{module}: App Reg not supported for this workload — using interactive login", "warn")
@@ -536,7 +619,7 @@ def run_assessment():
         "modulesRun": len(modules),
         "log": log,
         "savedAt": datetime.datetime.now().isoformat(),
-        "toolVersion": "1.1.0",
+        "toolVersion": "1.2.0",
         "remediationLog": rem_log,
     }
 
@@ -632,18 +715,20 @@ def download_remediation_report():
     if not os.path.exists(generator):
         return jsonify({"error": "generate-report.js not found"}), 500
 
-    # Load remediation log - try both the passed-in log and the file
-    rem_log = body.get("remediationLog", [])
-
+    # Always load from file — file is source of truth and includes rollbacks
+    # that may have happened after the frontend cached the session data
+    log_path = os.path.join(OUTPUT_DIR, f"RemediationLog_{safe_name}.json")
+    print(f"[REMEDIATION REPORT] Log path: {log_path} exists={os.path.exists(log_path)}", flush=True)
+    rem_log = []
+    if os.path.exists(log_path):
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                rem_log = json.load(f)
+        except Exception as e:
+            print(f"[REMEDIATION REPORT] Log read error: {e}", flush=True)
+    # Fall back to body if file missing
     if not rem_log:
-        log_path = os.path.join(OUTPUT_DIR, f"RemediationLog_{safe_name}.json")
-        print(f"[REMEDIATION REPORT] Log path: {log_path} exists={os.path.exists(log_path)}", flush=True)
-        if os.path.exists(log_path):
-            try:
-                with open(log_path, "r", encoding="utf-8") as f:
-                    rem_log = json.load(f)
-            except Exception as e:
-                print(f"[REMEDIATION REPORT] Log read error: {e}", flush=True)
+        rem_log = body.get("remediationLog", [])
 
     print(f"[REMEDIATION REPORT] Log entries: {len(rem_log)}", flush=True)
 
@@ -1702,6 +1787,13 @@ TIER2_GUIDANCE = {
     "SEC-001": {"portal": "https://security.microsoft.com/securescore", "steps": ["Go to Microsoft Defender > Secure Score", "Review improvement actions sorted by Points available", "Prioritise actions with High impact and Low implementation effort", "Assign actions to responsible team members", "Review score weekly"]},
     "SEC-002": {"portal": "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/TenantPropertiesBlade", "steps": ["Go to Entra ID > Properties > Manage security defaults", "If not using Conditional Access: enable Security Defaults", "If using Conditional Access: ensure CA policies cover all scenarios Security Defaults would cover (MFA for all, block legacy auth)", "Do not enable Security Defaults if you have existing CA policies - they conflict"]},
     "TEAMS-001": {"portal": "https://admin.teams.microsoft.com/company-wide-settings/external-communications", "steps": ["Go to Teams Admin Centre > Users > External access", "Change from Open federation to Allowed domains only", "Add any approved partner domains to the allowed list", "Remove unknown or unused domains"]},
+    "ID-006":  {"portal": "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/RiskyUsersV2Blade", "steps": ["Go to Entra ID > Protection > Risky users", "Filter by Risk level: High, then Medium", "For high risk: select user > Block sign-in > Require password reset", "For medium risk: select user > Require users to re-register MFA", "Investigate the risk events behind each flagged user under Risk history", "Dismiss false positives after investigation"]},
+    "ID-007":  {"portal": "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/UsersManagementMenuBlade/~/AllUsers", "steps": ["Create two dedicated emergency access accounts with long random passwords", "Exclude both accounts from all Conditional Access policies", "Store credentials in a physically secure location (e.g. safe, sealed envelope)", "Do NOT register MFA on break-glass accounts — if MFA fails, you cannot use them", "Set up an alert for any sign-in on these accounts", "Test the accounts annually to verify they work", "See: https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access"]},
+    "SEC-006": {"portal": "https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade", "steps": ["Go to Azure Portal > Microsoft Sentinel", "If not deployed: Create a Sentinel workspace in your subscription", "Add the Microsoft 365 Defender data connector", "Add the Azure Active Directory data connector", "Enable the Microsoft Sentinel analytics rules relevant to your environment", "Configure a daily review process for Sentinel incidents"]},
+    "EXO-004": {"portal": "https://admin.microsoft.com/Adminportal/Home#/Domains", "steps": ["Identify your primary domain in Microsoft 365 Admin > Settings > Domains", "Log into your DNS provider and add a TXT record", "Name: _dmarc.yourdomain.com", "Value: v=DMARC1; p=none; rua=mailto:dmarc-reports@yourdomain.com", "Wait for DNS propagation (up to 48 hours)", "Monitor reports for 2-4 weeks, then change p=none to p=quarantine", "Once confident, move to p=reject for full enforcement"]},
+    "EXO-005": {"portal": "https://admin.exchange.microsoft.com/#/dkim", "steps": ["Go to Exchange Admin Centre > Email authentication > DKIM", "Select your domain and click Enable", "If not yet set up: follow the DNS record instructions provided", "For SPF: ensure your domain has a TXT record starting with v=spf1 include:spf.protection.outlook.com", "Add any other authorised senders (e.g. marketing platforms) to the SPF record", "Verify both records with MXToolbox before enabling DMARC enforcement"]},
+    "MDM-003": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/PatchManagementBlade/~/overview", "steps": ["Go to Intune > Devices > Windows > Update rings for Windows 10 and later", "Click Create profile", "Name it e.g. Pilot Ring — set quality update deferral to 3 days", "Create a second Production Ring with quality deferral of 7 days, feature deferral of 30 days", "Assign Pilot Ring to a test group, Production Ring to all Windows devices", "Monitor Windows Update compliance under Reports > Windows Updates"]},
+    "MDM-004": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy > Windows 10+", "Enable: Require BitLocker", "Also go to Intune > Devices > Configuration > Create > Windows > Templates > Endpoint Protection", "Configure BitLocker Drive Encryption settings", "Assign both policies to All Devices or Windows device groups", "Monitor encryption status under Intune > Devices > Monitor > Encryption report"]},
 }
 
 
@@ -1765,7 +1857,7 @@ def remediate_check(finding_id):
                         "guidance": TIER2_GUIDANCE.get(finding_id, {})}), 200
     
     body    = request.get_json()
-    auth    = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","spAdminUrl"]}
+    auth    = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
     mapping = REMEDIATION_MAP[finding_id]
     
     ps_args = build_ps_args_remediation(auth) + ["-CheckOnly"]
@@ -1788,7 +1880,7 @@ def remediate_run(finding_id):
     
     body        = request.get_json()
     client_name = body.get("orgName", body.get("clientName", "Unknown"))
-    auth        = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","spAdminUrl"]}
+    auth        = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
     mapping     = REMEDIATION_MAP[finding_id]
     
     # Create snapshot file path
@@ -1820,7 +1912,7 @@ def remediate_rollback(finding_id):
     body          = request.get_json()
     client_name   = body.get("orgName", body.get("clientName", "Unknown"))
     snapshot_name = body.get("snapshotFile", "")
-    auth          = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","spAdminUrl"]}
+    auth          = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
     mapping       = REMEDIATION_MAP[finding_id]
     
     if not snapshot_name:
@@ -2232,6 +2324,871 @@ $report | Export-Csv $csv -NoTypeInformation
 $report | Format-Table -AutoSize
 $col = if ($nonComp.Count -gt 0) { 'Red' } else { 'Green' }
 Write-Host "$($nonComp.Count) non-compliant of $($all.Count) total managed devices. Exported: $csv" -ForegroundColor $col
+Disconnect-MgGraph"""
+    },
+
+    "SEC-001": {
+        "title": "Secure Score breakdown",
+        "description": "Shows your current Secure Score, percentage, and top improvement actions ranked by points available.",
+        "script": r"""# SEC-001 — Secure Score Breakdown
+# Requires: Microsoft.Graph module
+# Permissions: SecurityEvents.Read.All
+
+Connect-MgGraph -Scopes "SecurityEvents.Read.All" -NoWelcome
+
+$latest = Get-MgSecuritySecureScore -Top 1 | Select-Object -First 1
+$pct    = [math]::Round(($latest.CurrentScore / $latest.MaxScore) * 100, 1)
+$col    = if ($pct -lt 50) { 'Red' } elseif ($pct -lt 75) { 'Yellow' } else { 'Green' }
+
+Write-Host "`nCurrent Secure Score: $($latest.CurrentScore) / $($latest.MaxScore) ($pct%)" -ForegroundColor $col
+Write-Host "Score Date: $($latest.CreatedDateTime)" -ForegroundColor Cyan
+
+Write-Host "`nTop improvement actions by points available:" -ForegroundColor Cyan
+$actions = Get-MgSecuritySecureScoreControlProfile -All |
+           Sort-Object MaxScore -Descending |
+           Select-Object -First 20
+
+$actions | Select-Object Title, MaxScore, @{N='Category';E={$_.ControlCategory}} |
+           Format-Table -AutoSize
+
+$csv = "SecureScore_$(Get-Date -Format yyyyMMdd).csv"
+$actions | Export-Csv $csv -NoTypeInformation
+Write-Host "Full action list exported: $csv" -ForegroundColor Cyan
+Disconnect-MgGraph"""
+    },
+
+    "SEC-002": {
+        "title": "Security defaults and CA policy status",
+        "description": "Shows whether Security Defaults are enabled and whether Conditional Access policies are covering the same ground.",
+        "script": r"""# SEC-002 — Security Defaults vs Conditional Access
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+$defaults = Get-MgPolicyIdentitySecurityDefaultEnforcementPolicy
+$col      = if ($defaults.IsEnabled) { 'Green' } else { 'Red' }
+Write-Host "`nSecurity Defaults: $(if($defaults.IsEnabled){'ENABLED'}else{'DISABLED'})" -ForegroundColor $col
+
+$all     = Get-MgIdentityConditionalAccessPolicy -All
+$enabled = $all | Where-Object { $_.State -eq 'enabled' }
+$report  = $all | Where-Object { $_.State -eq 'enabledForReportingButNotEnforced' }
+
+Write-Host "`nConditional Access: $($all.Count) total | $($enabled.Count) enforced | $($report.Count) report-only" -ForegroundColor Cyan
+
+if (-not $defaults.IsEnabled -and $enabled.Count -eq 0) {
+    Write-Host "`nCRITICAL: Security Defaults disabled AND no CA policies enforced." -ForegroundColor Red
+    Write-Host "The tenant has no baseline MFA enforcement." -ForegroundColor Red
+} elseif (-not $defaults.IsEnabled) {
+    Write-Host "`nRelying on $($enabled.Count) Conditional Access policy/policies." -ForegroundColor Yellow
+    Write-Host "Verify CA policies cover: MFA for all users, block legacy auth, require compliant device." -ForegroundColor Yellow
+} else {
+    Write-Host "`nSecurity Defaults active. Note: conflicts with custom CA policies if both are enabled." -ForegroundColor Green
+}
+
+Write-Host "`nEnabled CA Policies:" -ForegroundColor Cyan
+$enabled | Select-Object DisplayName, State | Format-Table -AutoSize
+Disconnect-MgGraph"""
+    },
+
+    "SEC-003": {
+        "title": "MFA number matching status",
+        "description": "Checks whether number matching (MFA fatigue protection) is enabled in the Microsoft Authenticator policy.",
+        "script": r"""# SEC-003 — MFA Fatigue Protection (Number Matching)
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+$msAuth = Get-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration `
+          -AuthenticationMethodConfigurationId "MicrosoftAuthenticator"
+
+Write-Host "`nMicrosoft Authenticator: $($msAuth.State)" -ForegroundColor $(if($msAuth.State -eq 'enabled'){'Green'}else{'Red'})
+
+$props = $msAuth.AdditionalProperties
+if ($props.featureSettings) {
+    $nm  = $props.featureSettings.numberMatchingRequiredState
+    $ctx = $props.featureSettings.displayAppInformationRequiredState
+    Write-Host "Number Matching:    $(if($nm.state -eq 'enabled'){'ENABLED'}else{'DISABLED'})" `
+               -ForegroundColor $(if($nm.state -eq 'enabled'){'Green'}else{'Red'})
+    Write-Host "Additional Context: $(if($ctx.state -eq 'enabled'){'ENABLED'}else{'DISABLED'})" `
+               -ForegroundColor $(if($ctx.state -eq 'enabled'){'Green'}else{'Red'})
+} else {
+    Write-Host "Could not read feature settings. Check Entra ID > Authentication Methods > Microsoft Authenticator." -ForegroundColor Yellow
+}
+
+Write-Host "`nNumber matching prevents MFA fatigue attacks (push bombing)." -ForegroundColor Cyan
+Write-Host "Enable at: Entra ID > Protection > Authentication Methods > Microsoft Authenticator > Configure" -ForegroundColor White
+Disconnect-MgGraph"""
+    },
+
+    "SEC-004": {
+        "title": "Enabled authentication methods",
+        "description": "Lists all enabled authentication methods in the tenant, flagging weak options such as SMS and voice call.",
+        "script": r"""# SEC-004 — Authentication Method Inventory
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+$weak   = @('Sms','Voice','Email')
+$strong = @('MicrosoftAuthenticator','Fido2','WindowsHelloForBusiness','SoftwareOath','TemporaryAccessPass')
+
+$policy = Get-MgPolicyAuthenticationMethodPolicy
+Write-Host "`nAuthentication Method Status:" -ForegroundColor Cyan
+
+foreach ($method in $policy.AuthenticationMethodConfigurations) {
+    $isWeak   = $weak   -contains $method.Id
+    $isStrong = $strong -contains $method.Id
+    $tag      = if ($isWeak) { '  [WEAK — consider disabling]' } elseif ($isStrong) { '  [Strong]' } else { '' }
+    $col      = if ($method.State -eq 'enabled' -and $isWeak) { 'Red' } `
+                elseif ($method.State -eq 'enabled' -and $isStrong) { 'Green' } `
+                else { 'Gray' }
+    Write-Host "  $($method.Id.PadRight(32)) $($method.State)$tag" -ForegroundColor $col
+}
+
+Write-Host "`nSMS and Voice are vulnerable to SIM swapping and SS7 interception." -ForegroundColor Yellow
+Write-Host "Disable weak methods once Authenticator or FIDO2 is fully deployed." -ForegroundColor Cyan
+Disconnect-MgGraph"""
+    },
+
+    "SEC-005": {
+        "title": "User app consent configuration",
+        "description": "Shows whether users can consent to OAuth applications without admin approval, and lists existing user-level grants.",
+        "script": r"""# SEC-005 — User App Consent Policy
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All", "Directory.Read.All" -NoWelcome
+
+$authPolicy  = Get-MgPolicyAuthorizationPolicy | Select-Object -First 1
+$grantPolicies = $authPolicy.PermissionGrantPolicyIdsAssignedToDefaultUserRole
+
+Write-Host "`nUser Consent Policy:" -ForegroundColor Cyan
+Write-Host "  Permission grant policies: $($grantPolicies -join ', ')" -ForegroundColor White
+
+if ($grantPolicies -contains 'ManagePermissionGrantsForSelf.microsoft-user-default-legacy') {
+    Write-Host "`n  WARNING: Users can consent to any OAuth app requesting any permission." -ForegroundColor Red
+    Write-Host "  This enables illicit consent grant (OAuth phishing) attacks." -ForegroundColor Red
+} elseif ($grantPolicies -contains 'ManagePermissionGrantsForSelf.microsoft-user-default-low') {
+    Write-Host "`n  Users can consent to low-risk permissions only." -ForegroundColor Yellow
+    Write-Host "  Consider requiring admin approval for all third-party apps." -ForegroundColor Yellow
+} elseif (-not $grantPolicies) {
+    Write-Host "`n  Users cannot consent to apps — admin approval required. Good." -ForegroundColor Green
+}
+
+Write-Host "`nUser-level OAuth permission grants in tenant:" -ForegroundColor Cyan
+$grants = Get-MgOauth2PermissionGrant -All | Where-Object { $_.ConsentType -eq 'Principal' }
+Write-Host "  $($grants.Count) user-level OAuth grant(s) found" -ForegroundColor $(if($grants.Count -gt 0){'Yellow'}else{'Green'})
+
+if ($grants.Count -gt 0) {
+    $csv = "OAuthUserGrants_$(Get-Date -Format yyyyMMdd).csv"
+    $grants | Select-Object ClientId, ConsentType, PrincipalId, Scope | Export-Csv $csv -NoTypeInformation
+    Write-Host "  Exported: $csv" -ForegroundColor Cyan
+    Write-Host "  Review each grant in Entra ID > Enterprise Applications > Permissions" -ForegroundColor White
+}
+Disconnect-MgGraph"""
+    },
+
+    "CA-001": {
+        "title": "Conditional Access policy inventory",
+        "description": "Lists all Conditional Access policies by state — enforced, report-only, and disabled — to identify coverage gaps.",
+        "script": r"""# CA-001 — Conditional Access Policy Inventory
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+$all        = Get-MgIdentityConditionalAccessPolicy -All
+$enabled    = $all | Where-Object { $_.State -eq 'enabled' }
+$reportOnly = $all | Where-Object { $_.State -eq 'enabledForReportingButNotEnforced' }
+$disabled   = $all | Where-Object { $_.State -eq 'disabled' }
+
+Write-Host "`nConditional Access Policy Summary:" -ForegroundColor Cyan
+Write-Host "  Total:        $($all.Count)" -ForegroundColor White
+Write-Host "  Enforced:     $($enabled.Count)" -ForegroundColor $(if($enabled.Count -gt 0){'Green'}else{'Red'})
+Write-Host "  Report-only:  $($reportOnly.Count)" -ForegroundColor Yellow
+Write-Host "  Disabled:     $($disabled.Count)" -ForegroundColor Gray
+
+if ($enabled.Count -eq 0) {
+    Write-Host "`n  CRITICAL: No policies are enforced. Users are not protected by Conditional Access." -ForegroundColor Red
+}
+
+Write-Host "`nEnforced Policies:" -ForegroundColor Green
+if ($enabled) { $enabled | Select-Object DisplayName, State, ModifiedDateTime | Format-Table -AutoSize }
+else { Write-Host "  None" -ForegroundColor Red }
+
+Write-Host "`nReport-Only Policies (not yet enforced):" -ForegroundColor Yellow
+if ($reportOnly) { $reportOnly | Select-Object DisplayName | Format-Table -AutoSize }
+else { Write-Host "  None" -ForegroundColor Gray }
+
+$csv = "CAPolicies_$(Get-Date -Format yyyyMMdd).csv"
+$all | Select-Object DisplayName, State, CreatedDateTime, ModifiedDateTime | Export-Csv $csv -NoTypeInformation
+Write-Host "Full policy list exported: $csv" -ForegroundColor Cyan
+Disconnect-MgGraph"""
+    },
+
+    "CA-002": {
+        "title": "Legacy authentication sign-in activity",
+        "description": "Checks for a CA policy blocking legacy auth and shows recent sign-ins using legacy protocols from sign-in logs.",
+        "script": r"""# CA-002 — Legacy Authentication Check
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All, AuditLog.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All", "AuditLog.Read.All" -NoWelcome
+
+# Check for CA policy blocking legacy auth
+$allPolicies  = Get-MgIdentityConditionalAccessPolicy -All
+$legacyBlock  = $allPolicies | Where-Object {
+    $_.State -eq 'enabled' -and
+    $_.Conditions.ClientAppTypes -contains 'exchangeActiveSync' -and
+    $_.Conditions.ClientAppTypes -contains 'other' -and
+    $_.GrantControls.BuiltInControls -contains 'block'
+}
+
+if ($legacyBlock) {
+    Write-Host "`nLegacy authentication is BLOCKED by CA policy:" -ForegroundColor Green
+    $legacyBlock | Select-Object DisplayName, State | Format-Table -AutoSize
+} else {
+    Write-Host "`nWARNING: No CA policy found blocking legacy authentication." -ForegroundColor Red
+    Write-Host "Legacy auth bypasses MFA — a primary vector for password spray attacks." -ForegroundColor Red
+}
+
+# Check sign-in logs for legacy protocol usage (last 7 days)
+Write-Host "`nChecking sign-in logs for legacy protocol usage (last 7 days)..." -ForegroundColor Cyan
+$signIns = Get-MgAuditLogSignIn `
+           -Filter "clientAppUsed ne 'Browser' and clientAppUsed ne 'Mobile Apps and Desktop clients'" `
+           -Top 100 -ErrorAction SilentlyContinue
+
+if ($signIns) {
+    $grouped = $signIns | Group-Object ClientAppUsed | Sort-Object Count -Descending
+    Write-Host "`nLegacy protocol usage breakdown:" -ForegroundColor Yellow
+    $grouped | Select-Object Name, Count | Format-Table -AutoSize
+    $csv = "LegacyAuthSignIns_$(Get-Date -Format yyyyMMdd).csv"
+    $signIns | Select-Object UserPrincipalName, ClientAppUsed, AppDisplayName, CreatedDateTime, IpAddress |
+               Export-Csv $csv -NoTypeInformation
+    Write-Host "Sign-in details exported: $csv" -ForegroundColor Cyan
+} else {
+    Write-Host "No legacy authentication sign-ins found." -ForegroundColor Green
+}
+Disconnect-MgGraph"""
+    },
+
+    "EXO-002": {
+        "title": "Mailbox audit configuration",
+        "description": "Checks org-level audit status and lists any mailboxes with auditing explicitly disabled.",
+        "script": r"""# EXO-002 — Mailbox Audit Status
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+$orgConfig = Get-OrganizationConfig | Select-Object AuditDisabled
+Write-Host "`nOrganisation-level auditing: $(if(-not $orgConfig.AuditDisabled){'ENABLED'}else{'DISABLED'})" `
+           -ForegroundColor $(if(-not $orgConfig.AuditDisabled){'Green'}else{'Red'})
+
+$disabled = Get-Mailbox -ResultSize Unlimited -Filter "AuditEnabled -eq `$false" |
+            Select-Object UserPrincipalName, DisplayName, RecipientTypeDetails
+
+if ($disabled.Count -eq 0) {
+    Write-Host "All mailboxes have auditing enabled." -ForegroundColor Green
+} else {
+    Write-Host "`n$($disabled.Count) mailbox(es) with auditing explicitly disabled:" -ForegroundColor Red
+    $disabled | Format-Table -AutoSize
+    $csv = "AuditDisabledMailboxes_$(Get-Date -Format yyyyMMdd).csv"
+    $disabled | Export-Csv $csv -NoTypeInformation
+    Write-Host "Exported: $csv" -ForegroundColor Cyan
+}
+
+# Show audit actions on a sample mailbox
+$sample = Get-Mailbox -ResultSize 1 -RecipientTypeDetails UserMailbox
+if ($sample) {
+    Write-Host "`nSample mailbox audit actions ($($sample.UserPrincipalName)):" -ForegroundColor Cyan
+    $audit = Get-Mailbox -Identity $sample.UserPrincipalName |
+             Select-Object AuditEnabled, AuditOwner, AuditDelegate, AuditAdmin
+    Write-Host "  Enabled:   $($audit.AuditEnabled)"
+    Write-Host "  Owner:     $($audit.AuditOwner -join ', ')"
+    Write-Host "  Delegate:  $($audit.AuditDelegate -join ', ')"
+    Write-Host "  Admin:     $($audit.AuditAdmin -join ', ')"
+}
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "EXO-003": {
+        "title": "Anti-phishing policy review",
+        "description": "Shows spoof intelligence, mailbox intelligence, and impersonation protection settings across all anti-phishing policies.",
+        "script": r"""# EXO-003 — Anti-Phishing Policy Review
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+$policies = Get-AntiPhishPolicy | Sort-Object IsDefault -Descending
+
+foreach ($policy in $policies) {
+    $label = if ($policy.IsDefault) { ' [Default]' } else { '' }
+    Write-Host "`nPolicy: $($policy.Name)$label" -ForegroundColor Cyan
+    Write-Host "  Enabled:                  $($policy.Enabled)" `
+               -ForegroundColor $(if($policy.Enabled){'Green'}else{'Red'})
+    Write-Host "  Spoof Intelligence:       $($policy.EnableSpoofIntelligence)" `
+               -ForegroundColor $(if($policy.EnableSpoofIntelligence){'Green'}else{'Red'})
+    Write-Host "  Mailbox Intelligence:     $($policy.EnableMailboxIntelligence)" `
+               -ForegroundColor $(if($policy.EnableMailboxIntelligence){'Green'}else{'Red'})
+    Write-Host "  Honour DMARC Policy:      $($policy.HonorDmarcPolicy)" `
+               -ForegroundColor $(if($policy.HonorDmarcPolicy){'Green'}else{'Yellow'})
+    Write-Host "  User Impersonation:       $($policy.EnableTargetedUserProtection)" `
+               -ForegroundColor $(if($policy.EnableTargetedUserProtection){'Green'}else{'Yellow'})
+    Write-Host "  Domain Impersonation:     $($policy.EnableTargetedDomainsProtection)" `
+               -ForegroundColor $(if($policy.EnableTargetedDomainsProtection){'Green'}else{'Yellow'})
+    Write-Host "  Phish Threshold Level:    $($policy.PhishThresholdLevel)  (1=Standard 2=Aggressive 3=More 4=Most)"
+}
+
+$csv = "AntiPhishPolicies_$(Get-Date -Format yyyyMMdd).csv"
+$policies | Select-Object Name, Enabled, EnableSpoofIntelligence, HonorDmarcPolicy,
+            EnableMailboxIntelligence, EnableTargetedUserProtection, PhishThresholdLevel |
+            Export-Csv $csv -NoTypeInformation
+Write-Host "`nFull policy export: $csv" -ForegroundColor Cyan
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "TEAMS-001": {
+        "title": "Teams external access configuration",
+        "description": "Shows federation settings and whether external Teams users can communicate freely or only via an allowed domain list.",
+        "script": r"""# TEAMS-001 — Teams External Access Review
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+$config = Get-CsTenantFederationConfiguration
+
+Write-Host "`nTeams External Access Settings:" -ForegroundColor Cyan
+Write-Host "  AllowFederatedUsers:       $($config.AllowFederatedUsers)" `
+           -ForegroundColor $(if($config.AllowFederatedUsers){'Yellow'}else{'Green'})
+Write-Host "  AllowPublicUsers:          $($config.AllowPublicUsers)" `
+           -ForegroundColor $(if($config.AllowPublicUsers){'Yellow'}else{'Green'})
+Write-Host "  AllowTeamsConsumer:        $($config.AllowTeamsConsumer)" `
+           -ForegroundColor $(if($config.AllowTeamsConsumer){'Red'}else{'Green'})
+
+if ($config.AllowFederatedUsers) {
+    $allowed = Get-CsAllowedDomain
+    $blocked = Get-CsBlockedDomain
+    if ($allowed.Count -gt 0) {
+        Write-Host "`n  Allowed domains list (restricted federation — good):" -ForegroundColor Green
+        $allowed | Select-Object Domain | Format-Table -AutoSize
+    } else {
+        Write-Host "`n  Open federation — any external Teams tenant can contact your users." -ForegroundColor Red
+        Write-Host "  Recommendation: Restrict to an allowed domain list of approved partners." -ForegroundColor Yellow
+    }
+    if ($blocked.Count -gt 0) {
+        Write-Host "  Explicitly blocked domains: $($blocked.Count)" -ForegroundColor Yellow
+    }
+}
+
+$csv = "TeamsFederation_$(Get-Date -Format yyyyMMdd).csv"
+[PSCustomObject]@{
+    AllowFederatedUsers = $config.AllowFederatedUsers
+    AllowPublicUsers    = $config.AllowPublicUsers
+    AllowTeamsConsumer  = $config.AllowTeamsConsumer
+    AllowedDomains      = (Get-CsAllowedDomain).Count
+    BlockedDomains      = (Get-CsBlockedDomain).Count
+} | Export-Csv $csv -NoTypeInformation
+Write-Host "`nConfiguration exported: $csv" -ForegroundColor Cyan
+Disconnect-MicrosoftTeams"""
+    },
+
+    "TEAMS-002": {
+        "title": "Teams consumer access status",
+        "description": "Checks whether personal Microsoft accounts (Teams personal/Skype) can communicate with your tenant users.",
+        "script": r"""# TEAMS-002 — Teams Consumer (Personal Account) Access
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+$config = Get-CsTenantFederationConfiguration
+
+Write-Host "`nTeams Consumer Access Settings:" -ForegroundColor Cyan
+Write-Host "  AllowTeamsConsumer:        $($config.AllowTeamsConsumer)" `
+           -ForegroundColor $(if($config.AllowTeamsConsumer){'Red'}else{'Green'})
+Write-Host "  AllowTeamsConsumerInbound: $($config.AllowTeamsConsumerInbound)" `
+           -ForegroundColor $(if($config.AllowTeamsConsumerInbound){'Red'}else{'Green'})
+
+if ($config.AllowTeamsConsumer -or $config.AllowTeamsConsumerInbound) {
+    Write-Host "`n  WARNING: Personal Microsoft accounts can communicate with your users." -ForegroundColor Red
+    Write-Host "  Files and chats can be shared with unmanaged, unaudited accounts." -ForegroundColor Red
+    Write-Host "`n  To disable:" -ForegroundColor Yellow
+    Write-Host "  Set-CsTenantFederationConfiguration -AllowTeamsConsumer `$false -AllowTeamsConsumerInbound `$false" -ForegroundColor White
+} else {
+    Write-Host "`n  Teams consumer access is blocked. Good." -ForegroundColor Green
+}
+
+$meetingPolicy = Get-CsTeamsMeetingPolicy -Identity Global
+Write-Host "`n  Anonymous meeting join: $($meetingPolicy.AllowAnonymousUsersToJoinMeeting)" `
+           -ForegroundColor $(if($meetingPolicy.AllowAnonymousUsersToJoinMeeting){'Yellow'}else{'Green'})
+Disconnect-MicrosoftTeams"""
+    },
+
+    "SPO-001": {
+        "title": "SharePoint sharing level and anonymous links",
+        "description": "Checks the tenant-level sharing setting and identifies sites with Anyone (anonymous) link sharing enabled.",
+        "script": r"""# SPO-001 — SharePoint Sharing Level Audit
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+$level  = $tenant.SharingCapability
+
+$levelDesc = switch ($level) {
+    'Disabled'                       { 'Sharing disabled — most restrictive' }
+    'ExistingExternalUserSharingOnly'{ 'Existing external users only' }
+    'ExternalUserSharingOnly'        { 'New and existing guests (sign-in required)' }
+    'ExternalUserAndGuestSharing'    { 'Anyone — anonymous links ALLOWED' }
+    default                          { $level }
+}
+$col = if ($level -eq 'ExternalUserAndGuestSharing') { 'Red' } `
+       elseif ($level -eq 'ExternalUserSharingOnly') { 'Yellow' } else { 'Green' }
+
+Write-Host "`nTenant Sharing Level: $level" -ForegroundColor $col
+Write-Host "  $levelDesc" -ForegroundColor $col
+Write-Host "  Anyone link expiry: $($tenant.RequireAnonymousLinksExpireInDays) days (0 = no expiry)" `
+           -ForegroundColor $(if($tenant.RequireAnonymousLinksExpireInDays -eq 0 -and $level -eq 'ExternalUserAndGuestSharing'){'Red'}else{'Green'})
+Write-Host "  Default link type: $($tenant.DefaultSharingLinkType)" -ForegroundColor Cyan
+
+Write-Host "`nChecking sites with Anyone link sharing enabled..." -ForegroundColor Cyan
+$sites = Get-SPOSite -Limit All -IncludePersonalSite $false |
+         Where-Object { $_.SharingCapability -eq 'ExternalUserAndGuestSharing' }
+
+if ($sites.Count -gt 0) {
+    Write-Host "$($sites.Count) site(s) allow anonymous links:" -ForegroundColor Red
+    $sites | Select-Object Url, SharingCapability | Format-Table -AutoSize
+    $csv = "SPOAnonymousSites_$(Get-Date -Format yyyyMMdd).csv"
+    $sites | Export-Csv $csv -NoTypeInformation
+    Write-Host "Exported: $csv" -ForegroundColor Cyan
+} else {
+    Write-Host "No sites with anonymous link sharing found." -ForegroundColor Green
+}
+Disconnect-SPOService"""
+    },
+
+    "SPO-002": {
+        "title": "SharePoint legacy authentication status",
+        "description": "Shows whether legacy authentication protocols are enabled in SharePoint, allowing connections that bypass MFA.",
+        "script": r"""# SPO-002 — SharePoint Legacy Authentication
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+
+Write-Host "`nSharePoint Legacy Authentication:" -ForegroundColor Cyan
+Write-Host "  LegacyAuthProtocolsEnabled: $($tenant.LegacyAuthProtocolsEnabled)" `
+           -ForegroundColor $(if($tenant.LegacyAuthProtocolsEnabled){'Red'}else{'Green'})
+Write-Host "  BrowserSSOEnabled:          $($tenant.BrowserSSOEnabled)" `
+           -ForegroundColor $(if($tenant.BrowserSSOEnabled){'Green'}else{'Yellow'})
+Write-Host "  ConditionalAccessPolicy:    $($tenant.ConditionalAccessPolicy)" -ForegroundColor Cyan
+
+if ($tenant.LegacyAuthProtocolsEnabled) {
+    Write-Host "`n  WARNING: Legacy authentication is enabled." -ForegroundColor Red
+    Write-Host "  Basic auth connections can bypass MFA and Conditional Access." -ForegroundColor Red
+    Write-Host "`n  To disable:" -ForegroundColor Yellow
+    Write-Host "  Set-SPOTenant -LegacyAuthProtocolsEnabled `$false" -ForegroundColor White
+} else {
+    Write-Host "`n  Legacy authentication is disabled. Good." -ForegroundColor Green
+}
+
+Write-Host "`nAdditional settings:" -ForegroundColor Cyan
+Write-Host "  EmailAttestationRequired:              $($tenant.EmailAttestationRequired)"
+Write-Host "  AllowDownloadingNonWebViewableFiles:   $($tenant.AllowDownloadingNonWebViewableFiles)"
+Disconnect-SPOService"""
+    },
+
+    "MDM-002": {
+        "title": "Intune compliance policy inventory",
+        "description": "Lists all Intune compliance policies, shows platform coverage, and identifies any policies with no assignments.",
+        "script": r"""# MDM-002 — Intune Compliance Policy Inventory
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All" -NoWelcome
+
+$policies = Get-MgDeviceManagementDeviceCompliancePolicy -All -ErrorAction SilentlyContinue
+
+if (-not $policies -or $policies.Count -eq 0) {
+    Write-Host "`nCRITICAL: No Intune compliance policies found." -ForegroundColor Red
+    Write-Host "Without compliance policies, device health cannot be enforced and" -ForegroundColor Red
+    Write-Host "Conditional Access cannot block non-compliant devices from accessing resources." -ForegroundColor Red
+    Write-Host "`nCreate compliance policies at: https://intune.microsoft.com > Devices > Compliance" -ForegroundColor Yellow
+} else {
+    Write-Host "`nIntune Compliance Policies: $($policies.Count) found" -ForegroundColor Green
+
+    Write-Host "`nPlatform coverage:" -ForegroundColor Cyan
+    $policies | Group-Object {
+        $_.AdditionalProperties['@odata.type'] -replace '#microsoft.graph.','' -replace 'CompliancePolicy',''
+    } | Select-Object Name, Count | Format-Table -AutoSize
+
+    # Check for unassigned policies
+    Write-Host "Checking assignments..." -ForegroundColor Cyan
+    $unassigned = [System.Collections.Generic.List[object]]::new()
+    foreach ($p in $policies) {
+        $assignments = Get-MgDeviceManagementDeviceCompliancePolicyAssignment `
+                       -DeviceCompliancePolicyId $p.Id -ErrorAction SilentlyContinue
+        if (-not $assignments) { $unassigned.Add($p) }
+    }
+
+    if ($unassigned.Count -gt 0) {
+        Write-Host "`n$($unassigned.Count) policy/policies exist but are NOT assigned to any users or devices:" -ForegroundColor Yellow
+        $unassigned | Select-Object DisplayName | Format-Table -AutoSize
+    } else {
+        Write-Host "All compliance policies are assigned." -ForegroundColor Green
+    }
+
+    $csv = "CompliancePolicies_$(Get-Date -Format yyyyMMdd).csv"
+    $policies | Select-Object DisplayName, CreatedDateTime, LastModifiedDateTime | Export-Csv $csv -NoTypeInformation
+    Write-Host "`nFull list exported: $csv" -ForegroundColor Cyan
+}
+Disconnect-MgGraph"""
+    },
+
+    "ID-006": {
+        "title": "Risky user details",
+        "description": "Lists all high and medium risk users from Entra ID Identity Protection with their risk level, state, and last update.",
+        "script": r"""# ID-006 — Risky User Review
+# Requires: Microsoft.Graph module
+# Permissions: IdentityRiskyUser.Read.All
+
+Connect-MgGraph -Scopes "IdentityRiskyUser.Read.All" -NoWelcome
+
+$riskyUsers = Get-MgRiskyUser -All -Filter "riskState ne 'remediated' and riskState ne 'dismissed'" |
+              Where-Object { $_.RiskLevel -in @('high','medium') } |
+              Sort-Object RiskLevel, RiskLastUpdatedDateTime -Descending
+
+if ($riskyUsers.Count -eq 0) {
+    Write-Host "`nNo high or medium risk users found. Good." -ForegroundColor Green
+} else {
+    Write-Host "`n$($riskyUsers.Count) risky user(s) requiring attention:" -ForegroundColor Red
+    $riskyUsers | Select-Object UserPrincipalName, RiskLevel, RiskState, RiskDetail, RiskLastUpdatedDateTime |
+                  Format-Table -AutoSize
+
+    $csv = "RiskyUsers_$(Get-Date -Format yyyyMMdd).csv"
+    $riskyUsers | Select-Object UserPrincipalName, RiskLevel, RiskState, RiskDetail, RiskLastUpdatedDateTime |
+                  Export-Csv $csv -NoTypeInformation
+    Write-Host "Exported: $csv" -ForegroundColor Cyan
+    Write-Host "`nRecommended actions:" -ForegroundColor Yellow
+    Write-Host "  - High risk: block sign-in and require password reset immediately" -ForegroundColor White
+    Write-Host "  - Medium risk: require MFA re-registration and password change" -ForegroundColor White
+    Write-Host "  - Dismiss false positives in Entra ID > Protection > Risky users" -ForegroundColor White
+}
+Disconnect-MgGraph"""
+    },
+
+    "ID-007": {
+        "title": "Emergency access account detection",
+        "description": "Attempts to identify break-glass accounts by looking for Global Admins excluded from all enabled Conditional Access policies.",
+        "script": r"""# ID-007 — Emergency Access Account Detection
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All", "Directory.Read.All" -NoWelcome
+
+# Get all Global Admins
+$gaRole   = Get-MgDirectoryRole -Filter "displayName eq 'Global Administrator'"
+$gaMembers = @{}
+if ($gaRole) {
+    Get-MgDirectoryRoleMember -DirectoryRoleId $gaRole.Id -All | ForEach-Object {
+        $gaMembers[$_.Id] = $_.AdditionalProperties['userPrincipalName'] ?? $_.Id
+    }
+}
+
+# Get all enabled CA policies and their excluded users
+$policies       = Get-MgIdentityConditionalAccessPolicy -All | Where-Object { $_.State -eq 'enabled' }
+$exclusionCount = @{}
+foreach ($p in $policies) {
+    foreach ($uid in $p.Conditions.Users.ExcludeUsers) {
+        $exclusionCount[$uid] = ($exclusionCount[$uid] ?? 0) + 1
+    }
+}
+
+# Find Global Admins excluded from ALL enabled CA policies
+$totalPolicies   = $policies.Count
+$breakGlassFound = [System.Collections.Generic.List[object]]::new()
+
+foreach ($uid in $gaMembers.Keys) {
+    $exCount = $exclusionCount[$uid] ?? 0
+    if ($totalPolicies -gt 0 -and $exCount -eq $totalPolicies) {
+        $breakGlassFound.Add([PSCustomObject]@{
+            UserPrincipalName = $gaMembers[$uid]
+            UserId            = $uid
+            ExcludedFromPolicies = $exCount
+            TotalPolicies        = $totalPolicies
+            Assessment = 'Likely break-glass account'
+        })
+    }
+}
+
+Write-Host "`nGlobal Administrators: $($gaMembers.Count)" -ForegroundColor Cyan
+Write-Host "Enabled CA Policies:   $totalPolicies" -ForegroundColor Cyan
+
+if ($breakGlassFound.Count -gt 0) {
+    Write-Host "`nPotential emergency access account(s) detected:" -ForegroundColor Green
+    $breakGlassFound | Format-Table -AutoSize
+    Write-Host "Verify these accounts have credentials stored securely offline." -ForegroundColor Yellow
+} else {
+    Write-Host "`nNo account found that is excluded from ALL CA policies." -ForegroundColor Red
+    Write-Host "Consider creating a dedicated emergency access account excluded from all CA policies." -ForegroundColor Yellow
+    Write-Host "See: https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access" -ForegroundColor White
+}
+Disconnect-MgGraph"""
+    },
+
+    "SEC-006": {
+        "title": "Microsoft Sentinel connection status",
+        "description": "Checks for Sentinel alert activity via the Microsoft Security Graph API as a proxy for whether Sentinel is connected.",
+        "script": r"""# SEC-006 — Microsoft Sentinel Connection Check
+# Requires: Microsoft.Graph module
+# Permissions: SecurityEvents.Read.All
+
+Connect-MgGraph -Scopes "SecurityEvents.Read.All" -NoWelcome
+
+Write-Host "`nChecking for Microsoft Sentinel alert activity..." -ForegroundColor Cyan
+
+try {
+    # Check for Sentinel alerts via Security API
+    $sentinelAlerts = Get-MgSecurityAlert -All -ErrorAction Stop |
+                      Where-Object { $_.VendorInformation.Provider -match 'Sentinel|Azure Sentinel' }
+
+    if ($sentinelAlerts.Count -gt 0) {
+        Write-Host "Microsoft Sentinel alerts found: $($sentinelAlerts.Count)" -ForegroundColor Green
+        Write-Host "Sentinel appears to be connected and generating alerts.`n" -ForegroundColor Green
+        $sentinelAlerts | Select-Object Title, Severity, Status, CreatedDateTime |
+                          Sort-Object CreatedDateTime -Descending |
+                          Select-Object -First 10 |
+                          Format-Table -AutoSize
+    } else {
+        Write-Host "No Sentinel alerts found via Security Graph API." -ForegroundColor Yellow
+        Write-Host "This may indicate Sentinel is not connected, or no alerts have been generated." -ForegroundColor Yellow
+        Write-Host "`nTo verify directly, check:" -ForegroundColor Cyan
+        Write-Host "  Azure Portal > Microsoft Sentinel > Overview" -ForegroundColor White
+        Write-Host "  https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade" -ForegroundColor White
+    }
+
+    # Also check all security alert providers for context
+    $allProviders = Get-MgSecurityAlert -All -ErrorAction SilentlyContinue |
+                    Group-Object { $_.VendorInformation.Provider } |
+                    Sort-Object Count -Descending
+    if ($allProviders) {
+        Write-Host "`nSecurity alert providers currently active:" -ForegroundColor Cyan
+        $allProviders | Select-Object Name, Count | Format-Table -AutoSize
+    }
+} catch {
+    Write-Host "Could not query Security alerts: $_" -ForegroundColor Red
+    Write-Host "Check permissions: SecurityEvents.Read.All is required." -ForegroundColor Yellow
+}
+Disconnect-MgGraph"""
+    },
+
+    "EXO-004": {
+        "title": "DMARC DNS record check",
+        "description": "Performs a DNS lookup for the DMARC TXT record on your primary domain and shows the current policy.",
+        "script": r"""# EXO-004 — DMARC Configuration Check
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+# Get primary accepted domain
+$primaryDomain = (Get-AcceptedDomain | Where-Object { $_.Default -eq $true }).DomainName
+Write-Host "`nPrimary domain: $primaryDomain" -ForegroundColor Cyan
+
+# Check DMARC
+Write-Host "`nDMARC Record:" -ForegroundColor Cyan
+try {
+    $dmarc = Resolve-DnsName -Name "_dmarc.$primaryDomain" -Type TXT -ErrorAction Stop
+    $dmarcRecord = ($dmarc | Where-Object { $_.Strings -match 'v=DMARC1' }).Strings -join ''
+    if ($dmarcRecord) {
+        Write-Host "  FOUND: $dmarcRecord" -ForegroundColor Green
+        if ($dmarcRecord -match 'p=none')      { Write-Host "  Policy: none (monitoring only — not enforced)" -ForegroundColor Yellow }
+        elseif ($dmarcRecord -match 'p=quarantine') { Write-Host "  Policy: quarantine (failing emails go to spam)" -ForegroundColor Yellow }
+        elseif ($dmarcRecord -match 'p=reject') { Write-Host "  Policy: reject (failing emails blocked — strongest)" -ForegroundColor Green }
+    } else {
+        Write-Host "  TXT record found but no DMARC record present." -ForegroundColor Red
+    }
+} catch {
+    Write-Host "  NOT FOUND — no DMARC record at _dmarc.$primaryDomain" -ForegroundColor Red
+    Write-Host "  Attackers can spoof @$primaryDomain in phishing emails." -ForegroundColor Red
+}
+
+# Check SPF while we're here
+Write-Host "`nSPF Record:" -ForegroundColor Cyan
+try {
+    $spf = Resolve-DnsName -Name $primaryDomain -Type TXT -ErrorAction Stop
+    $spfRecord = ($spf | Where-Object { $_.Strings -match 'v=spf1' }).Strings -join ''
+    if ($spfRecord) {
+        Write-Host "  FOUND: $spfRecord" -ForegroundColor Green
+    } else {
+        Write-Host "  NOT FOUND — no SPF record on $primaryDomain" -ForegroundColor Red
+    }
+} catch {
+    Write-Host "  Could not resolve DNS for $primaryDomain" -ForegroundColor Red
+}
+
+# DKIM
+Write-Host "`nDKIM Signing Status:" -ForegroundColor Cyan
+$dkim = Get-DkimSigningConfig -ErrorAction SilentlyContinue
+$dkim | Select-Object Domain, Enabled, Status | Format-Table -AutoSize
+
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "EXO-005": {
+        "title": "SPF and DKIM configuration",
+        "description": "Checks SPF DNS record on the primary domain and DKIM signing configuration in Exchange Online.",
+        "script": r"""# EXO-005 — SPF and DKIM Configuration Check
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+$primaryDomain = (Get-AcceptedDomain | Where-Object { $_.Default -eq $true }).DomainName
+Write-Host "`nPrimary domain: $primaryDomain" -ForegroundColor Cyan
+
+# SPF check
+Write-Host "`nSPF Record:" -ForegroundColor Cyan
+try {
+    $spf = Resolve-DnsName -Name $primaryDomain -Type TXT -ErrorAction Stop
+    $spfRecord = ($spf | Where-Object { $_.Strings -match 'v=spf1' }).Strings -join ''
+    if ($spfRecord) {
+        Write-Host "  FOUND: $spfRecord" -ForegroundColor Green
+        if ($spfRecord -match '~all') { Write-Host "  Qualifier: ~all (SoftFail — not rejected, marked as suspicious)" -ForegroundColor Yellow }
+        elseif ($spfRecord -match '-all') { Write-Host "  Qualifier: -all (HardFail — failing mail rejected)" -ForegroundColor Green }
+        elseif ($spfRecord -match '\+all') { Write-Host "  WARNING: +all allows any server to send as your domain" -ForegroundColor Red }
+    } else {
+        Write-Host "  NOT FOUND — no SPF record on $primaryDomain" -ForegroundColor Red
+        Write-Host "  Outbound email may be rejected by recipient servers." -ForegroundColor Red
+    }
+} catch {
+    Write-Host "  Could not resolve DNS for $primaryDomain" -ForegroundColor Red
+}
+
+# DKIM check
+Write-Host "`nDKIM Signing Configuration:" -ForegroundColor Cyan
+$dkimConfigs = Get-DkimSigningConfig -ErrorAction SilentlyContinue
+
+if (-not $dkimConfigs) {
+    Write-Host "  No DKIM signing configurations found." -ForegroundColor Red
+} else {
+    foreach ($d in $dkimConfigs) {
+        $col = if ($d.Enabled) { 'Green' } else { 'Red' }
+        Write-Host "  $($d.Domain.PadRight(50)) Enabled: $($d.Enabled)  Status: $($d.Status)" -ForegroundColor $col
+    }
+    $disabled = $dkimConfigs | Where-Object { -not $_.Enabled }
+    if ($disabled) {
+        Write-Host "`n  To enable DKIM for a domain:" -ForegroundColor Yellow
+        Write-Host "  Set-DkimSigningConfig -Identity domain.com -Enabled `$true" -ForegroundColor White
+        Write-Host "  Or: New-DkimSigningConfig -DomainName domain.com -Enabled `$true" -ForegroundColor White
+    }
+}
+
+# All accepted domains summary
+Write-Host "`nAll accepted domains:" -ForegroundColor Cyan
+Get-AcceptedDomain | Select-Object DomainName, Default, DomainType | Format-Table -AutoSize
+
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "MDM-003": {
+        "title": "Windows Update ring inventory",
+        "description": "Lists all Windows Update for Business rings configured in Intune with their deferral periods.",
+        "script": r"""# MDM-003 — Windows Update Ring Inventory
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All" -NoWelcome
+
+$allConfigs   = Get-MgDeviceManagementDeviceConfiguration -All -ErrorAction SilentlyContinue
+$updateRings  = $allConfigs | Where-Object {
+    $_.AdditionalProperties['@odata.type'] -like '*windowsUpdateForBusiness*'
+}
+
+if (-not $updateRings -or $updateRings.Count -eq 0) {
+    Write-Host "`nNo Windows Update rings found in Intune." -ForegroundColor Red
+    Write-Host "Without update rings, Windows devices may not receive patches consistently." -ForegroundColor Red
+    Write-Host "`nCreate update rings at: Intune > Devices > Windows > Update rings for Windows 10 and later" -ForegroundColor Yellow
+} else {
+    Write-Host "`nWindows Update Rings: $($updateRings.Count) found" -ForegroundColor Green
+
+    foreach ($ring in $updateRings) {
+        $props = $ring.AdditionalProperties
+        Write-Host "`nRing: $($ring.DisplayName)" -ForegroundColor Cyan
+        Write-Host "  Quality update deferral:  $($props['qualityUpdatesDeferralPeriodInDays'] ?? 'Not set') days"
+        Write-Host "  Feature update deferral:  $($props['featureUpdatesDeferralPeriodInDays'] ?? 'Not set') days"
+        Write-Host "  Automatic update behavior: $($props['automaticUpdateMode'] ?? 'Not set')"
+        Write-Host "  Created: $($ring.CreatedDateTime)"
+    }
+
+    # Check assignments
+    Write-Host "`nChecking ring assignments..." -ForegroundColor Cyan
+    $unassigned = [System.Collections.Generic.List[object]]::new()
+    foreach ($ring in $updateRings) {
+        $assignments = Get-MgDeviceManagementDeviceConfigurationAssignment `
+                       -DeviceConfigurationId $ring.Id -ErrorAction SilentlyContinue
+        if (-not $assignments) { $unassigned.Add($ring) }
+    }
+    if ($unassigned.Count -gt 0) {
+        Write-Host "$($unassigned.Count) ring(s) are not assigned to any users or devices:" -ForegroundColor Yellow
+        $unassigned | Select-Object DisplayName | Format-Table -AutoSize
+    } else {
+        Write-Host "All rings are assigned." -ForegroundColor Green
+    }
+}
+Disconnect-MgGraph"""
+    },
+
+    "MDM-004": {
+        "title": "BitLocker enforcement check",
+        "description": "Looks for BitLocker requirements in Intune compliance policies and device configuration profiles.",
+        "script": r"""# MDM-004 — BitLocker Enforcement Check
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All" -NoWelcome
+
+Write-Host "`nChecking Intune compliance policies for BitLocker requirement..." -ForegroundColor Cyan
+$compPolicies    = Get-MgDeviceManagementDeviceCompliancePolicy -All -ErrorAction SilentlyContinue
+$bitlockerCompPolicies = $compPolicies | Where-Object {
+    $_.AdditionalProperties['storageRequireDeviceEncryption'] -eq $true -or
+    $_.AdditionalProperties['bitLockerEnabled'] -eq $true
+}
+
+if ($bitlockerCompPolicies) {
+    Write-Host "  BitLocker required in compliance policy/policies:" -ForegroundColor Green
+    $bitlockerCompPolicies | Select-Object DisplayName | Format-Table -AutoSize
+} else {
+    Write-Host "  No compliance policy found requiring BitLocker/device encryption." -ForegroundColor Red
+}
+
+Write-Host "`nChecking device configuration profiles for BitLocker settings..." -ForegroundColor Cyan
+$configProfiles    = Get-MgDeviceManagementDeviceConfiguration -All -ErrorAction SilentlyContinue
+$bitlockerConfigs  = $configProfiles | Where-Object {
+    $_.AdditionalProperties['@odata.type'] -like '*bitLocker*' -or
+    $_.AdditionalProperties['bitLockerFixedDrivePolicy'] -or
+    $_.AdditionalProperties['bitLockerSystemDrivePolicy'] -or
+    $_.DisplayName -match 'bitlocker|encryption|encrypt'
+}
+
+if ($bitlockerConfigs) {
+    Write-Host "  BitLocker configuration profile(s) found:" -ForegroundColor Green
+    $bitlockerConfigs | Select-Object DisplayName, @{N='Type';E={$_.AdditionalProperties['@odata.type']}} |
+                        Format-Table -AutoSize
+} else {
+    Write-Host "  No BitLocker configuration profiles found." -ForegroundColor Red
+}
+
+if (-not $bitlockerCompPolicies -and -not $bitlockerConfigs) {
+    Write-Host "`nCRITICAL: BitLocker is not enforced via any Intune policy." -ForegroundColor Red
+    Write-Host "Devices that are lost or stolen will have unencrypted data." -ForegroundColor Red
+    Write-Host "`nTo fix:" -ForegroundColor Yellow
+    Write-Host "  1. Intune > Devices > Compliance policies > Create > Windows 10+ > Require BitLocker" -ForegroundColor White
+    Write-Host "  2. Intune > Devices > Configuration > Create > Windows > BitLocker (Endpoint Protection)" -ForegroundColor White
+}
+
 Disconnect-MgGraph"""
     },
 }

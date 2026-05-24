@@ -17,7 +17,8 @@ param(
     [Parameter(Mandatory=$false)] [string]$AuthMethod   = "Interactive",
     [Parameter(Mandatory=$false)] [string]$TenantId     = "",
     [Parameter(Mandatory=$false)] [string]$ClientId     = "",
-    [Parameter(Mandatory=$false)] [string]$ClientSecret = ""
+    [Parameter(Mandatory=$false)] [string]$ClientSecret = "",
+    [Parameter(Mandatory=$false)] [string]$Environment  = "commercial"
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,6 +26,15 @@ $ProgressPreference    = "SilentlyContinue"
 
 try {
     # ── Connect to Teams (always interactive) ─────────────────
+    # Configure government cloud environment before connecting
+    $TeamsEnv = switch ($Environment.ToLower()) {
+        "gcch" { "TeamsGCCH" }
+        "dod"  { "TeamsDod" }
+        default { $null }
+    }
+    if ($TeamsEnv) {
+        Set-TeamsEnvironmentConfig -TeamsEnvironmentName $TeamsEnv -ErrorAction SilentlyContinue
+    }
     if ($TenantId -ne "") {
         Connect-MicrosoftTeams -TenantId $TenantId | Out-Null
     } else {

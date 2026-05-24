@@ -15,7 +15,8 @@ param(
     [Parameter(Mandatory=$false)] [string]$TenantId     = "",
     [Parameter(Mandatory=$false)] [string]$ClientId     = "",
     [Parameter(Mandatory=$false)] [string]$ClientSecret = "",
-    [Parameter(Mandatory=$false)] [string]$SpAdminUrl   = ""
+    [Parameter(Mandatory=$false)] [string]$SpAdminUrl   = "",
+    [Parameter(Mandatory=$false)] [string]$Environment  = "commercial"
 )
 
 $ErrorActionPreference = "Stop"

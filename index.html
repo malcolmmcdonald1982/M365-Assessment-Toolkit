@@ -31,6 +31,7 @@
     padding: 1.25rem 2rem;
     display: flex; align-items: center; justify-content: space-between;
     background: var(--bg2);
+    position: relative; z-index: 10;
   }
   .logo { display: flex; align-items: center; gap: 12px; }
   .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
@@ -51,11 +52,12 @@
   .auth-toggle { display: flex; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 14px; }
   .auth-btn { flex: 1; padding: 7px 8px; border-radius: 5px; border: none; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 10px; cursor: pointer; transition: all 0.15s; text-align: center; letter-spacing: 0.03em; }
   .auth-btn.active { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
-  .auth-note { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.5; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
+  .auth-note { font-family: var(--sans); font-size: 11px; color: var(--muted); line-height: 1.6; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; }
   .auth-note.warn { border-color: rgba(245,158,11,0.3); color: var(--warning); }
 
+
   .field { margin-bottom: 10px; }
-  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-family: var(--mono); }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-family: var(--sans); }
   .field input, .field select { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.2s; }
   .field input:focus, .field select:focus { border-color: var(--accent); }
   .field input::placeholder { color: var(--muted); }
@@ -73,13 +75,13 @@
   .module-item.checked .module-check svg { display: block; }
   .module-info { flex: 1; }
   .module-name { font-size: 12px; font-weight: 600; }
-  .module-desc { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+  .module-desc { font-size: 10px; color: var(--muted); font-family: var(--sans); margin-top: 1px; }
   .module-tag { font-size: 9px; font-family: var(--mono); padding: 2px 6px; border-radius: 3px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); flex-shrink: 0; }
   .module-tag.app-only { color: var(--warning); border-color: rgba(245,158,11,0.3); }
   .select-all-btn { font-family: var(--mono); font-size: 10px; color: var(--accent); cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 10px; text-decoration: underline; text-underline-offset: 2px; }
 
   /* Interactive auth warning banner */
-  .interactive-warning { display: none; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-family: var(--mono); font-size: 10px; color: var(--warning); line-height: 1.6; }
+  .interactive-warning { display: none; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-family: var(--sans); font-size: 11px; color: var(--warning); line-height: 1.6; }
 
   .run-btn { margin: 1.25rem; width: calc(100% - 2.5rem); padding: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 8px; color: white; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .run-btn:hover { opacity: 0.9; }
@@ -111,7 +113,7 @@
   .session-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
   .session-btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
   .session-btn.primary:hover { opacity: 0.85; }
-  .sessions-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-family: var(--mono); font-size: 11px; line-height: 1.6; }
+  .sessions-empty { text-align: center; padding: 3rem 1rem; color: var(--muted); font-family: var(--sans); font-size: 12px; line-height: 1.6; }
   .sessions-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
   .sessions-overlay.open { display: block; }
   .loaded-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--success); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 4px; padding: 2px 8px; margin-left: 8px; }
@@ -127,14 +129,14 @@
   .welcome-icon { width: 64px; height: 64px; border: 1px solid var(--border2); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; }
   .welcome-icon svg { width: 32px; height: 32px; stroke: var(--muted); fill: none; stroke-width: 1.5; }
   .welcome h2 { font-size: 16px; color: var(--text); margin-bottom: 8px; font-weight: 600; }
-  .welcome p { font-size: 13px; font-family: var(--mono); line-height: 1.6; max-width: 340px; }
+  .welcome p { font-size: 13px; font-family: var(--sans); line-height: 1.7; max-width: 340px; }
 
   .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 2rem; }
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 2rem; }
   .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.2s; position: relative; overflow: hidden; }
   .metric-card:hover { border-color: var(--border2); }
   .metric-card:hover .metric-tooltip { display: block; }
-  .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 10px; letter-spacing: 0.03em; line-height: 1.4; min-height: 28px; }
+  .metric-label { font-family: var(--sans); font-size: 11px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; min-height: 28px; }
   .metric-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; word-break: break-word; }
   .metric-value.good { color: var(--success); }
   .metric-value.warn { color: var(--warning); }
@@ -171,7 +173,7 @@
   .badge-high { background: rgba(245,158,11,0.15); color: var(--warning); }
   .badge-medium { background: rgba(79,156,249,0.15); color: var(--accent); }
   .badge-low { background: rgba(16,185,129,0.15); color: var(--success); }
-  .finding-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; font-family: var(--mono); }
+  .finding-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; font-family: var(--sans); }
   .finding-rec { font-size: 12px; color: var(--text); line-height: 1.5; }
   .finding-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 6px; }
 
@@ -466,20 +468,26 @@
       </div>
     </div>
 
+    <!-- Environment Selector -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Environment</div>
+      <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--text);">Commercial</div>
+    </div>
+
     <!-- Authentication -->
     <div class="sidebar-section">
       <div class="sidebar-label">Authentication Method</div>
 
       <div class="auth-toggle">
-        <button class="auth-btn active" id="btnInteractive" onclick="setAuth('interactive')">Interactive Login</button>
-        <button class="auth-btn" id="btnAppReg" onclick="setAuth('appreg')">App Registration</button>
+        <button class="auth-btn active" id="btnInteractive" onclick="setAuth('interactive')">Interactive</button>
+        <button class="auth-btn" id="btnAppReg" onclick="setAuth('appreg')">App Reg</button>
+        <button class="auth-btn" id="btnCert" onclick="setAuth('certificate')">Certificate <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3);vertical-align:middle;font-family:var(--mono);">NEW</span></button>
       </div>
 
       <!-- Interactive fields -->
       <div id="authInteractive">
         <div class="auth-note">A browser popup will appear for each workload. Sign in with a read-access account. No setup required on the client side.</div>
         <div class="auth-note" style="margin-top:6px;">Minimum role required: <strong style="color:var(--text)">Global Reader</strong> covers most modules. Exchange also accepts <strong style="color:var(--text)">Exchange Administrator</strong>.</div>
-
         <div class="field">
           <label>Tenant ID <span class="field-optional">(optional — speeds up login)</span></label>
           <input type="text" id="tenantIdInteractive" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
@@ -514,6 +522,29 @@
         </div>
         <div class="auth-note warn" style="margin-top:8px;">Exchange, Teams &amp; SharePoint will still prompt interactively — these workloads do not support app-only auth in the same way.</div>
         <div id="permCheckResult" style="display:none;margin-top:8px;"></div>
+      </div>
+
+      <!-- Certificate fields -->
+      <div id="authCert" style="display:none;">
+        <div class="auth-note">Uses a certificate installed in the local Windows certificate store. No secret stored in the UI — more secure for repeat assessments.</div>
+        <div class="auth-note" style="margin-top:6px;">The certificate must already be installed under <strong style="color:var(--text)">Current User\My</strong> or <strong style="color:var(--text)">Local Machine\My</strong>.</div>
+        <div class="field">
+          <label>Tenant ID</label>
+          <input type="text" id="tenantIdCert" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>Client ID</label>
+          <input type="text" id="clientIdCert" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+        </div>
+        <div class="field">
+          <label>Certificate Thumbprint</label>
+          <input type="text" id="certThumbprint" placeholder="e.g. A1B2C3D4E5F6..." style="font-family:monospace;">
+        </div>
+        <div class="field">
+          <label>SharePoint Admin URL</label>
+          <input type="text" id="spAdminUrlCert" placeholder="https://contoso-admin.sharepoint.com">
+        </div>
+        <div class="auth-note warn" style="margin-top:8px;">Exchange, Teams &amp; SharePoint will still prompt interactively — certificate auth applies to Graph-based modules only.</div>
       </div>
     </div>
 
@@ -892,7 +923,7 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.1 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.2 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -900,7 +931,8 @@
 const BACKEND = 'http://localhost:5000';
 let assessmentData = null;
 let allSelected = false;
-let currentAuthMethod = 'interactive';
+let currentAuthMethod  = 'interactive';
+let currentEnvironment = 'commercial';
 
 document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
 
@@ -920,15 +952,17 @@ function setOffline() {
 checkBackend();
 setInterval(checkBackend, 10000);
 
+// Environment is fixed to commercial — no dropdown needed
+
 function setAuth(method) {
   currentAuthMethod = method;
   document.getElementById('btnInteractive').className = 'auth-btn' + (method === 'interactive' ? ' active' : '');
-  document.getElementById('btnAppReg').className = 'auth-btn' + (method === 'appreg' ? ' active' : '');
+  document.getElementById('btnAppReg').className     = 'auth-btn' + (method === 'appreg'      ? ' active' : '');
+  document.getElementById('btnCert').className       = 'auth-btn' + (method === 'certificate' ? ' active' : '');
   document.getElementById('authInteractive').style.display = method === 'interactive' ? 'block' : 'none';
-  document.getElementById('authAppReg').style.display = method === 'appreg' ? 'block' : 'none';
-  // Show warning in interactive mode for Exchange/Teams/SharePoint modules
-  document.getElementById('interactiveWarning').style.display =
-    (method === 'interactive') ? 'none' : 'block';
+  document.getElementById('authAppReg').style.display      = method === 'appreg'      ? 'block' : 'none';
+  document.getElementById('authCert').style.display        = method === 'certificate' ? 'block' : 'none';
+  document.getElementById('interactiveWarning').style.display = method === 'interactive' ? 'none' : 'block';
 }
 
 function toggleModule(el) {
@@ -966,19 +1000,31 @@ function addLog(msg, type = 'info') {
 function clearLog() { document.getElementById('logConsole').innerHTML = ''; }
 
 function getAuthPayload() {
+  const env = currentEnvironment || 'commercial';
   if (currentAuthMethod === 'interactive') {
     return {
-      authMethod: 'interactive',
-      tenantId: document.getElementById('tenantIdInteractive').value.trim(),
-      spAdminUrl: document.getElementById('spAdminUrl').value.trim()
+      authMethod:  'interactive',
+      environment: env,
+      tenantId:    document.getElementById('tenantIdInteractive').value.trim(),
+      spAdminUrl:  document.getElementById('spAdminUrl').value.trim()
+    };
+  } else if (currentAuthMethod === 'certificate') {
+    return {
+      authMethod:     'certificate',
+      environment:    env,
+      tenantId:       document.getElementById('tenantIdCert').value.trim(),
+      clientId:       document.getElementById('clientIdCert').value.trim(),
+      certThumbprint: document.getElementById('certThumbprint').value.trim(),
+      spAdminUrl:     document.getElementById('spAdminUrlCert').value.trim()
     };
   } else {
     return {
-      authMethod: 'appreg',
-      tenantId: document.getElementById('tenantId').value.trim(),
-      clientId: document.getElementById('clientId').value.trim(),
+      authMethod:   'appreg',
+      environment:  env,
+      tenantId:     document.getElementById('tenantId').value.trim(),
+      clientId:     document.getElementById('clientId').value.trim(),
       clientSecret: document.getElementById('clientSecret').value.trim(),
-      spAdminUrl: document.getElementById('spAdminUrlApp').value.trim()
+      spAdminUrl:   document.getElementById('spAdminUrlApp').value.trim()
     };
   }
 }
@@ -986,9 +1032,14 @@ function getAuthPayload() {
 function validateInputs(auth) {
   if (!document.getElementById('orgName').value.trim()) return 'Please enter a organisation name.';
   if (auth.authMethod === 'appreg') {
-    if (!auth.tenantId) return 'Tenant ID is required for App Registration auth.';
-    if (!auth.clientId) return 'Client ID is required for App Registration auth.';
+    if (!auth.tenantId)     return 'Tenant ID is required for App Registration auth.';
+    if (!auth.clientId)     return 'Client ID is required for App Registration auth.';
     if (!auth.clientSecret) return 'Client Secret is required for App Registration auth.';
+  }
+  if (auth.authMethod === 'certificate') {
+    if (!auth.tenantId)       return 'Tenant ID is required for Certificate auth.';
+    if (!auth.clientId)       return 'Client ID is required for Certificate auth.';
+    if (!auth.certThumbprint) return 'Certificate Thumbprint is required for Certificate auth.';
   }
   const modules = [...document.querySelectorAll('.module-item.checked')].map(m => m.dataset.module);
   if (modules.length === 0) return 'Please select at least one module.';
@@ -1009,7 +1060,8 @@ async function runAssessment() {
 
   switchTab('log', document.querySelectorAll('.tab')[2]);
   addLog(`Starting assessment for: ${clientName}`, 'info');
-  addLog(`Auth method: ${auth.authMethod === 'interactive' ? 'Interactive Login' : 'App Registration'}`, 'info');
+  const authLabel = auth.authMethod === 'interactive' ? 'Interactive Login' : auth.authMethod === 'certificate' ? 'Certificate' : 'App Registration';
+  addLog(`Auth method: ${authLabel}`, 'info');
   addLog(`Modules: ${modules.join(', ')}`, 'info');
 
   if (auth.authMethod === 'interactive') {
@@ -1050,7 +1102,7 @@ function renderOverview(data) {
   document.getElementById('overviewClientName').textContent = data.clientName;
   document.getElementById('overviewDate').textContent = `Assessment: ${document.getElementById('assessDate').value}`;
   document.getElementById('overviewAuthMethod').textContent =
-    `Auth: ${data.authMethod === 'interactive' ? 'Interactive Login' : 'App Registration'}`;
+    `Auth: ${data.authMethod === 'interactive' ? 'Interactive Login' : data.authMethod === 'certificate' ? 'Certificate' : 'App Registration'}`;
 
   const score = data.score || 0;
   const scoreEl = document.getElementById('overallScore');

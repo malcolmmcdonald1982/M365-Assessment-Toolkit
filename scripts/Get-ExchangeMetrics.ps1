@@ -17,7 +17,8 @@ param(
     [Parameter(Mandatory=$false)] [string]$AuthMethod   = "Interactive",
     [Parameter(Mandatory=$false)] [string]$TenantId     = "",
     [Parameter(Mandatory=$false)] [string]$ClientId     = "",
-    [Parameter(Mandatory=$false)] [string]$ClientSecret = ""
+    [Parameter(Mandatory=$false)] [string]$ClientSecret = "",
+    [Parameter(Mandatory=$false)] [string]$Environment  = "commercial"
     # Note: ClientId/ClientSecret not used — Exchange always prompts interactively
 )
 
@@ -26,11 +27,16 @@ $ProgressPreference    = "SilentlyContinue"
 
 try {
     # ── Connect to Exchange Online (always interactive) ────────
-    if ($TenantId -ne "") {
-        Connect-ExchangeOnline -ShowBanner:$false -Organization $TenantId | Out-Null
-    } else {
-        Connect-ExchangeOnline -ShowBanner:$false | Out-Null
+    # Set Exchange environment name based on cloud tier
+    $ExoEnv = switch ($Environment.ToLower()) {
+        "gcch" { "O365USGovGCCHigh" }
+        "dod"  { "O365USGovDoD" }
+        default { $null }  # Commercial and GCC use default
     }
+    $ExoArgs = @{ ShowBanner = $false }
+    if ($TenantId -ne "") { $ExoArgs['Organization'] = $TenantId }
+    if ($ExoEnv)          { $ExoArgs['ExchangeEnvironmentName'] = $ExoEnv }
+    Connect-ExchangeOnline @ExoArgs | Out-Null
 
     # ── External Auto-Forwarding ───────────────────────────────
     $ExternalForwardingBlocked = $false
@@ -82,6 +88,30 @@ try {
         }
     } catch {}
 
+    # ── DMARC Check ───────────────────────────────────────────
+    $DmarcConfigured = $false
+    try {
+        $PrimaryDomain = (Get-AcceptedDomain | Where-Object { $_.Default -eq $true }).DomainName
+        if ($PrimaryDomain) {
+            $DmarcResult = Resolve-DnsName -Name "_dmarc.$PrimaryDomain" -Type TXT -ErrorAction SilentlyContinue
+            $DmarcConfigured = ($DmarcResult | Where-Object { $_.Strings -match 'v=DMARC1' }).Count -gt 0
+        }
+    } catch {}
+
+    # ── SPF and DKIM Check ────────────────────────────────────
+    $SpfDkimConfigured = $false
+    try {
+        # SPF — DNS TXT on primary domain
+        $SpfResult  = Resolve-DnsName -Name $PrimaryDomain -Type TXT -ErrorAction SilentlyContinue
+        $SpfFound   = ($SpfResult | Where-Object { $_.Strings -match 'v=spf1' }).Count -gt 0
+
+        # DKIM — Exchange Online signing config
+        $DkimConfig = Get-DkimSigningConfig -ErrorAction SilentlyContinue
+        $DkimEnabled = ($DkimConfig | Where-Object { $_.Enabled -eq $true -and $_.Domain -like "*$PrimaryDomain*" }).Count -gt 0
+
+        $SpfDkimConfigured = ($SpfFound -and $DkimEnabled)
+    } catch {}
+
     Disconnect-ExchangeOnline -Confirm:$false | Out-Null
 
     # ── Output JSON ────────────────────────────────────────────
@@ -89,6 +119,8 @@ try {
         external_forwarding_blocked      = $ExternalForwardingBlocked
         mailbox_audit_enabled_percentage = $MailboxAuditPct
         antiphish_intelligence_enabled   = $AntiphishIntelEnabled
+        dmarc_configured                 = $DmarcConfigured
+        spf_dkim_configured              = $SpfDkimConfigured
     } | ConvertTo-Json -Compress | Write-Output
 
     exit 0

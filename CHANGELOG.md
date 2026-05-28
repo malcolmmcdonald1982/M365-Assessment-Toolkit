@@ -2,6 +2,28 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.3.0] - 2026-05-25
+
+### New Features
+
+**Read/Write Permission Separation**
+- Assessment and remediation credentials can now be configured independently
+- Default behaviour unchanged — Same as Assessment requires no action from existing users
+- Separate mode allows a dedicated write account with minimum required permissions
+- Supports Interactive, App Registration and Certificate for both read and write
+- Fails safely if write permissions are insufficient — nothing changes in the tenant
+
+**Metric Cards sorted by status**
+- Overview metrics now display red → amber → green
+- Issues surface immediately without scrolling
+
+### Improvements
+
+- Sidebar reordered to natural consultant workflow — client details, auth, modules, run
+- Authentication section renamed to Assessment Authentication for clarity
+- Comprehensive README updates — read/write separation guide, minimum permissions tables, troubleshooting section
+- Certificate auth NEW badge removed — feature is now established
+
 ## [1.2.1] - 2026-05-24
 
 ### New Features

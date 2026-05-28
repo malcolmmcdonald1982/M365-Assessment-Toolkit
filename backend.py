@@ -531,7 +531,7 @@ def save_session(session_data):
 #  ROUTES
 # ─────────────────────────────────────────────────────────────
 
-CURRENT_VERSION = "1.2.1"
+CURRENT_VERSION = "1.3.0"
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
 RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
 
@@ -1907,9 +1907,11 @@ def remediate_check(finding_id):
                         "guidance": TIER2_GUIDANCE.get(finding_id, {})}), 200
     
     body    = request.get_json()
-    auth    = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
+    auth    = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment",
+                                             "writeAuthSame","writeAuthMethod","writeTenantId","writeClientId","writeClientSecret","writeCertThumbprint"]}
+    auth["writeAuthSame"] = body.get("writeAuthSame", True)
     mapping = REMEDIATION_MAP[finding_id]
-    
+
     ps_args = build_ps_args_remediation(auth) + ["-CheckOnly"]
     if auth.get("spAdminUrl") and finding_id in {"SPO-001", "SPO-002"}:
         ps_args += ["-SpAdminUrl", auth["spAdminUrl"]]
@@ -1930,9 +1932,18 @@ def remediate_run(finding_id):
     
     body        = request.get_json()
     client_name = body.get("orgName", body.get("clientName", "Unknown"))
-    auth        = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
+    auth        = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment",
+                                                 "writeAuthSame","writeAuthMethod","writeTenantId","writeClientId","writeClientSecret","writeCertThumbprint"]}
+    auth["writeAuthSame"] = body.get("writeAuthSame", True)
     mapping     = REMEDIATION_MAP[finding_id]
-    
+
+    # Determine effective write auth label for logging
+    write_same = auth.get("writeAuthSame", True)
+    if write_same:
+        write_label = auth.get("authMethod", "interactive")
+    else:
+        write_label = auth.get("writeAuthMethod", "interactive")
+
     # Create snapshot file path
     safe          = client_name.replace(" ", "_").replace("/", "-")
     timestamp     = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1962,7 +1973,9 @@ def remediate_rollback(finding_id):
     body          = request.get_json()
     client_name   = body.get("orgName", body.get("clientName", "Unknown"))
     snapshot_name = body.get("snapshotFile", "")
-    auth          = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
+    auth          = {k: body.get(k, "") for k in ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment",
+                                                   "writeAuthSame","writeAuthMethod","writeTenantId","writeClientId","writeClientSecret","writeCertThumbprint"]}
+    auth["writeAuthSame"] = body.get("writeAuthSame", True)
     mapping       = REMEDIATION_MAP[finding_id]
     
     if not snapshot_name:
@@ -2025,18 +2038,47 @@ def get_remediation_log(client_name):
 
 
 def build_ps_args_remediation(auth):
-    """Build PS args for remediation scripts - same pattern as assessment."""
-    args = []
-    if auth.get("authMethod") == "appreg":
-        args += ["-AuthMethod", "AppReg",
-                 "-TenantId", auth.get("tenantId", ""),
-                 "-ClientId", auth.get("clientId", ""),
-                 "-ClientSecret", auth.get("clientSecret", "")]
+    """Build PS args for remediation scripts.
+    If separate write credentials are configured (writeAuthSame=False), use them.
+    Otherwise fall back to the read (assessment) credentials — preserves existing behaviour.
+    """
+    write_same   = auth.get("writeAuthSame", True)
+    write_method = auth.get("writeAuthMethod", "")
+
+    if not write_same and write_method:
+        # Separate write credentials provided
+        if write_method == "appreg":
+            return ["-AuthMethod", "AppReg",
+                    "-TenantId",     auth.get("writeTenantId", ""),
+                    "-ClientId",     auth.get("writeClientId", ""),
+                    "-ClientSecret", auth.get("writeClientSecret", "")]
+        elif write_method == "certificate":
+            return ["-AuthMethod",        "Certificate",
+                    "-TenantId",          auth.get("writeTenantId", ""),
+                    "-ClientId",          auth.get("writeClientId", ""),
+                    "-CertThumbprint",    auth.get("writeCertThumbprint", "")]
+        else:
+            args = ["-AuthMethod", "Interactive"]
+            if auth.get("writeTenantId"):
+                args += ["-TenantId", auth["writeTenantId"]]
+            return args
     else:
-        args += ["-AuthMethod", "Interactive"]
-        if auth.get("tenantId"):
-            args += ["-TenantId", auth["tenantId"]]
-    return args
+        # Same as assessment — use read credentials (existing behaviour)
+        if auth.get("authMethod") == "appreg":
+            return ["-AuthMethod", "AppReg",
+                    "-TenantId",     auth.get("tenantId", ""),
+                    "-ClientId",     auth.get("clientId", ""),
+                    "-ClientSecret", auth.get("clientSecret", "")]
+        elif auth.get("authMethod") == "certificate":
+            return ["-AuthMethod",     "Certificate",
+                    "-TenantId",       auth.get("tenantId", ""),
+                    "-ClientId",       auth.get("clientId", ""),
+                    "-CertThumbprint", auth.get("certThumbprint", "")]
+        else:
+            args = ["-AuthMethod", "Interactive"]
+            if auth.get("tenantId"):
+                args += ["-TenantId", auth["tenantId"]]
+            return args
 
 # =================================================================
 #  INVESTIGATION SCRIPTS

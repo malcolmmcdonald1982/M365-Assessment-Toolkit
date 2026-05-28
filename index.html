@@ -445,7 +445,7 @@
 <main>
   <aside>
 
-    <!-- Assessment Details -->
+    <!-- 1. Assessment Details -->
     <div class="sidebar-section">
       <div class="sidebar-label">Assessment Details</div>
       <div class="field">
@@ -462,7 +462,7 @@
       </div>
     </div>
 
-    <!-- Consultant Settings -->
+    <!-- 2. Consultant -->
     <div class="sidebar-section">
       <div class="sidebar-label">Consultant</div>
       <div class="field">
@@ -479,41 +479,14 @@
       </div>
     </div>
 
-    <!-- Remediation Settings -->
+    <!-- 3. Authentication (Assessment / Read) -->
     <div class="sidebar-section">
-      <div class="sidebar-label">Remediation Settings</div>
-      <div class="field">
-        <label>Change Ref Label <span class="field-optional">(customise)</span></label>
-        <input type="text" id="changeRefLabel" placeholder="e.g. Change Request No." value="Change Reference">
-      </div>
-      <div class="field">
-        <label>Approver Label <span class="field-optional">(customise)</span></label>
-        <input type="text" id="approverLabel" placeholder="e.g. Approved By" value="Approved By">
-      </div>
-      <div class="field">
-        <label>Require Approval Before Fix</label>
-        <select id="requireApproval">
-          <option value="yes">Yes — block until approved</option>
-          <option value="warn">Warn only — allow without</option>
-          <option value="no">No — skip approval gate</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Environment Selector -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Environment</div>
-      <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--text);">Commercial</div>
-    </div>
-
-    <!-- Authentication -->
-    <div class="sidebar-section">
-      <div class="sidebar-label">Authentication Method</div>
+      <div class="sidebar-label">Assessment Authentication</div>
 
       <div class="auth-toggle">
         <button class="auth-btn active" id="btnInteractive" onclick="setAuth('interactive')">Interactive</button>
         <button class="auth-btn" id="btnAppReg" onclick="setAuth('appreg')">App Reg</button>
-        <button class="auth-btn" id="btnCert" onclick="setAuth('certificate')">Certificate <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3);vertical-align:middle;font-family:var(--mono);">NEW</span></button>
+        <button class="auth-btn" id="btnCert" onclick="setAuth('certificate')">Certificate</button>
       </div>
 
       <!-- Interactive fields -->
@@ -580,8 +553,43 @@
       </div>
     </div>
 
-    <!-- Modules -->
-    <div class="sidebar-section" style="border-bottom:none;">
+    <!-- Remediation Authentication -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Remediation Authentication <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3);font-family:var(--mono);">NEW</span></div>
+      <div class="auth-toggle" style="margin-bottom:10px;">
+        <button class="auth-btn active" id="btnRemSame" onclick="setRemAuth('same')">Same as Assessment</button>
+        <button class="auth-btn" id="btnRemSeparate" onclick="setRemAuth('separate')">Separate</button>
+      </div>
+      <div id="remAuthSameNote" class="auth-note">Write operations use the same credentials as assessment. Ensure the account has sufficient write permissions.</div>
+      <div id="remAuthSeparate" style="display:none;">
+        <div class="auth-note" style="margin-bottom:10px;">Use a dedicated write account for remediation. Assessment credentials remain read-only.</div>
+        <div class="auth-toggle">
+          <button class="auth-btn active" id="btnWriteInteractive" onclick="setWriteAuth('interactive')">Interactive</button>
+          <button class="auth-btn" id="btnWriteAppReg" onclick="setWriteAuth('appreg')">App Reg</button>
+          <button class="auth-btn" id="btnWriteCert" onclick="setWriteAuth('certificate')">Certificate</button>
+        </div>
+        <div id="writeAuthInteractive">
+          <div class="auth-note">A browser popup will appear when applying a fix. Sign in with an account that has write permissions.</div>
+          <div class="field">
+            <label>Tenant ID <span class="field-optional">(optional)</span></label>
+            <input type="text" id="writeTenantIdInteractive" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </div>
+        </div>
+        <div id="writeAuthAppReg" style="display:none;">
+          <div class="field"><label>Tenant ID</label><input type="text" id="writeTenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+          <div class="field"><label>Client ID</label><input type="text" id="writeClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+          <div class="field"><label>Client Secret</label><input type="password" id="writeClientSecret" placeholder="••••••••••••••••••••"></div>
+        </div>
+        <div id="writeAuthCert" style="display:none;">
+          <div class="field"><label>Tenant ID</label><input type="text" id="writeTenantIdCert" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+          <div class="field"><label>Client ID</label><input type="text" id="writeClientIdCert" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+          <div class="field"><label>Certificate Thumbprint</label><input type="text" id="writeCertThumbprint" placeholder="e.g. A1B2C3D4E5F6..." style="font-family:monospace;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Assessment Modules -->
+    <div class="sidebar-section">
       <div class="sidebar-label">Assessment Modules</div>
       <button class="select-all-btn" onclick="toggleAll()">select all</button>
       <div class="module-list" id="moduleList">
@@ -626,6 +634,34 @@
       <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
       Run Assessment
     </button>
+
+    <!-- 6. Remediation Settings -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Remediation Settings</div>
+      <div class="field">
+        <label>Change Ref Label <span class="field-optional">(customise)</span></label>
+        <input type="text" id="changeRefLabel" placeholder="e.g. Change Request No." value="Change Reference">
+      </div>
+      <div class="field">
+        <label>Approver Label <span class="field-optional">(customise)</span></label>
+        <input type="text" id="approverLabel" placeholder="e.g. Approved By" value="Approved By">
+      </div>
+      <div class="field">
+        <label>Require Approval Before Fix</label>
+        <select id="requireApproval">
+          <option value="yes">Yes — block until approved</option>
+          <option value="warn">Warn only — allow without</option>
+          <option value="no">No — skip approval gate</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 8. Environment -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Environment</div>
+      <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--text);">Commercial</div>
+    </div>
+
   </aside>
 
   <div class="panel">
@@ -955,7 +991,7 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.2.1 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.3.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -1057,6 +1093,49 @@ function setAuth(method) {
   document.getElementById('interactiveWarning').style.display = method === 'interactive' ? 'none' : 'block';
 }
 
+// ── Remediation Auth ────────────────────────────────────────────
+let currentRemAuthMode    = 'same';
+let currentWriteAuthMethod = 'interactive';
+
+function setRemAuth(mode) {
+  currentRemAuthMode = mode;
+  document.getElementById('btnRemSame').className     = 'auth-btn' + (mode === 'same'     ? ' active' : '');
+  document.getElementById('btnRemSeparate').className = 'auth-btn' + (mode === 'separate' ? ' active' : '');
+  document.getElementById('remAuthSameNote').style.display   = mode === 'same'     ? 'block' : 'none';
+  document.getElementById('remAuthSeparate').style.display   = mode === 'separate' ? 'block' : 'none';
+}
+
+function setWriteAuth(method) {
+  currentWriteAuthMethod = method;
+  document.getElementById('btnWriteInteractive').className = 'auth-btn' + (method === 'interactive' ? ' active' : '');
+  document.getElementById('btnWriteAppReg').className      = 'auth-btn' + (method === 'appreg'      ? ' active' : '');
+  document.getElementById('btnWriteCert').className        = 'auth-btn' + (method === 'certificate' ? ' active' : '');
+  document.getElementById('writeAuthInteractive').style.display = method === 'interactive' ? 'block' : 'none';
+  document.getElementById('writeAuthAppReg').style.display      = method === 'appreg'      ? 'block' : 'none';
+  document.getElementById('writeAuthCert').style.display        = method === 'certificate' ? 'block' : 'none';
+}
+
+function getWriteAuthPayload() {
+  const env = currentEnvironment || 'commercial';
+  if (currentRemAuthMode === 'same') {
+    return { writeAuthSame: true };
+  }
+  if (currentWriteAuthMethod === 'interactive') {
+    return { writeAuthSame: false, writeAuthMethod: 'interactive', environment: env,
+             writeTenantId: document.getElementById('writeTenantIdInteractive').value.trim() };
+  } else if (currentWriteAuthMethod === 'certificate') {
+    return { writeAuthSame: false, writeAuthMethod: 'certificate', environment: env,
+             writeTenantId:       document.getElementById('writeTenantIdCert').value.trim(),
+             writeClientId:       document.getElementById('writeClientIdCert').value.trim(),
+             writeCertThumbprint: document.getElementById('writeCertThumbprint').value.trim() };
+  } else {
+    return { writeAuthSame: false, writeAuthMethod: 'appreg', environment: env,
+             writeTenantId:    document.getElementById('writeTenantId').value.trim(),
+             writeClientId:    document.getElementById('writeClientId').value.trim(),
+             writeClientSecret: document.getElementById('writeClientSecret').value.trim() };
+  }
+}
+
 function toggleModule(el) {
   if (el.classList.contains('disabled')) return;
   el.classList.toggle('checked');
@@ -1122,7 +1201,7 @@ function getAuthPayload() {
 }
 
 function validateInputs(auth) {
-  if (!document.getElementById('orgName').value.trim()) return 'Please enter a organisation name.';
+  if (!document.getElementById('orgName').value.trim()) return 'Please enter an organisation name.';
   if (auth.authMethod === 'appreg') {
     if (!auth.tenantId)     return 'Tenant ID is required for App Registration auth.';
     if (!auth.clientId)     return 'Client ID is required for App Registration auth.';
@@ -1203,7 +1282,11 @@ function renderOverview(data) {
 
   const grid = document.getElementById('metricsGrid');
   grid.innerHTML = '';
-  (data.metrics || []).forEach(m => {
+  const metricOrder = { bad: 0, warn: 1, good: 2 };
+  const sortedMetrics = (data.metrics || []).slice().sort((a, b) =>
+    (metricOrder[a.status] ?? 1) - (metricOrder[b.status] ?? 1)
+  );
+  sortedMetrics.forEach(m => {
     const card = document.createElement('div');
     card.className = 'metric-card';
     const cls = m.status === 'good' ? 'good' : m.status === 'warn' ? 'warn' : 'bad';
@@ -2264,7 +2347,7 @@ async function runCheck(findingId) {
   setRemStatus(findingId, 'checking', 'Checking...');
   document.getElementById(`rem-check-btn-${findingId}`).disabled = true;
   try {
-    const payload = { ...getAuthPayload(), clientName: assessmentData?.clientName || '' };
+    const payload = { ...getAuthPayload(), ...getWriteAuthPayload(), clientName: assessmentData?.clientName || '' };
     const r = await fetch(`${BACKEND}/remediate/check/${findingId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -2305,7 +2388,7 @@ async function runRemediation(findingId) {
   document.getElementById(`rem-run-btn-${findingId}`).disabled = true;
 
   try {
-    const payload = { ...getAuthPayload(), clientName: assessmentData?.clientName || '' };
+    const payload = { ...getAuthPayload(), ...getWriteAuthPayload(), clientName: assessmentData?.clientName || '' };
     const r = await fetch(`${BACKEND}/remediate/run/${findingId}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -2366,6 +2449,7 @@ async function runRollback(findingId) {
   try {
     const payload = {
       ...getAuthPayload(),
+      ...getWriteAuthPayload(),
       clientName: assessmentData?.clientName || '',
       snapshotFile: state.snapshotFile
     };

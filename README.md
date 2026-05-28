@@ -246,6 +246,20 @@ The tool scores 0–100 based on severity-weighted findings:
 
 A tenant can have a high Microsoft Secure Score and still score poorly here — because Secure Score rewards enabling features, not blocking attack paths.
 
+## Auto Update Checker
+
+The tool silently checks GitHub for a newer version each time it starts. If a newer version is available a banner appears at the top of the UI offering to update.
+
+**What is and is not transmitted during this check:**
+
+- The tool makes a single request to `https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION` to read the latest version number
+- No tenant data, credentials, scan results, assessment sessions or any user content is transmitted
+- No analytics, no telemetry, no tracking of any kind
+- The check is read-only and outbound only — nothing is written to GitHub
+- Updates require explicit user approval — the tool never auto-updates silently
+- Clicking **Update Now** runs the local `update.ps1` script which downloads replacement files from GitHub — the same script available to run manually at any time
+- If the check fails for any reason (no internet, firewall, timeout) the tool continues normally — no banner appears and nothing is affected
+
 ## Updating
 
 ```powershell
@@ -271,7 +285,92 @@ The uninstaller offers to back up your saved sessions and reports before removin
 - Each remediation change is snapshotted before it is made
 - There is no backend server, no cloud component, no third party in the data flow — just you, your machine and Microsoft's APIs
 
+**Tenant authentication:** The tool authenticates against your Microsoft 365 tenant using whatever credentials or permissions you provide — Interactive login, App Registration, or Certificate. It connects directly to Microsoft's APIs in the same way any PowerShell module or Graph client does. No credentials are stored to disk. No data is transmitted to any third party.
+
 For client engagements, ensure you have a Data Processing Agreement in place before running assessments against a client tenant.
+
+## Minimum Permissions Required
+
+The tool follows the principle of least privilege. Use the minimum role that covers what you need.
+
+### Assessment (Read)
+
+| Module | Minimum Role |
+|---|---|
+| Identity & MFA | Global Reader |
+| Security & CA | Global Reader |
+| Exchange Online | Global Reader or Exchange Administrator |
+| Teams | Global Reader or Teams Administrator |
+| SharePoint | Global Reader or SharePoint Administrator |
+| Intune / Devices | Global Reader or Intune Administrator |
+
+> Global Reader covers all assessment modules. No write permissions are required to run an assessment.
+
+### Remediation (Write)
+
+| Finding Type | Minimum Role |
+|---|---|
+| Conditional Access policies | Conditional Access Administrator |
+| Exchange settings | Exchange Administrator |
+| Teams settings | Teams Administrator |
+| SharePoint settings | SharePoint Administrator |
+| Intune / device policies | Intune Administrator |
+
+> Remediation requires explicit write permissions. Always obtain written approval before applying changes to a live tenant.
+
+### App Registration permissions
+
+For App Registration and Certificate auth, the following Graph API application permissions are required for assessment:
+
+```
+User.Read.All
+Directory.Read.All
+RoleManagement.Read.Directory
+UserAuthenticationMethod.Read.All
+Reports.Read.All
+Policy.Read.All
+SecurityEvents.Read.All
+Organization.Read.All
+Application.Read.All
+DeviceManagementManagedDevices.Read.All
+DeviceManagementConfiguration.Read.All
+AuditLog.Read.All
+IdentityRiskyUser.Read.All
+```
+
+> Exchange, Teams and SharePoint always use interactive login — these PowerShell modules do not support app-only authentication.
+
+## Read/Write Permission Separation
+
+The tool separates assessment (read) and remediation (write) credentials. This follows the principle of least privilege — the account used to gather data during an assessment does not need write permissions.
+
+### How it works
+
+In the sidebar under **Remediation Authentication**:
+
+- **Same as Assessment** (default) — remediation uses the same credentials as the assessment. The account must have sufficient write permissions for the findings you intend to remediate
+- **Separate** — a dedicated write account is configured independently. The assessment account remains read-only throughout
+
+The write account supports the same three authentication methods as the assessment account — Interactive, App Registration, or Certificate.
+
+### What happens if the account lacks write permissions
+
+If you attempt to remediate using an account without sufficient write permissions:
+
+- The remediation script runs and Microsoft's API returns an access denied error
+- The error is surfaced in the remediation card
+- Nothing changes in the tenant — no partial changes, no damage
+- A snapshot is saved before every attempt so rollback is available regardless
+
+**To resolve:** either elevate the assessment account to include the required write role, or switch to **Separate** and configure a dedicated write account with the minimum role for the finding type. See the Remediation (Write) permissions table above.
+
+### Recommended approach for client engagements
+
+| Scenario | Recommendation |
+|---|---|
+| Quick one-off assessment, no remediation | Interactive login, Global Reader |
+| Assessment with planned remediation | Separate accounts — Global Reader for read, minimum write role per finding |
+| Recurring assessments | App Registration or Certificate for read, Interactive for write |
 
 ## Data Flow
 
@@ -311,6 +410,24 @@ C:\M365 Assessment Toolkit\
 | Teams | TEAMS | Interactive only | 2 |
 | SharePoint | SPO | Interactive only | 2 |
 | Intune / Devices | MDM | App Reg, Certificate or Interactive | 6 |
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Module fails silently, no results | Auth failed or insufficient permissions | Check the Run Log for the error. Verify the account has at least Global Reader |
+| Remediation returns access denied | Account lacks write permissions | Elevate the account or use Separate remediation auth with a dedicated write account |
+| SharePoint module fails with OAuth error | SharePoint Admin URL not set or incorrect | Enter the correct URL in the format `https://yourtenant-admin.sharepoint.com` |
+| Certificate auth fails | Certificate not installed in the correct store | Verify the certificate is in `Cert:\CurrentUser\My` — see certificate setup guide above |
+| Banner shows wrong version | Backend still running old version | Restart the backend after updating |
+| Load Assessment button not clickable | Page needs a refresh after backend restart | Hard refresh with `Ctrl+Shift+R` |
+| Report fields blank | Consultant or assessment details not filled in | Fill in the Assessment Details and Consultant sections before downloading the report |
+
+## Author
+
+Built and maintained by **Malcolm McDonald** — IT Infrastructure Consultant with real-world M365 assessment and deployment experience.
+
+If you are looking for M365 consultancy, security assessments or infrastructure support, feel free to connect on [LinkedIn](https://www.linkedin.com/in/malcolm-mcdonald-87228b48).
 
 ## Licence
 

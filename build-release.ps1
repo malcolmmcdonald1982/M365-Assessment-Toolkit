@@ -29,6 +29,8 @@ $Include = @(
     "VERSION",
     "CHANGELOG.md",
     "README.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
     "LICENSE",
     "scripts",
     "remediation",

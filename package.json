@@ -1,0 +1,9 @@
+{
+  "name": "m365-assessment-toolkit",
+  "version": "2.0.0",
+  "description": "M365 Assessment Toolkit - Malcolm McDonald IT Infrastructure Consultant",
+  "private": true,
+  "dependencies": {
+    "docx": "^8.0.0"
+  }
+}

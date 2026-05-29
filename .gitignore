@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+*.log
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Output / reports (user data - not tracked)
+output/
+reports/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# IDE
+.vscode/
+.idea/
+
+# Release archives (large binaries)
+release/*.zip

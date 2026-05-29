@@ -92,6 +92,12 @@ def build_findings_library():
          "recommendation":"Create a CA policy to block all legacy authentication. Audit dependencies before enforcing.",
          "secure_score_impact": 10},
 
+        {"id":"CA-003","title":"No CA Policy Enforcing MFA for All Users","module":"security","metric":"mfa_all_users_ca_policy","severity":"critical",
+         "threshold": lambda v: v is False,
+         "description":"There is no Conditional Access policy that enforces multi-factor authentication for all users. Even with CA policies in place, if none of them target all users with an MFA requirement, entire user populations can authenticate with just a password. Credential stuffing, phishing and password spray attacks succeed instantly against accounts with no MFA enforcement.",
+         "recommendation":"Create a CA policy targeting all users (excluding break-glass accounts), all cloud apps, and requiring MFA as the grant control. This is the single most impactful CA control you can deploy. Test with a pilot group first, then broaden to all users.",
+         "secure_score_impact": 10},
+
         # Exchange
         {"id":"EXO-001","title":"Auto-Forwarding Allowed to External","module":"exchange","metric":"external_forwarding_blocked","severity":"high",
          "threshold": lambda v: v is False,
@@ -124,6 +130,18 @@ def build_findings_library():
          "recommendation":"Disable Teams consumer access unless there is a specific business requirement.",
          "secure_score_impact": 3},
 
+        {"id":"TEAMS-003","title":"Anonymous Users Can Join Meetings","module":"teams","metric":"teams_anon_meeting_join_enabled","severity":"medium",
+         "threshold": lambda v: v is True,
+         "description":"The global Teams meeting policy allows anonymous users to join meetings without authentication. Anyone with a meeting link can join as a guest with no identity verification. This enables uninvited participants to join internal calls, access shared content, and potentially record sensitive discussions.",
+         "recommendation":"In the Teams Admin Centre, go to Meetings > Meeting policies > Global > Participants & guests. Set 'Anonymous users can join a meeting' to Off. Create an exception policy for specific users or groups with a legitimate need.",
+         "secure_score_impact": 3},
+
+        {"id":"TEAMS-004","title":"Third-Party Teams Apps Unrestricted","module":"teams","metric":"teams_third_party_apps_allowed","severity":"medium",
+         "threshold": lambda v: v is True,
+         "description":"The global Teams app permission policy allows all third-party apps from the Teams store without restriction. Users can install apps that have permissions to read messages, files, and meeting content. Malicious or compromised third-party apps are a growing attack surface in Teams environments.",
+         "recommendation":"In Teams Admin Centre, go to Teams apps > Permission policies > Global. Change third-party apps from Allow all to either Block all or allow specific approved apps only. Review and approve a whitelist of business-critical third-party apps.",
+         "secure_score_impact": 2},
+
         # SharePoint
         {"id":"SPO-001","title":"SharePoint Sharing Set to Anyone","module":"sharepoint","metric":"spo_sharing_level","severity":"critical",
          "threshold": lambda v: v == "ExternalUserAndGuestSharing",
@@ -137,6 +155,17 @@ def build_findings_library():
          "recommendation":"Disable LegacyAuthProtocolsEnabled in SharePoint tenant settings.",
          "secure_score_impact": 5},
 
+        {"id":"SPO-003","title":"OneDrive External Sharing Unrestricted","module":"sharepoint","metric":"onedrive_sharing_level","severity":"high",
+         "threshold": lambda v: v == "ExternalUserAndGuestSharing",
+         "description":"OneDrive for Business external sharing is set to Anyone, allowing users to create unauthenticated sharing links. SharePoint and OneDrive have separate sharing settings — a tenant can restrict SharePoint while leaving OneDrive open. Files shared via anonymous links are accessible to anyone with the URL, with no authentication or audit trail.",
+         "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing and set the OneDrive sharing level to 'New and existing guests' or more restrictive. This setting is separate from the SharePoint sharing level.",
+         "secure_score_impact": 5},
+
+        {"id":"SPO-004","title":"Guest Access Expiry Not Configured","module":"sharepoint","metric":"guest_access_expiry_configured","severity":"medium",
+         "threshold": lambda v: v is False,
+         "description":"External user (guest) access expiry is not configured. Shared links and guest accounts granted to contractors, partners, or clients do not automatically expire. Former employees of partner organisations, ex-contractors, and deprecated service accounts retain access indefinitely unless manually removed.",
+         "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing > More external sharing settings. Enable 'Guest access to a site or OneDrive will expire automatically after this many days' and set a value appropriate for your business (30–90 days is typical). Also enable link expiry for anonymous sharing links.",
+         "secure_score_impact": 3},
 
         # Over-Permissioned Apps
         {"id":"APP-001","title":"High-Privilege OAuth Apps Detected","module":"security","metric":"high_privilege_app_count","severity":"high",
@@ -232,6 +261,18 @@ def build_findings_library():
          "recommendation":"Create an Intune device configuration profile enabling BitLocker on Windows devices. Add a compliance policy condition requiring device encryption, and block non-compliant devices from accessing M365.",
          "secure_score_impact": 8},
 
+        {"id":"MDM-005","title":"No Mobile Device Compliance Policy","module":"intune","metric":"mobile_compliance_policy_exists","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"No Intune compliance policy exists for iOS or Android devices. Mobile devices connecting to Microsoft 365 — including Exchange, Teams and SharePoint — are doing so with no compliance requirement. Compromised, jailbroken, or unmanaged personal devices can access the same data as fully managed corporate endpoints.",
+         "recommendation":"Create Intune compliance policies for iOS and Android covering minimum OS version, screen lock, device encryption, and jailbreak/root detection. Pair with a Conditional Access policy requiring compliant devices for mobile access to M365.",
+         "secure_score_impact": 5},
+
+        {"id":"MDM-006","title":"Defender for Endpoint Not Integrated with Intune","module":"intune","metric":"defender_mde_integration_enabled","severity":"medium",
+         "threshold": lambda v: v is False,
+         "description":"Microsoft Defender for Endpoint is not integrated with Intune via a Mobile Threat Defence connector. Without this integration, device risk signals from Defender — such as active malware, suspicious activity, or network attacks — are not available to Conditional Access. A compromised device can continue to access M365 resources even while Defender has flagged it.",
+         "recommendation":"In Intune, go to Endpoint security > Microsoft Defender for Endpoint and enable the connector. Set up device risk score conditions in your compliance policies. This routes Defender's real-time risk signals into CA so compromised devices are automatically blocked.",
+         "secure_score_impact": 4},
+
         # Entra ID Deep Findings
         {"id":"ENTRA-001","title":"High-Privilege App Registrations","module":"identity","metric":"high_priv_app_reg_count","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
@@ -311,8 +352,12 @@ METRIC_DISPLAY = {
     "antiphish_intelligence_enabled":  {"label":"Anti-Phishing Intelligence",      "format":"{}",    "desc":"Whether mailbox intelligence protects against impersonation"},
     "teams_external_access_restricted":{"label":"Teams External Access Restricted","format":"{}",    "desc":"Whether Teams federation is restricted to approved domains"},
     "teams_consumer_access_blocked":   {"label":"Teams Consumer Access Blocked",   "format":"{}",    "desc":"Whether personal Teams accounts are blocked"},
+    "teams_anon_meeting_join_enabled": {"label":"Anonymous Meeting Join",          "format":"{}",    "desc":"Whether unauthenticated users can join Teams meetings"},
+    "teams_third_party_apps_allowed":  {"label":"Third-Party Apps Unrestricted",   "format":"{}",    "desc":"Whether all third-party Teams store apps are allowed"},
     "spo_sharing_level":               {"label":"SharePoint External Sharing",     "format":"{}",    "desc":"External sharing setting for SharePoint and OneDrive"},
     "spo_legacy_auth":                 {"label":"SharePoint Legacy Auth Enabled",  "format":"{}",    "desc":"Whether old authentication is enabled in SharePoint"},
+    "onedrive_sharing_level":          {"label":"OneDrive External Sharing",       "format":"{}",    "desc":"External sharing setting for OneDrive for Business"},
+    "guest_access_expiry_configured":  {"label":"Guest Access Expiry",             "format":"{}",    "desc":"Whether external user access expires automatically"},
     "intune_compliance_percentage":    {"label":"Device Compliance Rate",          "format":"{}%",   "desc":"Percentage of managed devices meeting compliance policy"},
     "intune_compliance_policy_count":  {"label":"Device Compliance Policies",      "format":"{}",    "desc":"Number of Intune compliance policies configured"},
     "intune_config_policy_count":      {"label":"Device Config Policies",          "format":"{}",    "desc":"Number of Intune device configuration profiles"},
@@ -333,6 +378,9 @@ METRIC_DISPLAY = {
     "zap_spam_enabled":                {"label":"ZAP — Spam",                     "format":"{}",    "desc":"Whether ZAP is enabled for spam in the content filter"},
     "update_ring_count":               {"label":"Windows Update Rings",            "format":"{}",    "desc":"Number of Windows Update for Business rings in Intune"},
     "bitlocker_enforced":              {"label":"BitLocker Enforced",              "format":"{}",    "desc":"Whether BitLocker is required by Intune policies"},
+    "mobile_compliance_policy_exists": {"label":"Mobile Compliance Policy",        "format":"{}",    "desc":"Whether an iOS or Android compliance policy exists in Intune"},
+    "defender_mde_integration_enabled":{"label":"Defender MDE Integration",        "format":"{}",    "desc":"Whether Defender for Endpoint is connected to Intune"},
+    "mfa_all_users_ca_policy":         {"label":"MFA for All Users (CA)",          "format":"{}",    "desc":"Whether a CA policy enforces MFA broadly for all users"},
     "high_priv_app_reg_count":         {"label":"High-Privilege App Registrations", "format":"{}",   "desc":"Apps with Critical or High risk Graph permissions"},
     "expired_cred_count":              {"label":"Expired App Credentials",          "format":"{}",   "desc":"App registrations with expired credentials"},
     "expiring_cred_30d_count":         {"label":"Credentials Expiring (≤30 days)",  "format":"{}",   "desc":"App registrations with credentials expiring within 30 days"},
@@ -539,9 +587,12 @@ def format_metric(key, value):
                           "external_forwarding_blocked", "antiphish_intelligence_enabled",
                           "teams_external_access_restricted", "teams_consumer_access_blocked",
                           "mfa_number_matching_enabled",
-                          "zap_fully_enabled", "zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled"}
+                          "zap_fully_enabled", "zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled",
+                          "guest_access_expiry_configured", "mobile_compliance_policy_exists",
+                          "defender_mde_integration_enabled", "mfa_all_users_ca_policy"}
         # Flags where True = bad
-        bad_when_true_extra = {"weak_auth_methods_enabled", "user_consent_unrestricted", "teams_email_into_channel"}
+        bad_when_true_extra = {"weak_auth_methods_enabled", "user_consent_unrestricted", "teams_email_into_channel",
+                               "teams_anon_meeting_join_enabled", "teams_third_party_apps_allowed"}
         # For flags where False = good
         bad_when_true = {"spo_legacy_auth"}
         if key in bad_when_true or key in bad_when_true_extra:
@@ -604,6 +655,12 @@ def format_metric(key, value):
             "zap_malware_enabled": ("Enabled", "Disabled"),
             "zap_phish_enabled": ("Enabled", "Disabled"),
             "zap_spam_enabled": ("Enabled", "Disabled"),
+            "teams_anon_meeting_join_enabled": ("Allowed", "Blocked"),
+            "teams_third_party_apps_allowed": ("Allowed", "Restricted"),
+            "guest_access_expiry_configured": ("Configured", "Not Configured"),
+            "mobile_compliance_policy_exists": ("Exists", "Not Found"),
+            "defender_mde_integration_enabled": ("Connected", "Not Connected"),
+            "mfa_all_users_ca_policy": ("Policy Exists", "No Policy Found"),
         }
         if key in friendly_map:
             display = friendly_map[key][0] if value else friendly_map[key][1]
@@ -1935,6 +1992,12 @@ REMEDIATION_MAP = {
         "manual_fix": "Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess\n# Create CA policy blocking legacy auth in Entra ID:\n# Entra ID > Protection > Conditional Access > New Policy\n# Conditions: Client apps = Exchange ActiveSync + Other clients\n# Grant: Block access",
         "manual_rollback": "# Go to Entra ID > Protection > Conditional Access\n# Find policy named: MM-Assessment - Block Legacy Authentication\n# Delete or disable the policy",
     },
+    "CA-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Entra ID > Protection > Conditional Access > New Policy\n# Name: Require MFA for All Users\n# Assignments: Users — All users (exclude break-glass accounts)\n# Target resources: All cloud apps\n# Grant: Require multi-factor authentication\n# Enable policy: On",
+        "manual_rollback": "# Entra ID > Protection > Conditional Access\n# Find the MFA policy and disable or delete it",
+    },
     "EXO-001": {
         "script": "Remediate-ExternalForwarding.ps1", "rollback": "Rollback-ExternalForwarding.ps1",
         "tier": 1, "auth": ["exchange"],
@@ -1977,11 +2040,47 @@ REMEDIATION_MAP = {
         "manual_fix": "Connect-MicrosoftTeams\nSet-CsExternalAccessPolicy -Identity Global -EnableTeamsConsumerAccess $false\nDisconnect-MicrosoftTeams",
         "manual_rollback": "Connect-MicrosoftTeams\nSet-CsExternalAccessPolicy -Identity Global -EnableTeamsConsumerAccess $true\nDisconnect-MicrosoftTeams",
     },
+    "TEAMS-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["teams"],
+        "manual_fix": "Connect-MicrosoftTeams\nSet-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $false\nDisconnect-MicrosoftTeams",
+        "manual_rollback": "Connect-MicrosoftTeams\nSet-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $true\nDisconnect-MicrosoftTeams",
+    },
+    "TEAMS-004": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["teams"],
+        "manual_fix": "# Teams Admin Centre > Teams apps > Permission policies > Global\n# Change Third-party apps from 'Allow all' to 'Block all' or add an approved app list\n# Portal: https://admin.teams.microsoft.com/policies/app-permission",
+        "manual_rollback": "# Teams Admin Centre > Teams apps > Permission policies > Global\n# Change Third-party apps back to 'Allow all'",
+    },
     "SPO-002": {
         "script": "Remediate-SPOLegacyAuth.ps1", "rollback": "Rollback-SPOLegacyAuth.ps1",
         "tier": 1, "auth": ["sharepoint"],
         "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -LegacyAuthProtocolsEnabled $false\nDisconnect-SPOService",
         "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -LegacyAuthProtocolsEnabled $true\nDisconnect-SPOService",
+    },
+    "SPO-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["sharepoint"],
+        "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ODBSharingCapability ExistingExternalUserSharingOnly\nDisconnect-SPOService",
+        "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ODBSharingCapability ExternalUserAndGuestSharing\nDisconnect-SPOService",
+    },
+    "SPO-004": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["sharepoint"],
+        "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 60\nDisconnect-SPOService",
+        "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ExternalUserExpirationRequired $false\nDisconnect-SPOService",
+    },
+    "MDM-005": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Intune > Devices > Compliance policies > Create policy\n# Platform: iOS/iPadOS or Android device administrator / Android Enterprise\n# Settings: Minimum OS version, Require device encryption, Require screen lock, Jailbreak detection\n# Actions: Mark non-compliant, then block access after grace period",
+        "manual_rollback": "# Delete the compliance policy created for iOS/Android in Intune",
+    },
+    "MDM-006": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Intune > Endpoint security > Microsoft Defender for Endpoint\n# Enable: Connect Windows devices to Microsoft Defender for Endpoint\n# Enable: Connect Android/iOS devices\n# Then in compliance policies: add Device Threat Level condition\n# Portal: https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector",
+        "manual_rollback": "# Intune > Endpoint security > Microsoft Defender for Endpoint\n# Toggle off the platform connectors that were enabled",
     },
 }
 
@@ -2008,6 +2107,13 @@ TIER2_GUIDANCE = {
     "EXO-006": {"portal": "https://security.microsoft.com/antimalwarev2", "steps": ["Go to Microsoft 365 Defender > Email & Collaboration > Policies & Rules > Threat policies", "Under Protection policies, click Anti-malware", "Open the Default policy and click Edit protection settings", "Ensure 'Enable zero-hour auto purge (ZAP)' is turned on", "Click Save", "Go back to Threat policies and click Anti-spam", "Open the Default inbound policy and click Edit actions", "Ensure 'Enable zero-hour auto purge (ZAP) for phishing messages' is on", "Ensure 'Enable zero-hour auto purge (ZAP) for spam messages' is on", "Click Save"]},
     "MDM-003": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/PatchManagementBlade/~/overview", "steps": ["Go to Intune > Devices > Windows > Update rings for Windows 10 and later", "Click Create profile", "Name it e.g. Pilot Ring — set quality update deferral to 3 days", "Create a second Production Ring with quality deferral of 7 days, feature deferral of 30 days", "Assign Pilot Ring to a test group, Production Ring to all Windows devices", "Monitor Windows Update compliance under Reports > Windows Updates"]},
     "MDM-004": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy > Windows 10+", "Enable: Require BitLocker", "Also go to Intune > Devices > Configuration > Create > Windows > Templates > Endpoint Protection", "Configure BitLocker Drive Encryption settings", "Assign both policies to All Devices or Windows device groups", "Monitor encryption status under Intune > Devices > Monitor > Encryption report"]},
+    "CA-003":  {"portal": "https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies", "steps": ["Go to Entra ID > Protection > Conditional Access", "Click New policy", "Name: Require MFA — All Users", "Assignments > Users: All users. Exclude your break-glass accounts by object ID", "Target resources: All cloud apps", "Grant: Require multi-factor authentication", "Set to Report-only first and review the sign-in log impact for 1-2 days", "Set to Enabled once confident"]},
+    "TEAMS-003": {"portal": "https://admin.teams.microsoft.com/meetings/meeting-policies", "steps": ["Go to Teams Admin Centre > Meetings > Meeting policies", "Select the Global (Org-wide default) policy", "Under Participants and guests, find 'Anonymous users can join a meeting'", "Set to Off", "Click Save", "If specific users need anonymous join capability, create a custom policy and assign it to those users only"]},
+    "TEAMS-004": {"portal": "https://admin.teams.microsoft.com/policies/app-permission", "steps": ["Go to Teams Admin Centre > Teams apps > Permission policies", "Select the Global (Org-wide default) policy", "Under Third-party apps, change from 'Allow all apps' to 'Block all apps' or 'Allow specific apps'", "If choosing specific apps: add each approved app individually", "Click Save", "Review any custom app permission policies that may override the global setting"]},
+    "SPO-003":  {"portal": "https://admin.microsoft.com/sharepoint#/sharing", "steps": ["Go to SharePoint Admin Centre > Policies > Sharing", "Scroll to OneDrive — this is separate from the SharePoint sharing setting", "Change OneDrive external sharing from 'Anyone' to 'New and existing guests' at minimum", "Optionally restrict further to 'Existing guests only' or 'Only people in your organisation'", "Click Save", "Note: this does not affect existing shared links — audit and expire those separately"]},
+    "SPO-004":  {"portal": "https://admin.microsoft.com/sharepoint#/sharing", "steps": ["Go to SharePoint Admin Centre > Policies > Sharing", "Expand 'More external sharing settings'", "Check 'Guest access to a site or OneDrive will expire automatically after this many days'", "Set a value — 60 days is a reasonable default for most organisations", "Also enable 'People who use a verification code must reauthenticate after this many days'", "Click Save", "Consider also enabling expiry on anonymous (Anyone) sharing links"]},
+    "MDM-005":  {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy", "Create an iOS/iPadOS policy: Minimum OS version, Require screen lock passcode, Require device not to be jailbroken", "Create an Android policy: Require device encryption, Minimum OS version, Require screen lock, Block rooted devices", "Assign both policies to All Users or a device group", "Set non-compliant action to Mark as non-compliant immediately, then block access after 1-day grace period", "Pair with a Conditional Access policy requiring compliant device for M365 apps"]},
+    "MDM-006":  {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector", "steps": ["Go to Intune > Endpoint security > Microsoft Defender for Endpoint", "Click Connect under Microsoft Defender for Endpoint connector", "Enable the toggle for Windows devices", "Enable the toggle for Android devices (if managed)", "Enable the toggle for iOS/iPadOS devices (if managed)", "Click Save", "Go to Compliance policies and add a device threat level condition (e.g. Low or Medium)", "This passes device risk signals from Defender into Conditional Access"]},
 }
 
 
@@ -3888,6 +3994,346 @@ $csv = "PrivilegedManagedIdentities_$(Get-Date -Format yyyyMMdd).csv"
 $report | Export-Csv $csv -NoTypeInformation
 $report | Sort-Object Role,ManagedIdentity | Format-Table -AutoSize
 Write-Host "$($report.Count) managed identit(ies) with high-privilege roles found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "CA-003": {
+        "title": "MFA enforcement for all users",
+        "description": "Reviews all enabled Conditional Access policies and identifies whether any enforce MFA broadly against all users.",
+        "script": r"""# CA-003 — MFA All-Users CA Policy Check
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+Write-Host "`n=== Conditional Access — MFA Coverage Check ===" -ForegroundColor Cyan
+Write-Host "Checking for a CA policy that enforces MFA on all users...`n"
+
+$policies = Get-MgIdentityConditionalAccessPolicy -All | Where-Object { $_.State -eq "enabled" }
+Write-Host "Total enabled CA policies: $($policies.Count)`n"
+
+$mfaAllUsers = @()
+$mfaPartial  = @()
+$noMfa       = @()
+
+foreach ($p in $policies) {
+    $includeUsers  = $p.Conditions.Users.IncludeUsers
+    $includeGroups = $p.Conditions.Users.IncludeGroups
+    $grants        = $p.GrantControls.BuiltInControls
+    $requiresMfa   = $grants -contains "mfa"
+
+    if ($requiresMfa -and $includeUsers -contains "All") {
+        $mfaAllUsers += $p
+    } elseif ($requiresMfa) {
+        $mfaPartial += $p
+    } else {
+        $noMfa += $p
+    }
+}
+
+if ($mfaAllUsers.Count -gt 0) {
+    Write-Host "PASS — MFA policy targeting all users found:" -ForegroundColor Green
+    foreach ($p in $mfaAllUsers) {
+        Write-Host "  [$($p.State)] $($p.DisplayName)" -ForegroundColor Green
+        Write-Host "    Exclude users: $($p.Conditions.Users.ExcludeUsers -join ', ')" -ForegroundColor Gray
+        Write-Host "    Exclude groups: $($p.Conditions.Users.ExcludeGroups -join ', ')" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "FAIL — No CA policy enforces MFA for all users." -ForegroundColor Red
+    Write-Host "  Any user without explicit MFA assignment can sign in with only a password." -ForegroundColor Red
+}
+
+if ($mfaPartial.Count -gt 0) {
+    Write-Host "`nMFA policies with partial user scope (not all users):" -ForegroundColor Yellow
+    foreach ($p in $mfaPartial) {
+        Write-Host "  [$($p.State)] $($p.DisplayName)" -ForegroundColor Yellow
+        Write-Host "    Targets: $($p.Conditions.Users.IncludeUsers -join ', ') | Groups: $($p.Conditions.Users.IncludeGroups.Count)" -ForegroundColor Gray
+    }
+}
+
+Write-Host "`nAll enabled policies summary:" -ForegroundColor Cyan
+$policies | Select-Object DisplayName,State,
+    @{N="IncludeUsers"; E={$_.Conditions.Users.IncludeUsers -join ", "}},
+    @{N="MFA"; E={$_.GrantControls.BuiltInControls -contains "mfa"}} | Format-Table -AutoSize
+
+Disconnect-MgGraph"""
+    },
+
+    "TEAMS-003": {
+        "title": "Anonymous meeting join policy",
+        "description": "Checks the global Teams meeting policy to determine whether unauthenticated users can join meetings.",
+        "script": r"""# TEAMS-003 — Anonymous Meeting Join Check
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+Write-Host "`n=== Anonymous Meeting Join Policy ===" -ForegroundColor Cyan
+Write-Host "An unauthenticated user is anyone who joins via a link without signing in.`n"
+
+$globalPolicy = Get-CsTeamsMeetingPolicy -Identity Global
+$anonJoin     = $globalPolicy.AllowAnonymousUsersToJoinMeeting
+
+Write-Host "Global Policy — AllowAnonymousUsersToJoinMeeting: $anonJoin" `
+           -ForegroundColor $(if($anonJoin){'Red'}else{'Green'})
+
+if ($anonJoin) {
+    Write-Host "`n  RISK: Anyone with a meeting link can join without authentication." -ForegroundColor Red
+    Write-Host "  This includes external parties, competitors, or attackers who obtained a link." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting `$false" -ForegroundColor White
+} else {
+    Write-Host "`n  Anonymous meeting join is disabled. Good." -ForegroundColor Green
+}
+
+# Check custom policies that might allow anonymous join
+Write-Host "`nChecking custom meeting policies that override global..." -ForegroundColor Cyan
+$allPolicies = Get-CsTeamsMeetingPolicy | Where-Object { $_.Identity -ne "Global" -and $_.AllowAnonymousUsersToJoinMeeting -eq $true }
+if ($allPolicies) {
+    Write-Host "$($allPolicies.Count) custom policy(ies) still allow anonymous join:" -ForegroundColor Yellow
+    $allPolicies | Select-Object Identity, AllowAnonymousUsersToJoinMeeting | Format-Table -AutoSize
+} else {
+    Write-Host "  No custom policies allow anonymous join." -ForegroundColor Green
+}
+
+Write-Host "`nAdditional meeting policy settings (Global):" -ForegroundColor Cyan
+Write-Host "  AllowExternalParticipantGiveRequestControl : $($globalPolicy.AllowExternalParticipantGiveRequestControl)"
+Write-Host "  AllowAnonymousUsersToStartMeeting          : $($globalPolicy.AllowAnonymousUsersToStartMeeting)"
+Write-Host "  AutoAdmittedUsers                          : $($globalPolicy.AutoAdmittedUsers)"
+
+Disconnect-MicrosoftTeams"""
+    },
+
+    "TEAMS-004": {
+        "title": "Third-party Teams app permissions",
+        "description": "Checks the global app permission policy to determine whether all third-party store apps are allowed without restriction.",
+        "script": r"""# TEAMS-004 — Third-Party Teams App Permission Policy
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+Write-Host "`n=== Teams App Permission Policy ===" -ForegroundColor Cyan
+
+$globalAppPolicy = Get-CsTeamsAppPermissionPolicy -Identity Global
+
+Write-Host "`nGlobal App Permission Policy:" -ForegroundColor Cyan
+$msApps      = $globalAppPolicy.DefaultCatalogApps
+$thirdParty  = $globalAppPolicy.GlobalCatalogApps
+$privateApps = $globalAppPolicy.PrivateCatalogApps
+
+$col = if ($thirdParty -eq "Allow") { 'Red' } elseif ($thirdParty -eq "BlockWithNotification") { 'Yellow' } else { 'Green' }
+Write-Host "  Microsoft apps (DefaultCatalogApps)  : $msApps"
+Write-Host "  Third-party apps (GlobalCatalogApps) : $thirdParty" -ForegroundColor $col
+Write-Host "  Custom apps (PrivateCatalogApps)     : $privateApps"
+
+if ($thirdParty -eq "Allow") {
+    Write-Host "`n  RISK: All third-party apps from the Teams store are unrestricted." -ForegroundColor Red
+    Write-Host "  Users can install any app that may read messages, access files, or join meetings." -ForegroundColor Red
+    Write-Host "`n  To restrict:" -ForegroundColor Yellow
+    Write-Host "  Teams Admin Centre > Teams apps > Permission policies > Global" -ForegroundColor White
+    Write-Host "  Change Third-party apps from 'Allow all' to 'Block all' or an approved app list" -ForegroundColor White
+} else {
+    Write-Host "`n  Third-party apps are restricted. Good." -ForegroundColor Green
+}
+
+# Check allowed app list if using allow-specific
+if ($globalAppPolicy.AllowedAppList) {
+    Write-Host "`nApproved apps list:" -ForegroundColor Cyan
+    $globalAppPolicy.AllowedAppList | Format-Table -AutoSize
+}
+
+Write-Host "`nCustom app permission policies (may override global for some users):" -ForegroundColor Cyan
+Get-CsTeamsAppPermissionPolicy | Where-Object { $_.Identity -ne "Global" } |
+    Select-Object Identity, GlobalCatalogApps | Format-Table -AutoSize
+
+Disconnect-MicrosoftTeams"""
+    },
+
+    "SPO-003": {
+        "title": "OneDrive external sharing level",
+        "description": "Checks the OneDrive for Business sharing level — this is separate from the SharePoint sharing setting and often overlooked.",
+        "script": r"""# SPO-003 — OneDrive External Sharing Level
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+
+Write-Host "`n=== OneDrive External Sharing ===" -ForegroundColor Cyan
+Write-Host "Note: OneDrive sharing is controlled separately from SharePoint sharing.`n"
+
+$odLevel = $tenant.ODBSharingCapability
+$spLevel = $tenant.SharingCapability
+
+$levelDesc = {
+    param($lvl)
+    switch ($lvl) {
+        'Disabled'                       { 'Disabled — no external sharing' }
+        'ExistingExternalUserSharingOnly'{ 'Existing guests only' }
+        'ExternalUserSharingOnly'        { 'New and existing guests (sign-in required)' }
+        'ExternalUserAndGuestSharing'    { 'Anyone — anonymous links ALLOWED' }
+        default                          { $lvl }
+    }
+}
+
+$spCol = if ($spLevel -eq 'ExternalUserAndGuestSharing') {'Red'} elseif ($spLevel -eq 'ExternalUserSharingOnly') {'Yellow'} else {'Green'}
+$odCol = if ($odLevel -eq 'ExternalUserAndGuestSharing') {'Red'} elseif ($odLevel -eq 'ExternalUserSharingOnly') {'Yellow'} else {'Green'}
+
+Write-Host "SharePoint sharing : $spLevel" -ForegroundColor $spCol
+Write-Host "  $(& $levelDesc $spLevel)" -ForegroundColor $spCol
+Write-Host ""
+Write-Host "OneDrive sharing   : $odLevel" -ForegroundColor $odCol
+Write-Host "  $(& $levelDesc $odLevel)" -ForegroundColor $odCol
+
+if ($odLevel -eq 'ExternalUserAndGuestSharing') {
+    Write-Host "`n  RISK: OneDrive allows Anyone links — files can be shared with no authentication." -ForegroundColor Red
+    Write-Host "  Shared files are accessible to anyone with the URL — no sign-in or audit trail." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-SPOTenant -ODBSharingCapability ExistingExternalUserSharingOnly" -ForegroundColor White
+}
+
+Write-Host "`nAnonymous link settings:" -ForegroundColor Cyan
+Write-Host "  RequireAnonymousLinksExpireInDays : $($tenant.RequireAnonymousLinksExpireInDays) (0 = no expiry)"
+Write-Host "  DefaultLinkPermission             : $($tenant.DefaultLinkPermission)"
+Write-Host "  DefaultSharingLinkType            : $($tenant.DefaultSharingLinkType)"
+
+Disconnect-SPOService"""
+    },
+
+    "SPO-004": {
+        "title": "Guest access expiry configuration",
+        "description": "Checks whether external user (guest) access expiry is configured in SharePoint Online.",
+        "script": r"""# SPO-004 — Guest Access Expiry Configuration
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+
+Write-Host "`n=== Guest Access Expiry Settings ===" -ForegroundColor Cyan
+
+$expiryRequired = $tenant.ExternalUserExpirationRequired
+$expiryDays     = $tenant.ExternalUserExpireInDays
+$linkExpiry     = $tenant.RequireAnonymousLinksExpireInDays
+
+$col = if ($expiryRequired) { 'Green' } else { 'Red' }
+Write-Host "ExternalUserExpirationRequired : $expiryRequired" -ForegroundColor $col
+
+if ($expiryRequired) {
+    Write-Host "ExternalUserExpireInDays       : $expiryDays days" -ForegroundColor Green
+    Write-Host "`n  Guest access expires automatically after $expiryDays days. Good." -ForegroundColor Green
+} else {
+    Write-Host "`n  RISK: Guest accounts do not expire automatically." -ForegroundColor Red
+    Write-Host "  Ex-employees of partner orgs, ex-contractors, and stale service accounts retain access indefinitely." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-SPOTenant -ExternalUserExpirationRequired `$true -ExternalUserExpireInDays 60" -ForegroundColor White
+}
+
+$linkCol = if ($linkExpiry -gt 0) { 'Green' } else { 'Yellow' }
+Write-Host "`nAnonymous link expiry: $linkExpiry days $(if($linkExpiry -eq 0){'(no expiry — review recommended)'})" -ForegroundColor $linkCol
+
+Write-Host "`nCurrent sharing settings summary:" -ForegroundColor Cyan
+Write-Host "  SharingCapability    : $($tenant.SharingCapability)"
+Write-Host "  ODBSharingCapability : $($tenant.ODBSharingCapability)"
+Write-Host "  DefaultLinkPermission: $($tenant.DefaultLinkPermission)"
+
+Disconnect-SPOService"""
+    },
+
+    "MDM-005": {
+        "title": "Mobile device compliance policy coverage",
+        "description": "Checks whether Intune compliance policies exist for iOS and Android devices.",
+        "script": r"""# MDM-005 — Mobile Device Compliance Policy Inventory
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All","DeviceManagementManagedDevices.Read.All" -NoWelcome
+
+Write-Host "`n=== Mobile Device Compliance Policy Coverage ===" -ForegroundColor Cyan
+
+$allPolicies = Get-MgDeviceManagementDeviceCompliancePolicy -All -WarningAction SilentlyContinue
+Write-Host "Total compliance policies: $($allPolicies.Count)`n"
+
+$iosPolicies     = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*ios*' }
+$androidPolicies = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*android*' -or $_.AdditionalProperties['@odata.type'] -like '*Android*' }
+$windowsPolicies = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*windows*' }
+
+$iosCol     = if ($iosPolicies.Count -gt 0) { 'Green' } else { 'Red' }
+$androidCol = if ($androidPolicies.Count -gt 0) { 'Green' } else { 'Red' }
+
+Write-Host "iOS compliance policies     : $($iosPolicies.Count)" -ForegroundColor $iosCol
+Write-Host "Android compliance policies : $($androidPolicies.Count)" -ForegroundColor $androidCol
+Write-Host "Windows compliance policies : $($windowsPolicies.Count)" -ForegroundColor $(if($windowsPolicies.Count -gt 0){'Green'}else{'Yellow'})
+
+if ($iosPolicies.Count -gt 0) {
+    Write-Host "`niOS Policies:" -ForegroundColor Cyan
+    $iosPolicies | Select-Object DisplayName, @{N="Type";E={$_.AdditionalProperties['@odata.type']}} | Format-Table -AutoSize
+}
+
+if ($androidPolicies.Count -gt 0) {
+    Write-Host "Android Policies:" -ForegroundColor Cyan
+    $androidPolicies | Select-Object DisplayName, @{N="Type";E={$_.AdditionalProperties['@odata.type']}} | Format-Table -AutoSize
+}
+
+if ($iosPolicies.Count -eq 0 -or $androidPolicies.Count -eq 0) {
+    Write-Host "`n  RISK: Mobile devices can connect to M365 with no compliance requirement." -ForegroundColor Red
+    Write-Host "  Jailbroken, unmanaged, or compromised phones may access Exchange, Teams and SharePoint." -ForegroundColor Red
+    Write-Host "`n  Create compliance policies at: Intune > Devices > Compliance policies" -ForegroundColor Yellow
+}
+
+# Enrolled mobile device count
+Write-Host "`nEnrolled mobile devices (top 100):" -ForegroundColor Cyan
+$mobileDevices = Get-MgDeviceManagementManagedDevice -All -WarningAction SilentlyContinue |
+    Where-Object { $_.OperatingSystem -in @('iOS','Android') } | Select-Object -First 100
+Write-Host "  iOS:     $(($mobileDevices | Where-Object OperatingSystem -eq 'iOS').Count)"
+Write-Host "  Android: $(($mobileDevices | Where-Object OperatingSystem -eq 'Android').Count)"
+
+Disconnect-MgGraph"""
+    },
+
+    "MDM-006": {
+        "title": "Defender for Endpoint Intune integration",
+        "description": "Checks whether Microsoft Defender for Endpoint is connected to Intune via Mobile Threat Defence connector.",
+        "script": r"""# MDM-006 — Defender for Endpoint MTD Connector Status
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All" -NoWelcome
+
+Write-Host "`n=== Microsoft Defender for Endpoint — Intune Integration ===" -ForegroundColor Cyan
+Write-Host "The MTD connector passes device risk signals from Defender into Conditional Access.`n"
+
+try {
+    $connectors = Invoke-MgGraphRequest -Method GET `
+        -Uri "https://graph.microsoft.com/v1.0/deviceManagement/mobileThreatDefenseConnectors"
+
+    if (-not $connectors.value -or $connectors.value.Count -eq 0) {
+        Write-Host "  No Mobile Threat Defence connectors configured." -ForegroundColor Red
+        Write-Host "  Device risk signals from Defender cannot flow into Conditional Access." -ForegroundColor Red
+    } else {
+        Write-Host "Configured MTD connectors:" -ForegroundColor Cyan
+        foreach ($c in $connectors.value) {
+            Write-Host "`n  Connector: $($c.id)" -ForegroundColor White
+            Write-Host "  Android enabled : $($c.androidEnabled)" -ForegroundColor $(if($c.androidEnabled){'Green'}else{'Yellow'})
+            Write-Host "  iOS enabled     : $($c.iosEnabled)" -ForegroundColor $(if($c.iosEnabled){'Green'}else{'Yellow'})
+            Write-Host "  Windows enabled : $($c.windowsEnabled)" -ForegroundColor $(if($c.windowsEnabled){'Green'}else{'Yellow'})
+            $anyEnabled = $c.androidEnabled -or $c.iosEnabled -or $c.windowsEnabled
+            if ($anyEnabled) {
+                Write-Host "  STATUS: Active — at least one platform is connected" -ForegroundColor Green
+            } else {
+                Write-Host "  STATUS: Connector exists but no platforms are enabled" -ForegroundColor Red
+            }
+        }
+    }
+} catch {
+    Write-Host "  Could not retrieve MTD connectors: $_" -ForegroundColor Red
+}
+
+Write-Host "`nTo configure:" -ForegroundColor Yellow
+Write-Host "  Intune > Endpoint security > Microsoft Defender for Endpoint"
+Write-Host "  Portal: https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector"
+
 Disconnect-MgGraph"""
     },
 }

@@ -213,6 +213,13 @@ def build_findings_library():
          "recommendation":"Ensure an SPF TXT record exists for your domain. Enable DKIM signing in Exchange Online Admin > Email authentication. Both must pass before DMARC enforcement is safe to enable.",
          "secure_score_impact": 5},
 
+        {"id":"EXO-006","title":"Zero-Hour Auto Purge (ZAP) Not Fully Enabled","module":"exchange","metric":"zap_fully_enabled","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"Zero-Hour Auto Purge (ZAP) is not fully enabled for malware, phishing, or spam. ZAP retroactively removes emails already delivered to mailboxes when they are later identified as malicious. Without ZAP, emails that bypass initial filters remain in user mailboxes permanently — giving attackers a lasting foothold for credential theft, business email compromise, and malware delivery.",
+         "recommendation":"In the Microsoft 365 Defender portal, go to Email & Collaboration > Policies & Rules > Threat policies. Under Anti-malware, edit the default policy and ensure ZAP is enabled. Under Anti-spam, edit the default inbound policy and ensure both Phishing ZAP and Spam ZAP are enabled.",
+         "secure_score_impact": 4,
+         "tags": ["email", "defender", "zap", "malware", "phishing"]},
+
         {"id":"MDM-003","title":"No Windows Update Ring Configured","module":"intune","metric":"update_ring_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Windows Update for Business rings are configured in Intune. Without update rings, Windows devices may receive patches inconsistently or too late, leaving known vulnerabilities unpatched.",
@@ -320,6 +327,10 @@ METRIC_DISPLAY = {
     "sentinel_connected":              {"label":"Microsoft Sentinel Connected",    "format":"{}",    "desc":"Whether Sentinel appears to be active and generating alerts"},
     "dmarc_configured":                {"label":"DMARC Configured",               "format":"{}",    "desc":"Whether a DMARC record exists for the primary domain"},
     "spf_dkim_configured":             {"label":"SPF and DKIM Configured",        "format":"{}",    "desc":"Whether SPF and DKIM are both set up for the primary domain"},
+    "zap_fully_enabled":               {"label":"Zero-Hour Auto Purge (ZAP)",     "format":"{}",    "desc":"Whether ZAP is enabled for malware, phishing and spam"},
+    "zap_malware_enabled":             {"label":"ZAP — Malware",                  "format":"{}",    "desc":"Whether ZAP is enabled in the malware filter policy"},
+    "zap_phish_enabled":               {"label":"ZAP — Phishing",                 "format":"{}",    "desc":"Whether ZAP is enabled for phishing in the content filter"},
+    "zap_spam_enabled":                {"label":"ZAP — Spam",                     "format":"{}",    "desc":"Whether ZAP is enabled for spam in the content filter"},
     "update_ring_count":               {"label":"Windows Update Rings",            "format":"{}",    "desc":"Number of Windows Update for Business rings in Intune"},
     "bitlocker_enforced":              {"label":"BitLocker Enforced",              "format":"{}",    "desc":"Whether BitLocker is required by Intune policies"},
     "high_priv_app_reg_count":         {"label":"High-Privilege App Registrations", "format":"{}",   "desc":"Apps with Critical or High risk Graph permissions"},
@@ -527,7 +538,8 @@ def format_metric(key, value):
         good_when_true = {"pim_enabled", "security_defaults_enabled", "legacy_auth_blocked",
                           "external_forwarding_blocked", "antiphish_intelligence_enabled",
                           "teams_external_access_restricted", "teams_consumer_access_blocked",
-                          "mfa_number_matching_enabled"}
+                          "mfa_number_matching_enabled",
+                          "zap_fully_enabled", "zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled"}
         # Flags where True = bad
         bad_when_true_extra = {"weak_auth_methods_enabled", "user_consent_unrestricted", "teams_email_into_channel"}
         # For flags where False = good
@@ -588,6 +600,10 @@ def format_metric(key, value):
             "dmarc_configured": ("Configured", "Not Configured"),
             "spf_dkim_configured": ("Configured", "Not Configured"),
             "bitlocker_enforced": ("Enforced", "Not Enforced"),
+            "zap_fully_enabled": ("Enabled", "Not Fully Enabled"),
+            "zap_malware_enabled": ("Enabled", "Disabled"),
+            "zap_phish_enabled": ("Enabled", "Disabled"),
+            "zap_spam_enabled": ("Enabled", "Disabled"),
         }
         if key in friendly_map:
             display = friendly_map[key][0] if value else friendly_map[key][1]
@@ -739,6 +755,14 @@ def run_assessment():
             L(f"{module} complete — {len(metrics)} metrics collected", "success")
         else:
             L(f"{module} returned no data", "warn")
+
+    # Derive composite metrics from raw values
+    if any(k in all_metrics for k in ("zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled")):
+        all_metrics["zap_fully_enabled"] = bool(
+            all_metrics.get("zap_malware_enabled", False) and
+            all_metrics.get("zap_phish_enabled", False) and
+            all_metrics.get("zap_spam_enabled", False)
+        )
 
     findings = evaluate_findings(all_metrics)
     score    = calculate_score(findings)
@@ -1981,6 +2005,7 @@ TIER2_GUIDANCE = {
     "SEC-006": {"portal": "https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade", "steps": ["Go to Azure Portal > Microsoft Sentinel", "If not deployed: Create a Sentinel workspace in your subscription", "Add the Microsoft 365 Defender data connector", "Add the Azure Active Directory data connector", "Enable the Microsoft Sentinel analytics rules relevant to your environment", "Configure a daily review process for Sentinel incidents"]},
     "EXO-004": {"portal": "https://admin.microsoft.com/Adminportal/Home#/Domains", "steps": ["Identify your primary domain in Microsoft 365 Admin > Settings > Domains", "Log into your DNS provider and add a TXT record", "Name: _dmarc.yourdomain.com", "Value: v=DMARC1; p=none; rua=mailto:dmarc-reports@yourdomain.com", "Wait for DNS propagation (up to 48 hours)", "Monitor reports for 2-4 weeks, then change p=none to p=quarantine", "Once confident, move to p=reject for full enforcement"]},
     "EXO-005": {"portal": "https://admin.exchange.microsoft.com/#/dkim", "steps": ["Go to Exchange Admin Centre > Email authentication > DKIM", "Select your domain and click Enable", "If not yet set up: follow the DNS record instructions provided", "For SPF: ensure your domain has a TXT record starting with v=spf1 include:spf.protection.outlook.com", "Add any other authorised senders (e.g. marketing platforms) to the SPF record", "Verify both records with MXToolbox before enabling DMARC enforcement"]},
+    "EXO-006": {"portal": "https://security.microsoft.com/antimalwarev2", "steps": ["Go to Microsoft 365 Defender > Email & Collaboration > Policies & Rules > Threat policies", "Under Protection policies, click Anti-malware", "Open the Default policy and click Edit protection settings", "Ensure 'Enable zero-hour auto purge (ZAP)' is turned on", "Click Save", "Go back to Threat policies and click Anti-spam", "Open the Default inbound policy and click Edit actions", "Ensure 'Enable zero-hour auto purge (ZAP) for phishing messages' is on", "Ensure 'Enable zero-hour auto purge (ZAP) for spam messages' is on", "Click Save"]},
     "MDM-003": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/PatchManagementBlade/~/overview", "steps": ["Go to Intune > Devices > Windows > Update rings for Windows 10 and later", "Click Create profile", "Name it e.g. Pilot Ring — set quality update deferral to 3 days", "Create a second Production Ring with quality deferral of 7 days, feature deferral of 30 days", "Assign Pilot Ring to a test group, Production Ring to all Windows devices", "Monitor Windows Update compliance under Reports > Windows Updates"]},
     "MDM-004": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy > Windows 10+", "Enable: Require BitLocker", "Also go to Intune > Devices > Configuration > Create > Windows > Templates > Endpoint Protection", "Configure BitLocker Drive Encryption settings", "Assign both policies to All Devices or Windows device groups", "Monitor encryption status under Intune > Devices > Monitor > Encryption report"]},
 }
@@ -3320,6 +3345,78 @@ if (-not $dkimConfigs) {
 # All accepted domains summary
 Write-Host "`nAll accepted domains:" -ForegroundColor Cyan
 Get-AcceptedDomain | Select-Object DomainName, Default, DomainType | Format-Table -AutoSize
+
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
+    "EXO-006": {
+        "title": "Zero-Hour Auto Purge (ZAP) status",
+        "description": "Checks ZAP configuration across the default malware filter and anti-spam policies — malware ZAP, phishing ZAP and spam ZAP.",
+        "script": r"""# EXO-006 — Zero-Hour Auto Purge (ZAP) Configuration Check
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+Write-Host "`n=== Zero-Hour Auto Purge (ZAP) Status ===" -ForegroundColor Cyan
+Write-Host "ZAP retroactively removes emails already delivered to mailboxes when they are later"
+Write-Host "identified as malware, phishing or spam. Disabled ZAP means malicious email stays in inboxes.`n"
+
+# Malware ZAP
+Write-Host "── Malware ZAP (Anti-Malware Policy) ─────────────────────" -ForegroundColor Cyan
+try {
+    $malwarePolicies = Get-MalwareFilterPolicy
+    foreach ($p in $malwarePolicies) {
+        $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+        $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+        $default = if ($p.IsDefault) { " [Default]" } else { "" }
+        Write-Host "  Policy: $($p.Name)$default" -ForegroundColor White
+        Write-Host "  ZAP: $status`n" -ForegroundColor $col
+    }
+} catch {
+    Write-Host "  Could not retrieve malware filter policies: $_" -ForegroundColor Red
+}
+
+# Phishing and Spam ZAP
+Write-Host "── Phishing and Spam ZAP (Anti-Spam Policy) ───────────────" -ForegroundColor Cyan
+try {
+    $spamPolicies = Get-HostedContentFilterPolicy
+    foreach ($p in $spamPolicies) {
+        $default = if ($p.IsDefault) { " [Default]" } else { "" }
+        Write-Host "  Policy: $($p.Name)$default" -ForegroundColor White
+
+        # PhishZapEnabled (newer module versions)
+        if ($p.PSObject.Properties['PhishZapEnabled']) {
+            $col = if ($p.PhishZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.PhishZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Phishing ZAP : $status" -ForegroundColor $col
+        } else {
+            # Older module — ZapEnabled covers both
+            $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Phishing ZAP : $status (via legacy ZapEnabled flag)" -ForegroundColor $col
+        }
+
+        # SpamZapEnabled (newer module versions)
+        if ($p.PSObject.Properties['SpamZapEnabled']) {
+            $col = if ($p.SpamZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.SpamZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Spam ZAP     : $status" -ForegroundColor $col
+        } else {
+            $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Spam ZAP     : $status (via legacy ZapEnabled flag)" -ForegroundColor $col
+        }
+        Write-Host ""
+    }
+} catch {
+    Write-Host "  Could not retrieve anti-spam policies: $_" -ForegroundColor Red
+}
+
+Write-Host "── How to fix ─────────────────────────────────────────────" -ForegroundColor Yellow
+Write-Host "  Portal: https://security.microsoft.com/antimalwarev2"
+Write-Host "  Email & Collaboration > Policies & Rules > Threat policies"
+Write-Host "  - Anti-malware default policy: Edit protection settings > Enable ZAP"
+Write-Host "  - Anti-spam inbound default: Edit actions > Enable ZAP for phishing + spam`n"
 
 Disconnect-ExchangeOnline -Confirm:$false"""
     },

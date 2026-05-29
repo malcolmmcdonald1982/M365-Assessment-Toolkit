@@ -112,6 +112,35 @@ try {
         $SpfDkimConfigured = ($SpfFound -and $DkimEnabled)
     } catch {}
 
+    # ── Zero-Hour Auto Purge (ZAP) ────────────────────────────
+    $ZapMalwareEnabled = $false
+    $ZapPhishEnabled   = $false
+    $ZapSpamEnabled    = $false
+    try {
+        # Malware ZAP — default malware filter policy
+        $MalwarePolicy = Get-MalwareFilterPolicy | Where-Object { $_.IsDefault -eq $true } | Select-Object -First 1
+        if (-not $MalwarePolicy) { $MalwarePolicy = Get-MalwareFilterPolicy | Select-Object -First 1 }
+        if ($MalwarePolicy) { $ZapMalwareEnabled = [bool]$MalwarePolicy.ZapEnabled }
+
+        # Phish + Spam ZAP — default hosted content filter policy
+        $SpamPolicy = Get-HostedContentFilterPolicy | Where-Object { $_.IsDefault -eq $true } | Select-Object -First 1
+        if (-not $SpamPolicy) { $SpamPolicy = Get-HostedContentFilterPolicy | Select-Object -First 1 }
+        if ($SpamPolicy) {
+            # PhishZapEnabled / SpamZapEnabled were introduced in newer EXO module versions
+            # Fall back to the legacy ZapEnabled flag if the new properties are absent
+            $ZapPhishEnabled = if ($SpamPolicy.PSObject.Properties['PhishZapEnabled']) {
+                [bool]$SpamPolicy.PhishZapEnabled
+            } else {
+                [bool]$SpamPolicy.ZapEnabled
+            }
+            $ZapSpamEnabled = if ($SpamPolicy.PSObject.Properties['SpamZapEnabled']) {
+                [bool]$SpamPolicy.SpamZapEnabled
+            } else {
+                [bool]$SpamPolicy.ZapEnabled
+            }
+        }
+    } catch {}
+
     Disconnect-ExchangeOnline -Confirm:$false | Out-Null
 
     # ── Output JSON ────────────────────────────────────────────
@@ -121,6 +150,9 @@ try {
         antiphish_intelligence_enabled   = $AntiphishIntelEnabled
         dmarc_configured                 = $DmarcConfigured
         spf_dkim_configured              = $SpfDkimConfigured
+        zap_malware_enabled              = $ZapMalwareEnabled
+        zap_phish_enabled                = $ZapPhishEnabled
+        zap_spam_enabled                 = $ZapSpamEnabled
     } | ConvertTo-Json -Compress | Write-Output
 
     exit 0

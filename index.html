@@ -279,6 +279,8 @@
   .sim-score-block { text-align: center; }
   .sim-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; }
   .sim-score-val { font-size: 32px; font-weight: 700; line-height: 1; }
+  .sim-score-sub { font-size: 9px; color: var(--muted); font-family: var(--mono); text-align: center; margin-top: 2px; }
+  .sim-score-separator { color: var(--muted); font-size: 1.2rem; align-self: center; padding: 0 4px; }
   .sim-score-arrow { font-size: 24px; color: var(--muted); }
   .sim-finding-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: all 0.15s; user-select: none; }
   .sim-finding-row:hover { border-color: var(--border2); }
@@ -809,6 +811,24 @@
           <div class="sim-score-block">
             <div class="sim-score-label">Chains Broken</div>
             <div class="sim-score-val" id="simBrokenChains" style="color:var(--success)">—</div>
+          </div>
+
+          <div class="sim-score-separator">|</div>
+
+          <div class="sim-score-block">
+            <div class="sim-score-label">Secure Baseline</div>
+            <div class="sim-score-val" id="simSSBaseline" style="color:var(--muted)">—</div>
+          </div>
+
+          <div class="sim-score-block">
+            <div class="sim-score-label">Secure Projected</div>
+            <div class="sim-score-val" id="simSSProjected" style="color:var(--success)">—</div>
+            <div class="sim-score-sub" id="simSSEstLabel" style="display:none;">Estimated</div>
+          </div>
+
+          <div class="sim-score-block">
+            <div class="sim-score-label">Secure Uplift</div>
+            <div class="sim-score-val" id="simSSDelta" style="color:var(--accent)">—</div>
           </div>
         </div>
 
@@ -1799,6 +1819,11 @@ function initSimulator() {
   const col = (assessmentData.score || 0) >= 70 ? 'var(--success)' : (assessmentData.score || 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
   document.getElementById('simScoreCurrent').style.color = col;
 
+  const hasActualOnInit = assessmentData?.allMetrics?.secure_score_percentage != null;
+  const baselineOnInit  = Math.round(assessmentData?.allMetrics?.secure_score_percentage ?? 0);
+  document.getElementById('simSSBaseline').textContent = hasActualOnInit ? `${baselineOnInit}/100` : '—';
+  document.getElementById('simSSEstLabel').style.display = hasActualOnInit ? 'none' : 'block';
+
   renderSimFindings();
   runSimulation();
   document.getElementById('simExportBtn').disabled = false;
@@ -1879,6 +1904,23 @@ function renderSimResults() {
   document.getElementById('simScoreDiff').style.color  = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--muted)';
   document.getElementById('simActiveChains').textContent = simData.activeCount || 0;
   document.getElementById('simBrokenChains').textContent = simData.brokenCount || 0;
+
+  // Secure Score estimation
+  const baseline  = Math.round(assessmentData?.allMetrics?.secure_score_percentage ?? 0);
+  const hasActual = assessmentData?.allMetrics?.secure_score_percentage != null;
+  const uplift    = simFindings
+    .filter(f => simState[f.id] === false)
+    .reduce((sum, f) => sum + (f.secure_score_impact || 0), 0);
+  const projected = Math.min(100, baseline + uplift);
+  const delta     = projected - baseline;
+
+  const ssCol = projected >= 70 ? 'var(--success)' : projected >= 50 ? 'var(--warning)' : 'var(--danger)';
+  document.getElementById('simSSBaseline').textContent  = hasActual ? `${baseline}/100` : '—';
+  document.getElementById('simSSProjected').textContent = `${projected}/100`;
+  document.getElementById('simSSProjected').style.color = ssCol;
+  document.getElementById('simSSDelta').textContent     = `+${delta} pts`;
+  document.getElementById('simSSDelta').style.color     = delta > 0 ? 'var(--success)' : 'var(--muted)';
+  document.getElementById('simSSEstLabel').style.display = hasActual ? 'none' : 'block';
 
   renderSimChains();
   renderSimNarrative();

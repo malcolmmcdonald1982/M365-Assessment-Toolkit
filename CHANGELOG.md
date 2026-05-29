@@ -2,6 +2,50 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.4.0] - 2026-06-05
+
+### New Features
+
+**18 New Findings (30 → 48 across 6 modules)**
+
+*Entra ID — Application Security (10 new findings)*
+- ENTRA-001 — High-Privilege App Registrations (Critical)
+- ENTRA-002 — Expired App Registration Credentials (High)
+- ENTRA-003 — App Credentials Expiring ≤30 Days (High)
+- ENTRA-004 — App Credentials Expiring 31–90 Days (Medium)
+- ENTRA-005 — Never-Expiring App Credentials (Medium)
+- ENTRA-006 — Unowned App Registrations (Medium)
+- ENTRA-007 — Multi-Tenant App Registrations (Medium)
+- ENTRA-008 — Implicit Grant Flow Enabled (Medium)
+- ENTRA-009 — Privileged Service Principals (Critical)
+- ENTRA-010 — Privileged Managed Identities (High)
+
+*Across all modules (8 new findings)*
+- CA-003 — No CA Policy Enforcing MFA for All Users (Critical)
+- EXO-006 — Zero-Hour Auto Purge (ZAP) Not Fully Enabled (High)
+- TEAMS-003 — Anonymous Users Can Join Meetings (Medium)
+- TEAMS-004 — Third-Party Teams Apps Unrestricted (Medium)
+- SPO-003 — OneDrive External Sharing Unrestricted (High)
+- SPO-004 — Guest Access Expiry Not Configured (Medium)
+- MDM-005 — No Mobile Device Compliance Policy (High)
+- MDM-006 — Defender for Endpoint Not Integrated with Intune (Medium)
+
+**Simulated Microsoft Secure Score in Attack Simulator**
+- Simulator now shows Secure Baseline (your actual MS Secure Score), Secure Projected, and Secure Uplift
+- Each finding carries a secure_score_impact value — toggling findings updates the projected score in real time
+- Shows the concrete MS Secure Score improvement achievable by fixing open findings
+- Requires Security module to have run to populate the baseline
+
+**Full Investigation Script Coverage for all 18 new findings**
+- Every new finding includes a ready-to-run PowerShell investigation script
+- Scripts surface per-policy detail, credential expiry lists, ZAP status, app permission breakdowns
+
+### Improvements
+
+- Get-IdentityMetrics.ps1 performance optimised — bulk role lookup, capped owner checks, inverted SP/MI enumeration. Run time reduced from >300s to ~48s on large tenants
+- ZAP check covers malware, phishing and spam policies separately with fallback for older EXO module versions
+- Two new attack chains added to the simulator: APP-TAKEOVER and SP-PERSIST
+
 ## [1.3.0] - 2026-05-25
 
 ### New Features

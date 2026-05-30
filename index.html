@@ -1820,8 +1820,8 @@ function initSimulator() {
   const col = (assessmentData.score || 0) >= 70 ? 'var(--success)' : (assessmentData.score || 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
   document.getElementById('simScoreCurrent').style.color = col;
 
-  const hasActualOnInit = assessmentData?.allMetrics?.secure_score_percentage != null;
-  const baselineOnInit  = Math.round(assessmentData?.allMetrics?.secure_score_percentage ?? 0);
+  const hasActualOnInit = assessmentData?.rawMetrics?.secure_score_percentage != null;
+  const baselineOnInit  = Math.round(assessmentData?.rawMetrics?.secure_score_percentage ?? 0);
   document.getElementById('simSSBaseline').textContent = hasActualOnInit ? `${baselineOnInit}/100` : '—';
   document.getElementById('simSSEstLabel').style.display = hasActualOnInit ? 'none' : 'block';
   document.getElementById('simSSHint').style.display = hasActualOnInit ? 'none' : 'block';
@@ -1908,8 +1908,8 @@ function renderSimResults() {
   document.getElementById('simBrokenChains').textContent = simData.brokenCount || 0;
 
   // Secure Score estimation
-  const baseline  = Math.round(assessmentData?.allMetrics?.secure_score_percentage ?? 0);
-  const hasActual = assessmentData?.allMetrics?.secure_score_percentage != null;
+  const baseline  = Math.round(assessmentData?.rawMetrics?.secure_score_percentage ?? 0);
+  const hasActual = assessmentData?.rawMetrics?.secure_score_percentage != null;
   const uplift    = simFindings
     .filter(f => simState[f.id] === false)
     .reduce((sum, f) => sum + (f.secure_score_impact || 0), 0);

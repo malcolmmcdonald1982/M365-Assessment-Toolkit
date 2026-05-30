@@ -271,9 +271,9 @@ The simulator banner shows six values:
 | **Improvement** | Point difference between current and simulated |
 | **Active Chains** | Number of attack chains currently executable |
 | **Chains Broken** | How many chains would be broken by your simulated fixes |
-| **Secure Baseline** | Your actual Microsoft Secure Score fetched from Graph |
-| **Secure Projected** | Estimated MS Secure Score after your simulated fixes |
-| **Secure Uplift** | Additional MS Secure Score points your fixes would deliver |
+| **MS Secure Score** | Your actual Microsoft Secure Score fetched from Graph |
+| **MS Projected** | Estimated MS Secure Score after your simulated fixes |
+| **MS Uplift** | Additional MS Secure Score points your fixes would deliver |
 
 ### Why is Secure Baseline showing — (dash)?
 

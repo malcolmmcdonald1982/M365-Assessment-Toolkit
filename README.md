@@ -229,22 +229,73 @@ The self-signed certificate created in Step 3 is valid for 2 years. When it expi
 
 ## Understanding the Score
 
-The tool's score is **not the same as Microsoft Secure Score**.
+### The tool score vs Microsoft Secure Score — they measure different things
 
 | | This Tool | Microsoft Secure Score |
 |---|---|---|
 | Measures | Real attack path exposure | Configuration compliance |
 | A high score means | Low attack surface | Settings follow Microsoft recommendations |
 | A low score means | Specific attack paths are open | Some recommended settings are off |
+| Scoring basis | Severity-weighted attack paths | Points per completed recommendation |
+| Can it be gamed? | No — findings are binary pass/fail | Yes — enabling unused features raises it |
 
-The tool scores 0–100 based on severity-weighted findings:
-- **Critical** findings: -8 points each (capped at -32)
-- **High** findings: -5 points each (capped at -20)
-- **Medium** findings: -3 points each (capped at -12)
-- **Low** findings: -1 point each (capped at -4)
-- **Floor:** 10 (never shows zero)
+A tenant can score 80+ on Microsoft Secure Score and still score poorly here. Secure Score rewards enabling features and following recommendations — not whether an attacker can actually get in. This tool scores based on whether real attack paths are open.
 
-A tenant can have a high Microsoft Secure Score and still score poorly here — because Secure Score rewards enabling features, not blocking attack paths.
+### How the tool score is calculated
+
+Starts at 100. Each triggered finding deducts points by severity, with per-severity caps to prevent a single category dominating:
+
+| Severity | Points per finding | Cap |
+|---|---|---|
+| Critical | −8 | −32 |
+| High | −5 | −20 |
+| Medium | −3 | −12 |
+| Low | −1 | −4 |
+
+**Floor: 10** — the score never reaches zero regardless of findings.
+
+### Why the scores differ
+
+**Example:** A tenant enables Microsoft Defender for Endpoint (raises Secure Score) but has no Conditional Access policy enforcing MFA for all users (CA-003 — Critical in this tool). Secure Score goes up. This tool's score goes down. Both are correct — they're measuring different things.
+
+**Which score should I use with clients?** Both. Use this tool's score to show real attack exposure and prioritise what to fix first. Use Microsoft Secure Score to track compliance progress over time. The simulator in this tool shows the projected Secure Score improvement alongside the attack path improvement so you can report both in one conversation.
+
+### The Attack Simulator scores
+
+The simulator banner shows six values:
+
+| Value | What it means |
+|---|---|
+| **Current Score** | Your tool score with all open findings active |
+| **Simulated Score** | Tool score if the findings you toggled were fixed |
+| **Improvement** | Point difference between current and simulated |
+| **Active Chains** | Number of attack chains currently executable |
+| **Chains Broken** | How many chains would be broken by your simulated fixes |
+| **Secure Baseline** | Your actual Microsoft Secure Score fetched from Graph |
+| **Secure Projected** | Estimated MS Secure Score after your simulated fixes |
+| **Secure Uplift** | Additional MS Secure Score points your fixes would deliver |
+
+### Why is Secure Baseline showing — (dash)?
+
+The Secure Baseline only populates when the **Security module** has been run in the current session. The Security module fetches your live Microsoft Secure Score from the Graph API. If you only ran Identity, Exchange, or other modules without running Security, there is no baseline to display.
+
+**Fix:** Run the Security module and then open the Simulator tab. The baseline will populate automatically.
+
+> The Secure Projected and Secure Uplift values are estimates based on the `secure_score_impact` of each finding. Microsoft calculates Secure Score using its own weighting — actual results may vary slightly.
+
+### Frequently asked questions
+
+**My tool score is low but my Microsoft Secure Score is high — which is right?**
+Both are correct. They measure different things. A high Secure Score means your configuration follows Microsoft's recommendations. A low tool score means specific attack paths are still open — an attacker could exploit the misconfigurations this tool flagged regardless of what Secure Score says.
+
+**My tool score is high but I still have open findings — how?**
+The per-severity caps mean a small number of medium or low findings will not dramatically reduce a score that is otherwise clean. A score of 85 with three medium findings still means your attack surface is low — but those findings should still be reviewed.
+
+**The simulator isn't changing my Secure Projected score when I toggle findings**
+Each finding has a `secure_score_impact` value. Some findings have zero impact on Microsoft Secure Score because Microsoft doesn't track them as Secure Score improvement actions. The tool score will still change when you toggle these — the Secure Score projection only updates for findings that have a known Microsoft Secure Score value.
+
+**Why does the tool score start at 100 and go down rather than building up?**
+It reflects how security works — you start secure and misconfigurations reduce that. Building up from zero implies you earn security by adding features, which is the model Secure Score uses. This tool takes the opposite view: you were secure until something went wrong.
 
 ## Auto Update Checker
 

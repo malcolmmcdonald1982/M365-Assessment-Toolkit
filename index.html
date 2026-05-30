@@ -791,42 +791,43 @@
       <div id="simContent" style="display:none;">
         <!-- Score banner -->
         <div class="sim-score-banner">
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Your current attack path score with all open findings active. Starts at 100 — each finding deducts points by severity.">
             <div class="sim-score-label">Current Score</div>
             <div class="sim-score-val" id="simScoreCurrent" style="color:var(--danger)">—</div>
           </div>
           <div class="sim-score-arrow">→</div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Your projected attack path score if the findings you have toggled below were fixed.">
             <div class="sim-score-label">Simulated Score</div>
             <div class="sim-score-val" id="simScoreSim" style="color:var(--success)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="The point improvement in attack path score your simulated fixes would deliver.">
             <div class="sim-score-label">Improvement</div>
             <div class="sim-score-val" id="simScoreDiff" style="color:var(--accent)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Number of attack chains that can currently be executed against this tenant based on open findings.">
             <div class="sim-score-label">Active Chains</div>
             <div class="sim-score-val" id="simActiveChains" style="color:var(--danger)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Number of attack chains that would be broken if you applied your simulated fixes.">
             <div class="sim-score-label">Chains Broken</div>
             <div class="sim-score-val" id="simBrokenChains" style="color:var(--success)">—</div>
           </div>
 
           <div class="sim-score-separator">|</div>
 
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Your actual Microsoft Secure Score fetched from Graph. Requires the Security module to have been run in this session. This is Microsoft's compliance-based score — separate from the attack path score above.">
             <div class="sim-score-label">Secure Baseline</div>
             <div class="sim-score-val" id="simSSBaseline" style="color:var(--muted)">—</div>
+            <div class="sim-score-sub" id="simSSHint" style="color:var(--muted);font-size:9px;margin-top:2px;">Run Security module</div>
           </div>
 
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Estimated Microsoft Secure Score after applying your simulated fixes. Based on the known Secure Score impact of each finding. Actual Microsoft results may vary slightly.">
             <div class="sim-score-label">Secure Projected</div>
             <div class="sim-score-val" id="simSSProjected" style="color:var(--success)">—</div>
             <div class="sim-score-sub" id="simSSEstLabel" style="display:none;">Estimated</div>
           </div>
 
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="The additional Microsoft Secure Score points your simulated fixes are estimated to deliver. Only findings with a known Secure Score impact contribute to this value.">
             <div class="sim-score-label">Secure Uplift</div>
             <div class="sim-score-val" id="simSSDelta" style="color:var(--accent)">—</div>
           </div>
@@ -1823,6 +1824,7 @@ function initSimulator() {
   const baselineOnInit  = Math.round(assessmentData?.allMetrics?.secure_score_percentage ?? 0);
   document.getElementById('simSSBaseline').textContent = hasActualOnInit ? `${baselineOnInit}/100` : '—';
   document.getElementById('simSSEstLabel').style.display = hasActualOnInit ? 'none' : 'block';
+  document.getElementById('simSSHint').style.display = hasActualOnInit ? 'none' : 'block';
 
   renderSimFindings();
   runSimulation();
@@ -1921,6 +1923,7 @@ function renderSimResults() {
   document.getElementById('simSSDelta').textContent     = `+${delta} pts`;
   document.getElementById('simSSDelta').style.color     = delta > 0 ? 'var(--success)' : 'var(--muted)';
   document.getElementById('simSSEstLabel').style.display = hasActual ? 'none' : 'block';
+  document.getElementById('simSSHint').style.display    = hasActual ? 'none' : 'block';
 
   renderSimChains();
   renderSimNarrative();

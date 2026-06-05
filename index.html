@@ -1046,7 +1046,7 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.3.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span id="footerVersion" style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.4.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -1065,6 +1065,12 @@ async function checkBackend() {
     if (r.ok) {
       document.getElementById('statusDot').className = 'status-dot online';
       document.getElementById('statusText').textContent = 'backend online';
+      // Update footer version dynamically from backend
+      const data = await r.json();
+      if (data.version) {
+        const el = document.getElementById('footerVersion');
+        if (el) el.innerHTML = `M365 Assessment Toolkit v${data.version} &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a>`;
+      }
     } else { setOffline(); }
   } catch { setOffline(); }
 }

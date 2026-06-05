@@ -40,160 +40,299 @@ def build_findings_library():
         {"id":"ID-001","title":"Low MFA Coverage","module":"identity","metric":"mfa_percentage","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 95,
          "description":"Fewer than 95% of licensed users have MFA registered. This significantly increases account compromise risk.",
-         "recommendation":"Enable MFA for all users via Conditional Access. Consider enabling Security Defaults if no CA policies exist."},
+         "recommendation":"Enable MFA for all users via Conditional Access. Consider enabling Security Defaults if no CA policies exist.",
+         "secure_score_impact": 16},
 
         {"id":"ID-002","title":"Excessive Global Administrators","module":"identity","metric":"global_admin_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 3,
          "description":"More than 3 Global Administrators detected. Global Admin is the highest-privilege role and should be minimised.",
-         "recommendation":"Reduce Global Admins to 2–3 break-glass accounts. Use least-privilege roles for day-to-day admin tasks."},
+         "recommendation":"Reduce Global Admins to 2–3 break-glass accounts. Use least-privilege roles for day-to-day admin tasks.",
+         "secure_score_impact": 5},
 
         {"id":"ID-003","title":"No Privileged Identity Management","module":"identity","metric":"pim_enabled","severity":"high",
          "threshold": lambda v: v is False,
          "description":"PIM is not in use. Permanent role assignments expand the attack surface unnecessarily.",
-         "recommendation":"Enable Entra PIM and convert permanent admin role assignments to eligible (just-in-time) assignments."},
+         "recommendation":"Enable Entra PIM and convert permanent admin role assignments to eligible (just-in-time) assignments.",
+         "secure_score_impact": 10},
 
         {"id":"ID-004","title":"High Guest User Count","module":"identity","metric":"guest_user_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 50,
          "description":"A large number of guest accounts exist in the tenant. Unreviewed guests represent a data exposure risk.",
-         "recommendation":"Implement an access review policy for guest accounts. Remove guests who no longer require access."},
+         "recommendation":"Implement an access review policy for guest accounts. Remove guests who no longer require access.",
+         "secure_score_impact": 3},
 
         {"id":"ID-005","title":"Unused Licences","module":"identity","metric":"unassigned_licence_percentage","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 20,
          "description":"More than 20% of purchased licences are unassigned, representing unnecessary cost.",
-         "recommendation":"Audit unassigned licences and remove from the subscription where no longer required."},
+         "recommendation":"Audit unassigned licences and remove from the subscription where no longer required.",
+         "secure_score_impact": 0},
 
         # Security & CA
         {"id":"SEC-001","title":"Low Secure Score","module":"security","metric":"secure_score_percentage","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 50,
          "description":"Microsoft Secure Score is below 50%, indicating significant security controls are missing.",
-         "recommendation":"Review the Secure Score dashboard in Defender portal. Prioritise high-impact, low-effort recommendations first."},
+         "recommendation":"Review the Secure Score dashboard in Defender portal. Prioritise high-impact, low-effort recommendations first.",
+         "secure_score_impact": 0},
 
         {"id":"SEC-002","title":"Security Defaults Disabled — No CA Policies","module":"security","metric":"security_defaults_enabled","severity":"critical",
          "threshold": lambda v, m: v is False and m.get("ca_enabled_policy_count", 0) == 0,
          "description":"Security Defaults are disabled and no compensating Conditional Access policies may be in place.",
-         "recommendation":"Either re-enable Security Defaults or implement an equivalent baseline CA policy set covering MFA and legacy auth blocking."},
+         "recommendation":"Either re-enable Security Defaults or implement an equivalent baseline CA policy set covering MFA and legacy auth blocking.",
+         "secure_score_impact": 12},
 
         {"id":"CA-001","title":"No Conditional Access Policies Enabled","module":"security","metric":"ca_enabled_policy_count","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No enabled Conditional Access policies found. Access to M365 is not context-aware.",
-         "recommendation":"Deploy baseline CA policies: MFA for all users, MFA for admins, block legacy auth, require compliant devices."},
+         "recommendation":"Deploy baseline CA policies: MFA for all users, MFA for admins, block legacy auth, require compliant devices.",
+         "secure_score_impact": 15},
 
         {"id":"CA-002","title":"Legacy Authentication Not Blocked","module":"security","metric":"legacy_auth_blocked","severity":"critical",
          "threshold": lambda v: v is False,
          "description":"Legacy authentication protocols are not blocked. These bypass MFA and are heavily exploited.",
-         "recommendation":"Create a CA policy to block all legacy authentication. Audit dependencies before enforcing."},
+         "recommendation":"Create a CA policy to block all legacy authentication. Audit dependencies before enforcing.",
+         "secure_score_impact": 10},
+
+        {"id":"CA-003","title":"No CA Policy Enforcing MFA for All Users","module":"security","metric":"mfa_all_users_ca_policy","severity":"critical",
+         "threshold": lambda v: v is False,
+         "description":"There is no Conditional Access policy that enforces multi-factor authentication for all users. Even with CA policies in place, if none of them target all users with an MFA requirement, entire user populations can authenticate with just a password. Credential stuffing, phishing and password spray attacks succeed instantly against accounts with no MFA enforcement.",
+         "recommendation":"Create a CA policy targeting all users (excluding break-glass accounts), all cloud apps, and requiring MFA as the grant control. This is the single most impactful CA control you can deploy. Test with a pilot group first, then broaden to all users.",
+         "secure_score_impact": 10},
 
         # Exchange
         {"id":"EXO-001","title":"Auto-Forwarding Allowed to External","module":"exchange","metric":"external_forwarding_blocked","severity":"high",
          "threshold": lambda v: v is False,
          "description":"Automatic email forwarding to external recipients is not blocked. This is a common data exfiltration vector.",
-         "recommendation":"Set AutoForwardingMode to 'Automatic' block in the outbound spam filter policy, or create a transport rule to block external auto-forwarding."},
+         "recommendation":"Set AutoForwardingMode to 'Automatic' block in the outbound spam filter policy, or create a transport rule to block external auto-forwarding.",
+         "secure_score_impact": 5},
 
         {"id":"EXO-002","title":"Mailbox Auditing Disabled","module":"exchange","metric":"mailbox_audit_enabled_percentage","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 90,
          "description":"Mailbox auditing is not enabled for all mailboxes. Audit logs are essential for forensic investigation.",
-         "recommendation":"Enable mailbox auditing organisation-wide using Set-OrganizationConfig -AuditDisabled $false."},
+         "recommendation":"Enable mailbox auditing organisation-wide using Set-OrganizationConfig -AuditDisabled $false.",
+         "secure_score_impact": 5},
 
         {"id":"EXO-003","title":"Anti-Phishing Intelligence Disabled","module":"exchange","metric":"antiphish_intelligence_enabled","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Mailbox intelligence in anti-phishing policies is not enabled, reducing protection against targeted attacks.",
-         "recommendation":"Enable mailbox intelligence and impersonation protection in the anti-phishing policy."},
+         "recommendation":"Enable mailbox intelligence and impersonation protection in the anti-phishing policy.",
+         "secure_score_impact": 5},
 
         # Teams
         {"id":"TEAMS-001","title":"Unrestricted External Access","module":"teams","metric":"teams_external_access_restricted","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Teams external access (federation) is not restricted. Users can communicate with any external Teams tenant.",
-         "recommendation":"Restrict Teams external access to approved domains only, or disable it if not required."},
+         "recommendation":"Restrict Teams external access to approved domains only, or disable it if not required.",
+         "secure_score_impact": 3},
 
         {"id":"TEAMS-002","title":"Teams Consumer Access Enabled","module":"teams","metric":"teams_consumer_access_blocked","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Users can communicate with Teams personal/consumer accounts, increasing data leakage risk.",
-         "recommendation":"Disable Teams consumer access unless there is a specific business requirement."},
+         "recommendation":"Disable Teams consumer access unless there is a specific business requirement.",
+         "secure_score_impact": 3},
+
+        {"id":"TEAMS-003","title":"Anonymous Users Can Join Meetings","module":"teams","metric":"teams_anon_meeting_join_enabled","severity":"medium",
+         "threshold": lambda v: v is True,
+         "description":"The global Teams meeting policy allows anonymous users to join meetings without authentication. Anyone with a meeting link can join as a guest with no identity verification. This enables uninvited participants to join internal calls, access shared content, and potentially record sensitive discussions.",
+         "recommendation":"In the Teams Admin Centre, go to Meetings > Meeting policies > Global > Participants & guests. Set 'Anonymous users can join a meeting' to Off. Create an exception policy for specific users or groups with a legitimate need.",
+         "secure_score_impact": 3},
+
+        {"id":"TEAMS-004","title":"Third-Party Teams Apps Unrestricted","module":"teams","metric":"teams_third_party_apps_allowed","severity":"medium",
+         "threshold": lambda v: v is True,
+         "description":"The global Teams app permission policy allows all third-party apps from the Teams store without restriction. Users can install apps that have permissions to read messages, files, and meeting content. Malicious or compromised third-party apps are a growing attack surface in Teams environments.",
+         "recommendation":"In Teams Admin Centre, go to Teams apps > Permission policies > Global. Change third-party apps from Allow all to either Block all or allow specific approved apps only. Review and approve a whitelist of business-critical third-party apps.",
+         "secure_score_impact": 2},
 
         # SharePoint
         {"id":"SPO-001","title":"SharePoint Sharing Set to Anyone","module":"sharepoint","metric":"spo_sharing_level","severity":"critical",
          "threshold": lambda v: v == "ExternalUserAndGuestSharing",
          "description":"SharePoint/OneDrive external sharing is set to Anyone, allowing unauthenticated link sharing.",
-         "recommendation":"Restrict sharing to 'New and existing guests' (ExternalUserSharingOnly) at minimum. Review per site collection."},
+         "recommendation":"Restrict sharing to 'New and existing guests' (ExternalUserSharingOnly) at minimum. Review per site collection.",
+         "secure_score_impact": 8},
 
         {"id":"SPO-002","title":"Legacy Authentication Enabled in SharePoint","module":"sharepoint","metric":"spo_legacy_auth","severity":"high",
          "threshold": lambda v: v is True,
          "description":"Legacy authentication protocols are enabled in SharePoint, bypassing modern auth controls.",
-         "recommendation":"Disable LegacyAuthProtocolsEnabled in SharePoint tenant settings."},
+         "recommendation":"Disable LegacyAuthProtocolsEnabled in SharePoint tenant settings.",
+         "secure_score_impact": 5},
 
+        {"id":"SPO-003","title":"OneDrive External Sharing Unrestricted","module":"sharepoint","metric":"onedrive_sharing_level","severity":"high",
+         "threshold": lambda v: v == "ExternalUserAndGuestSharing",
+         "description":"OneDrive for Business external sharing is set to Anyone, allowing users to create unauthenticated sharing links. SharePoint and OneDrive have separate sharing settings — a tenant can restrict SharePoint while leaving OneDrive open. Files shared via anonymous links are accessible to anyone with the URL, with no authentication or audit trail.",
+         "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing and set the OneDrive sharing level to 'New and existing guests' or more restrictive. This setting is separate from the SharePoint sharing level.",
+         "secure_score_impact": 5},
+
+        {"id":"SPO-004","title":"Guest Access Expiry Not Configured","module":"sharepoint","metric":"guest_access_expiry_configured","severity":"medium",
+         "threshold": lambda v: v is False,
+         "description":"External user (guest) access expiry is not configured. Shared links and guest accounts granted to contractors, partners, or clients do not automatically expire. Former employees of partner organisations, ex-contractors, and deprecated service accounts retain access indefinitely unless manually removed.",
+         "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing > More external sharing settings. Enable 'Guest access to a site or OneDrive will expire automatically after this many days' and set a value appropriate for your business (30–90 days is typical). Also enable link expiry for anonymous sharing links.",
+         "secure_score_impact": 3},
 
         # Over-Permissioned Apps
         {"id":"APP-001","title":"High-Privilege OAuth Apps Detected","module":"security","metric":"high_privilege_app_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more third-party OAuth applications have been granted high-privilege permissions across the tenant. These apps have persistent access to data even after users log out, and are a common persistence mechanism used by attackers following account compromise.",
-         "recommendation":"Review all OAuth app permissions in Entra ID under Enterprise Applications. Remove or restrict apps that have unnecessary Graph permissions such as Mail.ReadWrite, Files.ReadWrite.All, or Directory.ReadWrite.All. Enable admin consent workflow to prevent users granting app permissions without approval."},
+         "recommendation":"Review all OAuth app permissions in Entra ID under Enterprise Applications. Remove or restrict apps that have unnecessary Graph permissions such as Mail.ReadWrite, Files.ReadWrite.All, or Directory.ReadWrite.All. Enable admin consent workflow to prevent users granting app permissions without approval.",
+         "secure_score_impact": 5},
 
         # Alerting and Monitoring
         {"id":"MON-001","title":"No Active Defender Alert Policies","module":"security","metric":"defender_alert_policy_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Microsoft Defender alert policies are active. Without alerting, security incidents such as mass file downloads, impossible travel sign-ins, or malware detections will not be flagged to administrators in real time.",
-         "recommendation":"Enable Microsoft Defender for Office 365 and configure alert policies for high-severity events including suspicious inbox rules, mass file deletion, impossible travel, and malware detected. Ensure alerts are routed to a monitored mailbox or SIEM."},
+         "recommendation":"Enable Microsoft Defender for Office 365 and configure alert policies for high-severity events including suspicious inbox rules, mass file deletion, impossible travel, and malware detected. Ensure alerts are routed to a monitored mailbox or SIEM.",
+         "secure_score_impact": 5},
 
         {"id":"SEC-003","title":"MFA Fatigue Protection Not Enabled","module":"security","metric":"mfa_number_matching_enabled","severity":"high",
          "threshold": lambda v: v is False,
          "description":"Microsoft Authenticator number matching and additional context (sign-in location and app name) are not enabled. Without these, users are vulnerable to MFA fatigue attacks where an attacker repeatedly sends push notifications until the user approves one.",
-         "recommendation":"Enable number matching and additional context in the Authenticator app settings under Entra ID Authentication Methods. This ensures users see the number displayed on screen before approving, making accidental approvals impossible."},
+         "recommendation":"Enable number matching and additional context in the Authenticator app settings under Entra ID Authentication Methods. This ensures users see the number displayed on screen before approving, making accidental approvals impossible.",
+         "secure_score_impact": 5},
 
         {"id":"SEC-004","title":"Weak MFA Methods Enabled","module":"security","metric":"weak_auth_methods_enabled","severity":"medium",
          "threshold": lambda v: v is True,
          "description":"One or more weak authentication methods (SMS text, voice call, or email OTP) are enabled in the tenant. These methods can be intercepted via SIM swapping, call forwarding, or phishing, and are significantly less secure than the Microsoft Authenticator app or FIDO2 keys.",
-         "recommendation":"Disable SMS, voice call, and email OTP authentication methods in Entra ID under Authentication Methods policies. Migrate users to Microsoft Authenticator app with number matching, or FIDO2 security keys for highest assurance."},
+         "recommendation":"Disable SMS, voice call, and email OTP authentication methods in Entra ID under Authentication Methods policies. Migrate users to Microsoft Authenticator app with number matching, or FIDO2 security keys for highest assurance.",
+         "secure_score_impact": 8},
 
         {"id":"SEC-005","title":"Users Can Consent to Apps Without Admin Approval","module":"security","metric":"user_consent_unrestricted","severity":"high",
          "threshold": lambda v: v is True,
          "description":"Users are permitted to grant OAuth application permissions to access company data without administrator approval. This allows malicious or over-permissioned apps to gain access to email, files, and other sensitive data simply by convincing a user to click Accept.",
-         "recommendation":"Restrict user consent to apps in Entra ID under Enterprise Applications > Consent and Permissions. Set to admin consent required, and enable the admin consent workflow so users can request access through an approved process."},
+         "recommendation":"Restrict user consent to apps in Entra ID under Enterprise Applications > Consent and Permissions. Set to admin consent required, and enable the admin consent workflow so users can request access through an approved process.",
+         "secure_score_impact": 5},
         # Intune
         {"id":"MDM-001","title":"Low Device Compliance","module":"intune","metric":"intune_compliance_percentage","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 80,
          "description":"Fewer than 80% of managed devices are compliant. Non-compliant devices may lack encryption or current patches.",
-         "recommendation":"Review non-compliant devices in Intune portal. Identify common failures and remediate. Consider blocking non-compliant device access to M365."},
+         "recommendation":"Review non-compliant devices in Intune portal. Identify common failures and remediate. Consider blocking non-compliant device access to M365.",
+         "secure_score_impact": 5},
 
         {"id":"MDM-002","title":"No Compliance Policies Configured","module":"intune","metric":"intune_compliance_policy_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Intune device compliance policies are in place. Devices cannot be evaluated for compliance.",
-         "recommendation":"Create compliance policies for each device platform (Windows, iOS, Android) covering OS version, encryption, and antivirus requirements."},
+         "recommendation":"Create compliance policies for each device platform (Windows, iOS, Android) covering OS version, encryption, and antivirus requirements.",
+         "secure_score_impact": 8},
 
         # New v1.2 findings
         {"id":"ID-006","title":"Risky Users Not Reviewed","module":"identity","metric":"risky_users_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more users are flagged as high or medium risk by Entra ID Identity Protection and have not been remediated or dismissed. Risky users indicate potential compromised accounts.",
-         "recommendation":"Review risky users in Entra ID > Protection > Risky users. Require password reset or MFA re-registration for at-risk accounts. Investigate the risk events behind each flagged user."},
+         "recommendation":"Review risky users in Entra ID > Protection > Risky users. Require password reset or MFA re-registration for at-risk accounts. Investigate the risk events behind each flagged user.",
+         "secure_score_impact": 5},
 
         {"id":"ID-007","title":"No Emergency Access Account Detected","module":"identity","metric":"emergency_access_exists","severity":"high",
          "threshold": lambda v: v is False,
          "description":"No break-glass (emergency access) account was detected. Without an emergency access account, a misconfigured Conditional Access policy or MFA outage could lock administrators out of the tenant.",
-         "recommendation":"Create at least two emergency access accounts. Exclude them from all CA policies. Store credentials securely offline. Monitor for any sign-in activity on these accounts as an indicator of compromise."},
+         "recommendation":"Create at least two emergency access accounts. Exclude them from all CA policies. Store credentials securely offline. Monitor for any sign-in activity on these accounts as an indicator of compromise.",
+         "secure_score_impact": 3},
 
         {"id":"SEC-006","title":"No Microsoft Sentinel Connected","module":"security","metric":"sentinel_connected","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Microsoft Sentinel does not appear to be connected or generating security alerts. Without a SIEM, threats across M365 services may not be correlated or retained for investigation.",
-         "recommendation":"Deploy Microsoft Sentinel and connect the Microsoft 365 Defender data connector. Configure analytics rules for high-priority scenarios and set up a regular alert review process."},
+         "recommendation":"Deploy Microsoft Sentinel and connect the Microsoft 365 Defender data connector. Configure analytics rules for high-priority scenarios and set up a regular alert review process.",
+         "secure_score_impact": 3},
 
         {"id":"EXO-004","title":"DMARC Not Configured","module":"exchange","metric":"dmarc_configured","severity":"high",
          "threshold": lambda v: v is False,
          "description":"DMARC is not configured on the primary domain. Without DMARC, attackers can spoof your domain in phishing emails, impersonating your organisation to external recipients.",
-         "recommendation":"Publish a DMARC TXT record at _dmarc.yourdomain.com. Start with p=none for monitoring, then progress to p=quarantine and p=reject once SPF and DKIM are confirmed working."},
+         "recommendation":"Publish a DMARC TXT record at _dmarc.yourdomain.com. Start with p=none for monitoring, then progress to p=quarantine and p=reject once SPF and DKIM are confirmed working.",
+         "secure_score_impact": 5},
 
         {"id":"EXO-005","title":"SPF or DKIM Not Configured","module":"exchange","metric":"spf_dkim_configured","severity":"high",
          "threshold": lambda v: v is False,
          "description":"SPF or DKIM email authentication is not fully configured on the primary domain. Without both controls, outbound emails may be rejected by recipients and the domain can be spoofed.",
-         "recommendation":"Ensure an SPF TXT record exists for your domain. Enable DKIM signing in Exchange Online Admin > Email authentication. Both must pass before DMARC enforcement is safe to enable."},
+         "recommendation":"Ensure an SPF TXT record exists for your domain. Enable DKIM signing in Exchange Online Admin > Email authentication. Both must pass before DMARC enforcement is safe to enable.",
+         "secure_score_impact": 5},
+
+        {"id":"EXO-006","title":"Zero-Hour Auto Purge (ZAP) Not Fully Enabled","module":"exchange","metric":"zap_fully_enabled","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"Zero-Hour Auto Purge (ZAP) is not fully enabled for malware, phishing, or spam. ZAP retroactively removes emails already delivered to mailboxes when they are later identified as malicious. Without ZAP, emails that bypass initial filters remain in user mailboxes permanently — giving attackers a lasting foothold for credential theft, business email compromise, and malware delivery.",
+         "recommendation":"In the Microsoft 365 Defender portal, go to Email & Collaboration > Policies & Rules > Threat policies. Under Anti-malware, edit the default policy and ensure ZAP is enabled. Under Anti-spam, edit the default inbound policy and ensure both Phishing ZAP and Spam ZAP are enabled.",
+         "secure_score_impact": 4,
+         "tags": ["email", "defender", "zap", "malware", "phishing"]},
 
         {"id":"MDM-003","title":"No Windows Update Ring Configured","module":"intune","metric":"update_ring_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Windows Update for Business rings are configured in Intune. Without update rings, Windows devices may receive patches inconsistently or too late, leaving known vulnerabilities unpatched.",
-         "recommendation":"Create at least one Windows Update ring in Intune targeting Windows devices. Consider a Pilot ring and a Production ring with a deferral period to catch problematic updates before broad rollout."},
+         "recommendation":"Create at least one Windows Update ring in Intune targeting Windows devices. Consider a Pilot ring and a Production ring with a deferral period to catch problematic updates before broad rollout.",
+         "secure_score_impact": 3},
 
         {"id":"MDM-004","title":"BitLocker Not Enforced","module":"intune","metric":"bitlocker_enforced","severity":"high",
          "threshold": lambda v: v is False,
          "description":"BitLocker disk encryption does not appear to be required by Intune compliance or configuration policies. Devices without encryption expose all data if lost or stolen.",
-         "recommendation":"Create an Intune device configuration profile enabling BitLocker on Windows devices. Add a compliance policy condition requiring device encryption, and block non-compliant devices from accessing M365."},
+         "recommendation":"Create an Intune device configuration profile enabling BitLocker on Windows devices. Add a compliance policy condition requiring device encryption, and block non-compliant devices from accessing M365.",
+         "secure_score_impact": 8},
+
+        {"id":"MDM-005","title":"No Mobile Device Compliance Policy","module":"intune","metric":"mobile_compliance_policy_exists","severity":"high",
+         "threshold": lambda v: v is False,
+         "description":"No Intune compliance policy exists for iOS or Android devices. Mobile devices connecting to Microsoft 365 — including Exchange, Teams and SharePoint — are doing so with no compliance requirement. Compromised, jailbroken, or unmanaged personal devices can access the same data as fully managed corporate endpoints.",
+         "recommendation":"Create Intune compliance policies for iOS and Android covering minimum OS version, screen lock, device encryption, and jailbreak/root detection. Pair with a Conditional Access policy requiring compliant devices for mobile access to M365.",
+         "secure_score_impact": 5},
+
+        {"id":"MDM-006","title":"Defender for Endpoint Not Integrated with Intune","module":"intune","metric":"defender_mde_integration_enabled","severity":"medium",
+         "threshold": lambda v: v is False,
+         "description":"Microsoft Defender for Endpoint is not integrated with Intune via a Mobile Threat Defence connector. Without this integration, device risk signals from Defender — such as active malware, suspicious activity, or network attacks — are not available to Conditional Access. A compromised device can continue to access M365 resources even while Defender has flagged it.",
+         "recommendation":"In Intune, go to Endpoint security > Microsoft Defender for Endpoint and enable the connector. Set up device risk score conditions in your compliance policies. This routes Defender's real-time risk signals into CA so compromised devices are automatically blocked.",
+         "secure_score_impact": 4},
+
+        # Entra ID Deep Findings
+        {"id":"ENTRA-001","title":"High-Privilege App Registrations","module":"identity","metric":"high_priv_app_reg_count","severity":"critical",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have been granted Critical or High risk Microsoft Graph application permissions. An attacker who compromises the application's credentials gains persistent, tenant-wide access that survives user password resets and MFA changes. These permissions are a common target for OAuth consent phishing and credential theft attacks.",
+         "recommendation":"Review all app registrations under Entra ID > App registrations. Remove or reduce permissions that are broader than required. Rotate credentials on any high-privilege app immediately. Enable admin consent workflow to prevent future over-privileged consent grants.",
+         "secure_score_impact": 5},
+
+        {"id":"ENTRA-002","title":"Expired App Registration Credentials","module":"identity","metric":"expired_cred_count","severity":"high",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have credentials (client secrets or certificates) that have already expired. Expired credentials on high-privilege apps suggest the app may be unmanaged or abandoned — a common persistence mechanism left behind by former staff or attackers.",
+         "recommendation":"Go to Entra ID > App registrations and review all apps with expired credentials. Remove expired credentials immediately. If the app is no longer needed, delete the registration entirely. If still in use, rotate credentials and implement a credential rotation process.",
+         "secure_score_impact": 3},
+
+        {"id":"ENTRA-003","title":"App Registration Credentials Expiring Within 30 Days","module":"identity","metric":"expiring_cred_30d_count","severity":"high",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have credentials expiring within 30 days. If not renewed, dependent services will fail to authenticate, potentially causing outages. Rushed credential rotation under time pressure increases the risk of errors.",
+         "recommendation":"Review and rotate expiring credentials immediately in Entra ID > App registrations > Certificates & secrets. Implement automated credential rotation or calendar reminders to avoid last-minute renewals.",
+         "secure_score_impact": 3},
+
+        {"id":"ENTRA-004","title":"App Registration Credentials Expiring Within 90 Days","module":"identity","metric":"expiring_cred_90d_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have credentials expiring within 31–90 days. Plan credential rotation now to avoid service disruption and rushed changes.",
+         "recommendation":"Schedule credential rotation for affected app registrations within the next 30 days. Review Entra ID > App registrations > Certificates & secrets and create replacement credentials before the current ones expire.",
+         "secure_score_impact": 2},
+
+        {"id":"ENTRA-005","title":"App Registration Credentials Set to Never Expire","module":"identity","metric":"never_expire_cred_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have credentials with no expiry date configured. Non-expiring credentials remain valid indefinitely, meaning a leaked secret provides persistent access with no natural rotation forcing function.",
+         "recommendation":"Replace never-expiring credentials with time-limited ones. Set expiry to 6–12 months and implement a rotation process. Go to Entra ID > App registrations > Certificates & secrets, add a new credential with an expiry, and remove the non-expiring one.",
+         "secure_score_impact": 3},
+
+        {"id":"ENTRA-006","title":"Unowned App Registrations","module":"identity","metric":"unowned_app_reg_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have no owner assigned. Without an owner, there is no accountable person to review permissions, rotate credentials, or respond if the app is compromised. Unowned apps are frequently abandoned and left with stale high-privilege permissions.",
+         "recommendation":"Assign an owner to every app registration in Entra ID > App registrations > [App] > Owners. Where no owner can be identified, review whether the app is still in use and delete it if not.",
+         "secure_score_impact": 2},
+
+        {"id":"ENTRA-007","title":"Multi-Tenant App Registrations","module":"identity","metric":"multitenant_app_reg_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations are configured as multi-tenant, meaning users from any external Entra ID tenant can sign in or consent to the app. If this is not intentional, it expands the attack surface beyond your organisation.",
+         "recommendation":"Review multi-tenant app registrations in Entra ID > App registrations. If multi-tenant access is not required, change Supported account types to 'Accounts in this organizational directory only'. For legitimate multi-tenant apps, ensure publisher verification is complete.",
+         "secure_score_impact": 2},
+
+        {"id":"ENTRA-008","title":"Implicit Grant Flow Enabled on App Registrations","module":"identity","metric":"implicit_grant_app_count","severity":"medium",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more app registrations have implicit grant flow enabled (ID token or access token issuance). Implicit flow returns tokens in browser redirect URLs, making them susceptible to leakage via browser history, referrer headers, and cross-site scripting attacks. Microsoft recommends disabling implicit flow for all applications.",
+         "recommendation":"Go to Entra ID > App registrations > [App] > Authentication and uncheck both 'ID tokens' and 'Access tokens' under Implicit grant and hybrid flows. Migrate to the Authorization Code flow with PKCE for public clients.",
+         "secure_score_impact": 3},
+
+        {"id":"ENTRA-009","title":"Service Principals with High-Privilege Directory Roles","module":"identity","metric":"priv_service_principal_count","severity":"critical",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more service principals (enterprise applications) have been assigned high-privilege Entra ID directory roles such as Global Administrator or Application Administrator. A service principal with admin roles is a non-interactive backdoor — an attacker who obtains its credentials gains admin-level access without triggering user sign-in alerts or MFA prompts.",
+         "recommendation":"Go to Entra ID > Roles and administrators and review all high-privilege role assignments. Remove service principals from privileged roles unless there is a documented, audited business requirement. Use least-privilege roles (e.g., Application.ReadWrite.OwnedBy) where possible.",
+         "secure_score_impact": 5},
+
+        {"id":"ENTRA-010","title":"Managed Identities with High-Privilege Directory Roles","module":"identity","metric":"priv_managed_identity_count","severity":"high",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
+         "description":"One or more managed identities have been assigned high-privilege Entra ID directory roles. Managed identities granted admin roles can be exploited by any workload running under that identity — a compromised Azure VM or Function App with a privileged managed identity can take administrative actions across the tenant.",
+         "recommendation":"Go to Entra ID > Roles and administrators and review managed identity role assignments. Remove high-privilege roles from managed identities and assign only the minimum permissions required for each workload.",
+         "secure_score_impact": 3},
     ]
 
 FINDINGS_LIBRARY = build_findings_library()
@@ -213,8 +352,12 @@ METRIC_DISPLAY = {
     "antiphish_intelligence_enabled":  {"label":"Anti-Phishing Intelligence",      "format":"{}",    "desc":"Whether mailbox intelligence protects against impersonation"},
     "teams_external_access_restricted":{"label":"Teams External Access Restricted","format":"{}",    "desc":"Whether Teams federation is restricted to approved domains"},
     "teams_consumer_access_blocked":   {"label":"Teams Consumer Access Blocked",   "format":"{}",    "desc":"Whether personal Teams accounts are blocked"},
+    "teams_anon_meeting_join_enabled": {"label":"Anonymous Meeting Join",          "format":"{}",    "desc":"Whether unauthenticated users can join Teams meetings"},
+    "teams_third_party_apps_allowed":  {"label":"Third-Party Apps Unrestricted",   "format":"{}",    "desc":"Whether all third-party Teams store apps are allowed"},
     "spo_sharing_level":               {"label":"SharePoint External Sharing",     "format":"{}",    "desc":"External sharing setting for SharePoint and OneDrive"},
     "spo_legacy_auth":                 {"label":"SharePoint Legacy Auth Enabled",  "format":"{}",    "desc":"Whether old authentication is enabled in SharePoint"},
+    "onedrive_sharing_level":          {"label":"OneDrive External Sharing",       "format":"{}",    "desc":"External sharing setting for OneDrive for Business"},
+    "guest_access_expiry_configured":  {"label":"Guest Access Expiry",             "format":"{}",    "desc":"Whether external user access expires automatically"},
     "intune_compliance_percentage":    {"label":"Device Compliance Rate",          "format":"{}%",   "desc":"Percentage of managed devices meeting compliance policy"},
     "intune_compliance_policy_count":  {"label":"Device Compliance Policies",      "format":"{}",    "desc":"Number of Intune compliance policies configured"},
     "intune_config_policy_count":      {"label":"Device Config Policies",          "format":"{}",    "desc":"Number of Intune device configuration profiles"},
@@ -229,8 +372,25 @@ METRIC_DISPLAY = {
     "sentinel_connected":              {"label":"Microsoft Sentinel Connected",    "format":"{}",    "desc":"Whether Sentinel appears to be active and generating alerts"},
     "dmarc_configured":                {"label":"DMARC Configured",               "format":"{}",    "desc":"Whether a DMARC record exists for the primary domain"},
     "spf_dkim_configured":             {"label":"SPF and DKIM Configured",        "format":"{}",    "desc":"Whether SPF and DKIM are both set up for the primary domain"},
+    "zap_fully_enabled":               {"label":"Zero-Hour Auto Purge (ZAP)",     "format":"{}",    "desc":"Whether ZAP is enabled for malware, phishing and spam"},
+    "zap_malware_enabled":             {"label":"ZAP — Malware",                  "format":"{}",    "desc":"Whether ZAP is enabled in the malware filter policy"},
+    "zap_phish_enabled":               {"label":"ZAP — Phishing",                 "format":"{}",    "desc":"Whether ZAP is enabled for phishing in the content filter"},
+    "zap_spam_enabled":                {"label":"ZAP — Spam",                     "format":"{}",    "desc":"Whether ZAP is enabled for spam in the content filter"},
     "update_ring_count":               {"label":"Windows Update Rings",            "format":"{}",    "desc":"Number of Windows Update for Business rings in Intune"},
     "bitlocker_enforced":              {"label":"BitLocker Enforced",              "format":"{}",    "desc":"Whether BitLocker is required by Intune policies"},
+    "mobile_compliance_policy_exists": {"label":"Mobile Compliance Policy",        "format":"{}",    "desc":"Whether an iOS or Android compliance policy exists in Intune"},
+    "defender_mde_integration_enabled":{"label":"Defender MDE Integration",        "format":"{}",    "desc":"Whether Defender for Endpoint is connected to Intune"},
+    "mfa_all_users_ca_policy":         {"label":"MFA for All Users (CA)",          "format":"{}",    "desc":"Whether a CA policy enforces MFA broadly for all users"},
+    "high_priv_app_reg_count":         {"label":"High-Privilege App Registrations", "format":"{}",   "desc":"Apps with Critical or High risk Graph permissions"},
+    "expired_cred_count":              {"label":"Expired App Credentials",          "format":"{}",   "desc":"App registrations with expired credentials"},
+    "expiring_cred_30d_count":         {"label":"Credentials Expiring (≤30 days)",  "format":"{}",   "desc":"App registrations with credentials expiring within 30 days"},
+    "expiring_cred_90d_count":         {"label":"Credentials Expiring (31–90 days)","format":"{}",   "desc":"App registrations with credentials expiring within 31–90 days"},
+    "never_expire_cred_count":         {"label":"Never-Expiring Credentials",       "format":"{}",   "desc":"App registrations with credentials set to never expire"},
+    "unowned_app_reg_count":           {"label":"Unowned App Registrations",        "format":"{}",   "desc":"App registrations with no owner assigned"},
+    "multitenant_app_reg_count":       {"label":"Multi-Tenant App Registrations",   "format":"{}",   "desc":"App registrations accessible from any Entra tenant"},
+    "implicit_grant_app_count":        {"label":"Implicit Grant Apps",              "format":"{}",   "desc":"Apps with implicit ID/access token issuance enabled"},
+    "priv_service_principal_count":    {"label":"Privileged Service Principals",    "format":"{}",   "desc":"Service principals with high-privilege directory roles"},
+    "priv_managed_identity_count":     {"label":"Privileged Managed Identities",    "format":"{}",   "desc":"Managed identities with high-privilege directory roles"},
 }
 
 
@@ -380,7 +540,8 @@ def evaluate_findings(all_metrics):
                     "id": f["id"], "title": f["title"], "module": f["module"],
                     "metric": metric, "severity": f["severity"],
                     "description": f["description"], "recommendation": f["recommendation"],
-                    "observed_value": value
+                    "observed_value": value,
+                    "secure_score_impact": f.get("secure_score_impact", 0)
                 })
         except Exception:
             pass
@@ -425,9 +586,13 @@ def format_metric(key, value):
         good_when_true = {"pim_enabled", "security_defaults_enabled", "legacy_auth_blocked",
                           "external_forwarding_blocked", "antiphish_intelligence_enabled",
                           "teams_external_access_restricted", "teams_consumer_access_blocked",
-                          "mfa_number_matching_enabled"}
+                          "mfa_number_matching_enabled",
+                          "zap_fully_enabled", "zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled",
+                          "guest_access_expiry_configured", "mobile_compliance_policy_exists",
+                          "defender_mde_integration_enabled", "mfa_all_users_ca_policy"}
         # Flags where True = bad
-        bad_when_true_extra = {"weak_auth_methods_enabled", "user_consent_unrestricted", "teams_email_into_channel"}
+        bad_when_true_extra = {"weak_auth_methods_enabled", "user_consent_unrestricted", "teams_email_into_channel",
+                               "teams_anon_meeting_join_enabled", "teams_third_party_apps_allowed"}
         # For flags where False = good
         bad_when_true = {"spo_legacy_auth"}
         if key in bad_when_true or key in bad_when_true_extra:
@@ -440,7 +605,12 @@ def format_metric(key, value):
         percentage_good_low  = {"unassigned_licence_percentage"}
         count_good_low       = {"global_admin_count", "guest_user_count"}
         count_good_high      = {"ca_enabled_policy_count", "intune_compliance_policy_count", "defender_alert_policy_count", "intune_config_policy_count"}
-        count_good_zero      = {"high_privilege_app_count", "risky_users_count"}
+        count_good_zero      = {"high_privilege_app_count", "risky_users_count",
+                               "high_priv_app_reg_count", "expired_cred_count",
+                               "expiring_cred_30d_count", "expiring_cred_90d_count",
+                               "never_expire_cred_count", "unowned_app_reg_count",
+                               "multitenant_app_reg_count", "implicit_grant_app_count",
+                               "priv_service_principal_count", "priv_managed_identity_count"}
         count_good_nonzero   = {"update_ring_count"}
 
         if key in percentage_good_high:
@@ -481,6 +651,16 @@ def format_metric(key, value):
             "dmarc_configured": ("Configured", "Not Configured"),
             "spf_dkim_configured": ("Configured", "Not Configured"),
             "bitlocker_enforced": ("Enforced", "Not Enforced"),
+            "zap_fully_enabled": ("Enabled", "Not Fully Enabled"),
+            "zap_malware_enabled": ("Enabled", "Disabled"),
+            "zap_phish_enabled": ("Enabled", "Disabled"),
+            "zap_spam_enabled": ("Enabled", "Disabled"),
+            "teams_anon_meeting_join_enabled": ("Allowed", "Blocked"),
+            "teams_third_party_apps_allowed": ("Allowed", "Restricted"),
+            "guest_access_expiry_configured": ("Configured", "Not Configured"),
+            "mobile_compliance_policy_exists": ("Exists", "Not Found"),
+            "defender_mde_integration_enabled": ("Connected", "Not Connected"),
+            "mfa_all_users_ca_policy": ("Policy Exists", "No Policy Found"),
         }
         if key in friendly_map:
             display = friendly_map[key][0] if value else friendly_map[key][1]
@@ -632,6 +812,14 @@ def run_assessment():
             L(f"{module} complete — {len(metrics)} metrics collected", "success")
         else:
             L(f"{module} returned no data", "warn")
+
+    # Derive composite metrics from raw values
+    if any(k in all_metrics for k in ("zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled")):
+        all_metrics["zap_fully_enabled"] = bool(
+            all_metrics.get("zap_malware_enabled", False) and
+            all_metrics.get("zap_phish_enabled", False) and
+            all_metrics.get("zap_spam_enabled", False)
+        )
 
     findings = evaluate_findings(all_metrics)
     score    = calculate_score(findings)
@@ -1671,6 +1859,38 @@ ATTACK_CHAINS = [
         "broken_by": "CA-002 is critical (block legacy auth). MDM-001 and MDM-002 add defence in depth."
     },
     {
+        "id": "APP-TAKEOVER",
+        "name": "App Registration Credential Theft",
+        "description": "An attacker targets a high-privilege app registration with an expired or leaked credential. Using the credential, they authenticate as the application identity and gain persistent tenant-wide access that survives all user-based controls including MFA resets and password changes.",
+        "requires": ["ENTRA-001", "ENTRA-002"],
+        "severity": "critical",
+        "steps": [
+            "Attacker identifies high-privilege app registrations via public reconnaissance or leaked configs",
+            "Expired or leaked client secret discovered in code repository, deployment pipeline, or dark web",
+            "Attacker authenticates as the application — no user interaction, no MFA prompt",
+            "Application-level access grants tenant-wide permissions (e.g., Mail.ReadWrite, Directory.ReadWrite.All)",
+            "Persistent access maintained silently — survives user password resets and MFA changes"
+        ],
+        "impact": "Full tenant-wide data access at application permission level. Credential theft survives all user-based remediation.",
+        "broken_by": "Both required: ENTRA-001 (remove high-privilege permissions) AND ENTRA-002 (rotate or remove expired credentials)"
+    },
+    {
+        "id": "SP-PERSIST",
+        "name": "Service Principal Backdoor",
+        "description": "A service principal with a high-privilege directory role acts as a persistent, non-interactive backdoor. An attacker who compromises the associated application gains admin-level tenant access without triggering user-based sign-in alerts, MFA prompts, or Conditional Access controls.",
+        "requires": ["ENTRA-009"],
+        "severity": "high",
+        "steps": [
+            "Attacker identifies a service principal assigned to Global Administrator or Application Administrator role",
+            "Application credentials (secret or certificate) obtained via code repo, config leak, or phishing",
+            "Attacker authenticates as the service principal — bypasses all user Conditional Access policies",
+            "Admin-level directory access obtained: create users, assign roles, modify CA policies",
+            "Backdoor account created under attacker control — persistent access even after initial credential revoked"
+        ],
+        "impact": "Complete tenant administrative access without any user-based detection or MFA controls.",
+        "broken_by": "ENTRA-009: Remove high-privilege directory role assignments from all service principals"
+    },
+    {
         "id": "PERSIST",
         "name": "Invisible Persistence",
         "description": "An attacker who gains access establishes multiple persistence mechanisms — rogue apps, email forwarding rules, and backdoor accounts — while generating no alerts. The compromise can go undetected for months.",
@@ -1772,6 +1992,12 @@ REMEDIATION_MAP = {
         "manual_fix": "Connect-MgGraph -Scopes Policy.ReadWrite.ConditionalAccess\n# Create CA policy blocking legacy auth in Entra ID:\n# Entra ID > Protection > Conditional Access > New Policy\n# Conditions: Client apps = Exchange ActiveSync + Other clients\n# Grant: Block access",
         "manual_rollback": "# Go to Entra ID > Protection > Conditional Access\n# Find policy named: MM-Assessment - Block Legacy Authentication\n# Delete or disable the policy",
     },
+    "CA-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Entra ID > Protection > Conditional Access > New Policy\n# Name: Require MFA for All Users\n# Assignments: Users — All users (exclude break-glass accounts)\n# Target resources: All cloud apps\n# Grant: Require multi-factor authentication\n# Enable policy: On",
+        "manual_rollback": "# Entra ID > Protection > Conditional Access\n# Find the MFA policy and disable or delete it",
+    },
     "EXO-001": {
         "script": "Remediate-ExternalForwarding.ps1", "rollback": "Rollback-ExternalForwarding.ps1",
         "tier": 1, "auth": ["exchange"],
@@ -1814,11 +2040,47 @@ REMEDIATION_MAP = {
         "manual_fix": "Connect-MicrosoftTeams\nSet-CsExternalAccessPolicy -Identity Global -EnableTeamsConsumerAccess $false\nDisconnect-MicrosoftTeams",
         "manual_rollback": "Connect-MicrosoftTeams\nSet-CsExternalAccessPolicy -Identity Global -EnableTeamsConsumerAccess $true\nDisconnect-MicrosoftTeams",
     },
+    "TEAMS-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["teams"],
+        "manual_fix": "Connect-MicrosoftTeams\nSet-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $false\nDisconnect-MicrosoftTeams",
+        "manual_rollback": "Connect-MicrosoftTeams\nSet-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting $true\nDisconnect-MicrosoftTeams",
+    },
+    "TEAMS-004": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["teams"],
+        "manual_fix": "# Teams Admin Centre > Teams apps > Permission policies > Global\n# Change Third-party apps from 'Allow all' to 'Block all' or add an approved app list\n# Portal: https://admin.teams.microsoft.com/policies/app-permission",
+        "manual_rollback": "# Teams Admin Centre > Teams apps > Permission policies > Global\n# Change Third-party apps back to 'Allow all'",
+    },
     "SPO-002": {
         "script": "Remediate-SPOLegacyAuth.ps1", "rollback": "Rollback-SPOLegacyAuth.ps1",
         "tier": 1, "auth": ["sharepoint"],
         "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -LegacyAuthProtocolsEnabled $false\nDisconnect-SPOService",
         "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -LegacyAuthProtocolsEnabled $true\nDisconnect-SPOService",
+    },
+    "SPO-003": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["sharepoint"],
+        "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ODBSharingCapability ExistingExternalUserSharingOnly\nDisconnect-SPOService",
+        "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ODBSharingCapability ExternalUserAndGuestSharing\nDisconnect-SPOService",
+    },
+    "SPO-004": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["sharepoint"],
+        "manual_fix": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ExternalUserExpirationRequired $true -ExternalUserExpireInDays 60\nDisconnect-SPOService",
+        "manual_rollback": "Connect-SPOService -Url https://yourtenant-admin.sharepoint.com\nSet-SPOTenant -ExternalUserExpirationRequired $false\nDisconnect-SPOService",
+    },
+    "MDM-005": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Intune > Devices > Compliance policies > Create policy\n# Platform: iOS/iPadOS or Android device administrator / Android Enterprise\n# Settings: Minimum OS version, Require device encryption, Require screen lock, Jailbreak detection\n# Actions: Mark non-compliant, then block access after grace period",
+        "manual_rollback": "# Delete the compliance policy created for iOS/Android in Intune",
+    },
+    "MDM-006": {
+        "script": None, "rollback": None,
+        "tier": 2, "auth": ["graph"],
+        "manual_fix": "# Intune > Endpoint security > Microsoft Defender for Endpoint\n# Enable: Connect Windows devices to Microsoft Defender for Endpoint\n# Enable: Connect Android/iOS devices\n# Then in compliance policies: add Device Threat Level condition\n# Portal: https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector",
+        "manual_rollback": "# Intune > Endpoint security > Microsoft Defender for Endpoint\n# Toggle off the platform connectors that were enabled",
     },
 }
 
@@ -1842,8 +2104,16 @@ TIER2_GUIDANCE = {
     "SEC-006": {"portal": "https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade", "steps": ["Go to Azure Portal > Microsoft Sentinel", "If not deployed: Create a Sentinel workspace in your subscription", "Add the Microsoft 365 Defender data connector", "Add the Azure Active Directory data connector", "Enable the Microsoft Sentinel analytics rules relevant to your environment", "Configure a daily review process for Sentinel incidents"]},
     "EXO-004": {"portal": "https://admin.microsoft.com/Adminportal/Home#/Domains", "steps": ["Identify your primary domain in Microsoft 365 Admin > Settings > Domains", "Log into your DNS provider and add a TXT record", "Name: _dmarc.yourdomain.com", "Value: v=DMARC1; p=none; rua=mailto:dmarc-reports@yourdomain.com", "Wait for DNS propagation (up to 48 hours)", "Monitor reports for 2-4 weeks, then change p=none to p=quarantine", "Once confident, move to p=reject for full enforcement"]},
     "EXO-005": {"portal": "https://admin.exchange.microsoft.com/#/dkim", "steps": ["Go to Exchange Admin Centre > Email authentication > DKIM", "Select your domain and click Enable", "If not yet set up: follow the DNS record instructions provided", "For SPF: ensure your domain has a TXT record starting with v=spf1 include:spf.protection.outlook.com", "Add any other authorised senders (e.g. marketing platforms) to the SPF record", "Verify both records with MXToolbox before enabling DMARC enforcement"]},
+    "EXO-006": {"portal": "https://security.microsoft.com/antimalwarev2", "steps": ["Go to Microsoft 365 Defender > Email & Collaboration > Policies & Rules > Threat policies", "Under Protection policies, click Anti-malware", "Open the Default policy and click Edit protection settings", "Ensure 'Enable zero-hour auto purge (ZAP)' is turned on", "Click Save", "Go back to Threat policies and click Anti-spam", "Open the Default inbound policy and click Edit actions", "Ensure 'Enable zero-hour auto purge (ZAP) for phishing messages' is on", "Ensure 'Enable zero-hour auto purge (ZAP) for spam messages' is on", "Click Save"]},
     "MDM-003": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/PatchManagementBlade/~/overview", "steps": ["Go to Intune > Devices > Windows > Update rings for Windows 10 and later", "Click Create profile", "Name it e.g. Pilot Ring — set quality update deferral to 3 days", "Create a second Production Ring with quality deferral of 7 days, feature deferral of 30 days", "Assign Pilot Ring to a test group, Production Ring to all Windows devices", "Monitor Windows Update compliance under Reports > Windows Updates"]},
     "MDM-004": {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy > Windows 10+", "Enable: Require BitLocker", "Also go to Intune > Devices > Configuration > Create > Windows > Templates > Endpoint Protection", "Configure BitLocker Drive Encryption settings", "Assign both policies to All Devices or Windows device groups", "Monitor encryption status under Intune > Devices > Monitor > Encryption report"]},
+    "CA-003":  {"portal": "https://entra.microsoft.com/#view/Microsoft_AAD_ConditionalAccess/ConditionalAccessBlade/~/Policies", "steps": ["Go to Entra ID > Protection > Conditional Access", "Click New policy", "Name: Require MFA — All Users", "Assignments > Users: All users. Exclude your break-glass accounts by object ID", "Target resources: All cloud apps", "Grant: Require multi-factor authentication", "Set to Report-only first and review the sign-in log impact for 1-2 days", "Set to Enabled once confident"]},
+    "TEAMS-003": {"portal": "https://admin.teams.microsoft.com/meetings/meeting-policies", "steps": ["Go to Teams Admin Centre > Meetings > Meeting policies", "Select the Global (Org-wide default) policy", "Under Participants and guests, find 'Anonymous users can join a meeting'", "Set to Off", "Click Save", "If specific users need anonymous join capability, create a custom policy and assign it to those users only"]},
+    "TEAMS-004": {"portal": "https://admin.teams.microsoft.com/policies/app-permission", "steps": ["Go to Teams Admin Centre > Teams apps > Permission policies", "Select the Global (Org-wide default) policy", "Under Third-party apps, change from 'Allow all apps' to 'Block all apps' or 'Allow specific apps'", "If choosing specific apps: add each approved app individually", "Click Save", "Review any custom app permission policies that may override the global setting"]},
+    "SPO-003":  {"portal": "https://admin.microsoft.com/sharepoint#/sharing", "steps": ["Go to SharePoint Admin Centre > Policies > Sharing", "Scroll to OneDrive — this is separate from the SharePoint sharing setting", "Change OneDrive external sharing from 'Anyone' to 'New and existing guests' at minimum", "Optionally restrict further to 'Existing guests only' or 'Only people in your organisation'", "Click Save", "Note: this does not affect existing shared links — audit and expire those separately"]},
+    "SPO-004":  {"portal": "https://admin.microsoft.com/sharepoint#/sharing", "steps": ["Go to SharePoint Admin Centre > Policies > Sharing", "Expand 'More external sharing settings'", "Check 'Guest access to a site or OneDrive will expire automatically after this many days'", "Set a value — 60 days is a reasonable default for most organisations", "Also enable 'People who use a verification code must reauthenticate after this many days'", "Click Save", "Consider also enabling expiry on anonymous (Anyone) sharing links"]},
+    "MDM-005":  {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesMenu/~/compliancePolicies", "steps": ["Go to Intune > Devices > Compliance policies > Create policy", "Create an iOS/iPadOS policy: Minimum OS version, Require screen lock passcode, Require device not to be jailbroken", "Create an Android policy: Require device encryption, Minimum OS version, Require screen lock, Block rooted devices", "Assign both policies to All Users or a device group", "Set non-compliant action to Mark as non-compliant immediately, then block access after 1-day grace period", "Pair with a Conditional Access policy requiring compliant device for M365 apps"]},
+    "MDM-006":  {"portal": "https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector", "steps": ["Go to Intune > Endpoint security > Microsoft Defender for Endpoint", "Click Connect under Microsoft Defender for Endpoint connector", "Enable the toggle for Windows devices", "Enable the toggle for Android devices (if managed)", "Enable the toggle for iOS/iPadOS devices (if managed)", "Click Save", "Go to Compliance policies and add a device threat level condition (e.g. Low or Medium)", "This passes device risk signals from Defender into Conditional Access"]},
 }
 
 
@@ -3185,6 +3455,78 @@ Get-AcceptedDomain | Select-Object DomainName, Default, DomainType | Format-Tabl
 Disconnect-ExchangeOnline -Confirm:$false"""
     },
 
+    "EXO-006": {
+        "title": "Zero-Hour Auto Purge (ZAP) status",
+        "description": "Checks ZAP configuration across the default malware filter and anti-spam policies — malware ZAP, phishing ZAP and spam ZAP.",
+        "script": r"""# EXO-006 — Zero-Hour Auto Purge (ZAP) Configuration Check
+# Requires: ExchangeOnlineManagement module
+
+Connect-ExchangeOnline -ShowBanner:$false
+
+Write-Host "`n=== Zero-Hour Auto Purge (ZAP) Status ===" -ForegroundColor Cyan
+Write-Host "ZAP retroactively removes emails already delivered to mailboxes when they are later"
+Write-Host "identified as malware, phishing or spam. Disabled ZAP means malicious email stays in inboxes.`n"
+
+# Malware ZAP
+Write-Host "── Malware ZAP (Anti-Malware Policy) ─────────────────────" -ForegroundColor Cyan
+try {
+    $malwarePolicies = Get-MalwareFilterPolicy
+    foreach ($p in $malwarePolicies) {
+        $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+        $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+        $default = if ($p.IsDefault) { " [Default]" } else { "" }
+        Write-Host "  Policy: $($p.Name)$default" -ForegroundColor White
+        Write-Host "  ZAP: $status`n" -ForegroundColor $col
+    }
+} catch {
+    Write-Host "  Could not retrieve malware filter policies: $_" -ForegroundColor Red
+}
+
+# Phishing and Spam ZAP
+Write-Host "── Phishing and Spam ZAP (Anti-Spam Policy) ───────────────" -ForegroundColor Cyan
+try {
+    $spamPolicies = Get-HostedContentFilterPolicy
+    foreach ($p in $spamPolicies) {
+        $default = if ($p.IsDefault) { " [Default]" } else { "" }
+        Write-Host "  Policy: $($p.Name)$default" -ForegroundColor White
+
+        # PhishZapEnabled (newer module versions)
+        if ($p.PSObject.Properties['PhishZapEnabled']) {
+            $col = if ($p.PhishZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.PhishZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Phishing ZAP : $status" -ForegroundColor $col
+        } else {
+            # Older module — ZapEnabled covers both
+            $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Phishing ZAP : $status (via legacy ZapEnabled flag)" -ForegroundColor $col
+        }
+
+        # SpamZapEnabled (newer module versions)
+        if ($p.PSObject.Properties['SpamZapEnabled']) {
+            $col = if ($p.SpamZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.SpamZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Spam ZAP     : $status" -ForegroundColor $col
+        } else {
+            $col = if ($p.ZapEnabled) { 'Green' } else { 'Red' }
+            $status = if ($p.ZapEnabled) { "ENABLED" } else { "DISABLED ← FIX REQUIRED" }
+            Write-Host "  Spam ZAP     : $status (via legacy ZapEnabled flag)" -ForegroundColor $col
+        }
+        Write-Host ""
+    }
+} catch {
+    Write-Host "  Could not retrieve anti-spam policies: $_" -ForegroundColor Red
+}
+
+Write-Host "── How to fix ─────────────────────────────────────────────" -ForegroundColor Yellow
+Write-Host "  Portal: https://security.microsoft.com/antimalwarev2"
+Write-Host "  Email & Collaboration > Policies & Rules > Threat policies"
+Write-Host "  - Anti-malware default policy: Edit protection settings > Enable ZAP"
+Write-Host "  - Anti-spam inbound default: Edit actions > Enable ZAP for phishing + spam`n"
+
+Disconnect-ExchangeOnline -Confirm:$false"""
+    },
+
     "MDM-003": {
         "title": "Windows Update ring inventory",
         "description": "Lists all Windows Update for Business rings configured in Intune with their deferral periods.",
@@ -3280,6 +3622,717 @@ if (-not $bitlockerCompPolicies -and -not $bitlockerConfigs) {
     Write-Host "  1. Intune > Devices > Compliance policies > Create > Windows 10+ > Require BitLocker" -ForegroundColor White
     Write-Host "  2. Intune > Devices > Configuration > Create > Windows > BitLocker (Endpoint Protection)" -ForegroundColor White
 }
+
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-001": {
+        "title": "What are the high-privilege app registrations?",
+        "description": "Lists all app registrations with Critical or High risk Graph application permissions.",
+        "script": r"""# ENTRA-001 — High-Privilege App Registrations
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" -NoWelcome
+
+$HighPriv = @(
+    'Directory.ReadWrite.All','RoleManagement.ReadWrite.Directory','User.ReadWrite.All',
+    'Group.ReadWrite.All','Application.ReadWrite.All','Mail.ReadWrite','Mail.Send',
+    'Files.ReadWrite.All','Sites.FullControl.All','Sites.ReadWrite.All',
+    'UserAuthenticationMethod.ReadWrite.All','Policy.ReadWrite.ConditionalAccess',
+    'Domain.ReadWrite.All','Mail.Read','Mail.ReadBasic.All','Files.Read.All',
+    'Directory.Read.All','RoleManagement.Read.Directory','AuditLog.Read.All',
+    'IdentityRiskyUser.Read.All','SecurityEvents.ReadWrite.All','Organization.ReadWrite.All'
+)
+
+$GraphSP   = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+$RoleMap   = @{}; $GraphSP.AppRoles | ForEach-Object { $RoleMap[$_.Id] = $_.Value }
+$Grants    = Get-MgServicePrincipalAppRoleAssignedTo -ServicePrincipalId $GraphSP.Id -All
+$AllApps   = Get-MgApplication -All -Property AppId,DisplayName
+$AppMap    = @{}; $AllApps | ForEach-Object { $AppMap[$_.AppId] = $_.DisplayName }
+$SPMap     = @{}; Get-MgServicePrincipal -Filter "servicePrincipalType eq 'Application'" -All |
+             ForEach-Object { $SPMap[$_.Id] = $_.AppId }
+
+$report = [System.Collections.Generic.List[object]]::new()
+foreach ($g in $Grants) {
+    $perm = $RoleMap[$g.AppRoleId]
+    if ($perm -and $HighPriv -contains $perm) {
+        $appId = $SPMap[$g.PrincipalId]
+        $name  = if ($appId) { $AppMap[$appId] } else { $g.PrincipalDisplayName }
+        $risk  = if ($perm -in @('Directory.ReadWrite.All','RoleManagement.ReadWrite.Directory',
+                     'User.ReadWrite.All','Application.ReadWrite.All','Mail.ReadWrite',
+                     'Mail.Send','Files.ReadWrite.All','Group.ReadWrite.All')) { 'Critical' } else { 'High' }
+        $report.Add([PSCustomObject]@{ AppName=$name; Permission=$perm; Risk=$risk; SPObjectId=$g.PrincipalId })
+    }
+}
+
+$csv = "HighPrivApps_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object Risk,AppName | Format-Table -AutoSize
+Write-Host "$($report.Count) high-privilege permission grant(s) found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-002": {
+        "title": "Which app registrations have expired credentials?",
+        "description": "Lists all app registrations with client secrets or certificates that have already expired.",
+        "script": r"""# ENTRA-002 — Expired App Registration Credentials
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Now    = Get-Date
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,PasswordCredentials,KeyCredentials
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    foreach ($Cred in @($App.PasswordCredentials) + @($App.KeyCredentials)) {
+        if ($null -eq $Cred) { continue }
+        if ($Cred.EndDateTime -and $Cred.EndDateTime -lt $Now) {
+            $report.Add([PSCustomObject]@{
+                AppName    = $App.DisplayName
+                CredType   = if ($Cred.PSObject.TypeNames[0] -match 'Password') {'Secret'} else {'Certificate'}
+                CredHint   = $Cred.DisplayName ?? $Cred.CustomKeyIdentifier
+                ExpiredOn  = $Cred.EndDateTime.ToString("yyyy-MM-dd")
+                DaysExpired= [int]($Now - $Cred.EndDateTime).TotalDays
+            })
+        }
+    }
+}
+
+$csv = "ExpiredCredentials_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object DaysExpired -Descending | Format-Table -AutoSize
+Write-Host "$($report.Count) expired credential(s) found across app registrations. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-003": {
+        "title": "Which app registrations have credentials expiring within 30 days?",
+        "description": "Lists app registrations with credentials expiring within 30 days.",
+        "script": r"""# ENTRA-003 — Credentials Expiring Within 30 Days
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Now    = Get-Date
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,PasswordCredentials,KeyCredentials
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    foreach ($Cred in @($App.PasswordCredentials) + @($App.KeyCredentials)) {
+        if ($null -eq $Cred -or $null -eq $Cred.EndDateTime) { continue }
+        $daysLeft = [int]($Cred.EndDateTime - $Now).TotalDays
+        if ($daysLeft -ge 0 -and $daysLeft -le 30) {
+            $report.Add([PSCustomObject]@{
+                AppName   = $App.DisplayName
+                CredType  = if ($Cred.PSObject.TypeNames[0] -match 'Password') {'Secret'} else {'Certificate'}
+                CredHint  = $Cred.DisplayName ?? $Cred.CustomKeyIdentifier
+                ExpiresOn = $Cred.EndDateTime.ToString("yyyy-MM-dd")
+                DaysLeft  = $daysLeft
+            })
+        }
+    }
+}
+
+$csv = "ExpiringCredentials30d_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object DaysLeft | Format-Table -AutoSize
+Write-Host "$($report.Count) credential(s) expiring within 30 days. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-004": {
+        "title": "Which app registrations have credentials expiring within 90 days?",
+        "description": "Lists app registrations with credentials expiring within 31–90 days.",
+        "script": r"""# ENTRA-004 — Credentials Expiring Within 90 Days
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Now    = Get-Date
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,PasswordCredentials,KeyCredentials
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    foreach ($Cred in @($App.PasswordCredentials) + @($App.KeyCredentials)) {
+        if ($null -eq $Cred -or $null -eq $Cred.EndDateTime) { continue }
+        $daysLeft = [int]($Cred.EndDateTime - $Now).TotalDays
+        if ($daysLeft -gt 30 -and $daysLeft -le 90) {
+            $report.Add([PSCustomObject]@{
+                AppName   = $App.DisplayName
+                CredType  = if ($Cred.PSObject.TypeNames[0] -match 'Password') {'Secret'} else {'Certificate'}
+                CredHint  = $Cred.DisplayName ?? $Cred.CustomKeyIdentifier
+                ExpiresOn = $Cred.EndDateTime.ToString("yyyy-MM-dd")
+                DaysLeft  = $daysLeft
+            })
+        }
+    }
+}
+
+$csv = "ExpiringCredentials90d_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object DaysLeft | Format-Table -AutoSize
+Write-Host "$($report.Count) credential(s) expiring within 31–90 days. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-005": {
+        "title": "Which app registrations have credentials set to never expire?",
+        "description": "Lists app registrations with credentials that have no expiry date configured.",
+        "script": r"""# ENTRA-005 — Never-Expiring Credentials
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,PasswordCredentials,KeyCredentials
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    foreach ($Cred in @($App.PasswordCredentials) + @($App.KeyCredentials)) {
+        if ($null -eq $Cred) { continue }
+        if ($null -eq $Cred.EndDateTime) {
+            $report.Add([PSCustomObject]@{
+                AppName  = $App.DisplayName
+                CredType = if ($Cred.PSObject.TypeNames[0] -match 'Password') {'Secret'} else {'Certificate'}
+                CredHint = $Cred.DisplayName ?? $Cred.CustomKeyIdentifier
+                Created  = $Cred.StartDateTime?.ToString("yyyy-MM-dd") ?? 'Unknown'
+            })
+        }
+    }
+}
+
+$csv = "NeverExpiringCredentials_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+Write-Host "$($report.Count) never-expiring credential(s) found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-006": {
+        "title": "Which app registrations have no owner?",
+        "description": "Lists all app registrations that have no owner assigned.",
+        "script": r"""# ENTRA-006 — Unowned App Registrations
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All","Directory.Read.All" -NoWelcome
+
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName
+$report = [System.Collections.Generic.List[object]]::new()
+$i = 0
+foreach ($App in $Apps) {
+    $i++
+    Write-Progress -Activity "Checking owners" -Status $App.DisplayName `
+                   -PercentComplete ($i / $Apps.Count * 100)
+    $Owners = Get-MgApplicationOwner -ApplicationId $App.Id -ErrorAction SilentlyContinue
+    if ($null -eq $Owners -or $Owners.Count -eq 0) {
+        $report.Add([PSCustomObject]@{ AppName=$App.DisplayName; AppId=$App.AppId })
+    }
+}
+Write-Progress -Completed -Activity "Checking owners"
+
+$csv = "UnownedApps_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+Write-Host "$($report.Count) of $($Apps.Count) app registrations have no owner. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-007": {
+        "title": "Which app registrations are multi-tenant?",
+        "description": "Lists app registrations configured to accept sign-ins from external Entra tenants.",
+        "script": r"""# ENTRA-007 — Multi-Tenant App Registrations
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,SignInAudience
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    if ($App.SignInAudience -and $App.SignInAudience -ne 'AzureADMyOrg') {
+        $report.Add([PSCustomObject]@{
+            AppName        = $App.DisplayName
+            AppId          = $App.AppId
+            SignInAudience = $App.SignInAudience
+        })
+    }
+}
+
+$csv = "MultiTenantApps_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+Write-Host "$($report.Count) multi-tenant app registration(s) found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-008": {
+        "title": "Which app registrations have implicit grant flow enabled?",
+        "description": "Lists app registrations with ID token or access token issuance via implicit grant flow.",
+        "script": r"""# ENTRA-008 — Implicit Grant Flow
+# Requires: Microsoft.Graph module
+# Permissions: Application.Read.All
+
+Connect-MgGraph -Scopes "Application.Read.All" -NoWelcome
+
+$Apps   = Get-MgApplication -All -Property Id,AppId,DisplayName,Web
+$report = [System.Collections.Generic.List[object]]::new()
+
+foreach ($App in $Apps) {
+    if ($App.Web -and $App.Web.ImplicitGrantSettings) {
+        $idToken  = $App.Web.ImplicitGrantSettings.EnableIdTokenIssuance
+        $accToken = $App.Web.ImplicitGrantSettings.EnableAccessTokenIssuance
+        if ($idToken -eq $true -or $accToken -eq $true) {
+            $report.Add([PSCustomObject]@{
+                AppName            = $App.DisplayName
+                AppId              = $App.AppId
+                IDTokenEnabled     = $idToken
+                AccessTokenEnabled = $accToken
+            })
+        }
+    }
+}
+
+$csv = "ImplicitGrantApps_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Format-Table -AutoSize
+Write-Host "$($report.Count) app(s) with implicit grant flow enabled. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Yellow'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-009": {
+        "title": "Which service principals hold high-privilege directory roles?",
+        "description": "Lists service principals (enterprise applications) assigned to high-privilege Entra directory roles.",
+        "script": r"""# ENTRA-009 — Service Principals with High-Privilege Directory Roles
+# Requires: Microsoft.Graph module
+# Permissions: Directory.Read.All, RoleManagement.Read.Directory
+
+Connect-MgGraph -Scopes "Directory.Read.All","RoleManagement.Read.Directory" -NoWelcome
+
+$HighPrivRoles = @(
+    'Global Administrator','Privileged Role Administrator','Application Administrator',
+    'Cloud Application Administrator','Exchange Administrator','SharePoint Administrator',
+    'Security Administrator','Conditional Access Administrator',
+    'User Administrator','Hybrid Identity Administrator'
+)
+
+$report = [System.Collections.Generic.List[object]]::new()
+foreach ($roleName in $HighPrivRoles) {
+    $role = Get-MgDirectoryRole -Filter "displayName eq '$roleName'" -ErrorAction SilentlyContinue
+    if ($role) {
+        $members = Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All -ErrorAction SilentlyContinue
+        foreach ($m in $members) {
+            try {
+                $sp = Get-MgServicePrincipal -ServicePrincipalId $m.Id -ErrorAction SilentlyContinue
+                if ($sp -and $sp.ServicePrincipalType -eq 'Application') {
+                    $report.Add([PSCustomObject]@{
+                        ServicePrincipal = $sp.DisplayName
+                        AppId            = $sp.AppId
+                        Role             = $roleName
+                        SPObjectId       = $sp.Id
+                    })
+                }
+            } catch {}
+        }
+    }
+}
+
+$csv = "PrivilegedServicePrincipals_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object Role,ServicePrincipal | Format-Table -AutoSize
+Write-Host "$($report.Count) service principal(s) with high-privilege roles found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "ENTRA-010": {
+        "title": "Which managed identities hold high-privilege directory roles?",
+        "description": "Lists managed identities assigned to high-privilege Entra directory roles.",
+        "script": r"""# ENTRA-010 — Managed Identities with High-Privilege Directory Roles
+# Requires: Microsoft.Graph module
+# Permissions: Directory.Read.All, RoleManagement.Read.Directory
+
+Connect-MgGraph -Scopes "Directory.Read.All","RoleManagement.Read.Directory" -NoWelcome
+
+$HighPrivRoles = @(
+    'Global Administrator','Privileged Role Administrator','Application Administrator',
+    'Cloud Application Administrator','Exchange Administrator','SharePoint Administrator',
+    'Security Administrator','Conditional Access Administrator',
+    'User Administrator','Hybrid Identity Administrator'
+)
+
+$report = [System.Collections.Generic.List[object]]::new()
+foreach ($roleName in $HighPrivRoles) {
+    $role = Get-MgDirectoryRole -Filter "displayName eq '$roleName'" -ErrorAction SilentlyContinue
+    if ($role) {
+        $members = Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All -ErrorAction SilentlyContinue
+        foreach ($m in $members) {
+            try {
+                $sp = Get-MgServicePrincipal -ServicePrincipalId $m.Id -ErrorAction SilentlyContinue
+                if ($sp -and $sp.ServicePrincipalType -eq 'ManagedIdentity') {
+                    $miType = if ($sp.AlternativeNames -match '/providers/Microsoft.ManagedIdentity/userAssignedIdentities/') {
+                        'UserAssigned'
+                    } else { 'SystemAssigned' }
+                    $report.Add([PSCustomObject]@{
+                        ManagedIdentity = $sp.DisplayName
+                        MIType          = $miType
+                        Role            = $roleName
+                        ObjectId        = $sp.Id
+                    })
+                }
+            } catch {}
+        }
+    }
+}
+
+$csv = "PrivilegedManagedIdentities_$(Get-Date -Format yyyyMMdd).csv"
+$report | Export-Csv $csv -NoTypeInformation
+$report | Sort-Object Role,ManagedIdentity | Format-Table -AutoSize
+Write-Host "$($report.Count) managed identit(ies) with high-privilege roles found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "CA-003": {
+        "title": "MFA enforcement for all users",
+        "description": "Reviews all enabled Conditional Access policies and identifies whether any enforce MFA broadly against all users.",
+        "script": r"""# CA-003 — MFA All-Users CA Policy Check
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+Write-Host "`n=== Conditional Access — MFA Coverage Check ===" -ForegroundColor Cyan
+Write-Host "Checking for a CA policy that enforces MFA on all users...`n"
+
+$policies = Get-MgIdentityConditionalAccessPolicy -All | Where-Object { $_.State -eq "enabled" }
+Write-Host "Total enabled CA policies: $($policies.Count)`n"
+
+$mfaAllUsers = @()
+$mfaPartial  = @()
+$noMfa       = @()
+
+foreach ($p in $policies) {
+    $includeUsers  = $p.Conditions.Users.IncludeUsers
+    $includeGroups = $p.Conditions.Users.IncludeGroups
+    $grants        = $p.GrantControls.BuiltInControls
+    $requiresMfa   = $grants -contains "mfa"
+
+    if ($requiresMfa -and $includeUsers -contains "All") {
+        $mfaAllUsers += $p
+    } elseif ($requiresMfa) {
+        $mfaPartial += $p
+    } else {
+        $noMfa += $p
+    }
+}
+
+if ($mfaAllUsers.Count -gt 0) {
+    Write-Host "PASS — MFA policy targeting all users found:" -ForegroundColor Green
+    foreach ($p in $mfaAllUsers) {
+        Write-Host "  [$($p.State)] $($p.DisplayName)" -ForegroundColor Green
+        Write-Host "    Exclude users: $($p.Conditions.Users.ExcludeUsers -join ', ')" -ForegroundColor Gray
+        Write-Host "    Exclude groups: $($p.Conditions.Users.ExcludeGroups -join ', ')" -ForegroundColor Gray
+    }
+} else {
+    Write-Host "FAIL — No CA policy enforces MFA for all users." -ForegroundColor Red
+    Write-Host "  Any user without explicit MFA assignment can sign in with only a password." -ForegroundColor Red
+}
+
+if ($mfaPartial.Count -gt 0) {
+    Write-Host "`nMFA policies with partial user scope (not all users):" -ForegroundColor Yellow
+    foreach ($p in $mfaPartial) {
+        Write-Host "  [$($p.State)] $($p.DisplayName)" -ForegroundColor Yellow
+        Write-Host "    Targets: $($p.Conditions.Users.IncludeUsers -join ', ') | Groups: $($p.Conditions.Users.IncludeGroups.Count)" -ForegroundColor Gray
+    }
+}
+
+Write-Host "`nAll enabled policies summary:" -ForegroundColor Cyan
+$policies | Select-Object DisplayName,State,
+    @{N="IncludeUsers"; E={$_.Conditions.Users.IncludeUsers -join ", "}},
+    @{N="MFA"; E={$_.GrantControls.BuiltInControls -contains "mfa"}} | Format-Table -AutoSize
+
+Disconnect-MgGraph"""
+    },
+
+    "TEAMS-003": {
+        "title": "Anonymous meeting join policy",
+        "description": "Checks the global Teams meeting policy to determine whether unauthenticated users can join meetings.",
+        "script": r"""# TEAMS-003 — Anonymous Meeting Join Check
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+Write-Host "`n=== Anonymous Meeting Join Policy ===" -ForegroundColor Cyan
+Write-Host "An unauthenticated user is anyone who joins via a link without signing in.`n"
+
+$globalPolicy = Get-CsTeamsMeetingPolicy -Identity Global
+$anonJoin     = $globalPolicy.AllowAnonymousUsersToJoinMeeting
+
+Write-Host "Global Policy — AllowAnonymousUsersToJoinMeeting: $anonJoin" `
+           -ForegroundColor $(if($anonJoin){'Red'}else{'Green'})
+
+if ($anonJoin) {
+    Write-Host "`n  RISK: Anyone with a meeting link can join without authentication." -ForegroundColor Red
+    Write-Host "  This includes external parties, competitors, or attackers who obtained a link." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-CsTeamsMeetingPolicy -Identity Global -AllowAnonymousUsersToJoinMeeting `$false" -ForegroundColor White
+} else {
+    Write-Host "`n  Anonymous meeting join is disabled. Good." -ForegroundColor Green
+}
+
+# Check custom policies that might allow anonymous join
+Write-Host "`nChecking custom meeting policies that override global..." -ForegroundColor Cyan
+$allPolicies = Get-CsTeamsMeetingPolicy | Where-Object { $_.Identity -ne "Global" -and $_.AllowAnonymousUsersToJoinMeeting -eq $true }
+if ($allPolicies) {
+    Write-Host "$($allPolicies.Count) custom policy(ies) still allow anonymous join:" -ForegroundColor Yellow
+    $allPolicies | Select-Object Identity, AllowAnonymousUsersToJoinMeeting | Format-Table -AutoSize
+} else {
+    Write-Host "  No custom policies allow anonymous join." -ForegroundColor Green
+}
+
+Write-Host "`nAdditional meeting policy settings (Global):" -ForegroundColor Cyan
+Write-Host "  AllowExternalParticipantGiveRequestControl : $($globalPolicy.AllowExternalParticipantGiveRequestControl)"
+Write-Host "  AllowAnonymousUsersToStartMeeting          : $($globalPolicy.AllowAnonymousUsersToStartMeeting)"
+Write-Host "  AutoAdmittedUsers                          : $($globalPolicy.AutoAdmittedUsers)"
+
+Disconnect-MicrosoftTeams"""
+    },
+
+    "TEAMS-004": {
+        "title": "Third-party Teams app permissions",
+        "description": "Checks the global app permission policy to determine whether all third-party store apps are allowed without restriction.",
+        "script": r"""# TEAMS-004 — Third-Party Teams App Permission Policy
+# Requires: MicrosoftTeams module
+
+Connect-MicrosoftTeams
+
+Write-Host "`n=== Teams App Permission Policy ===" -ForegroundColor Cyan
+
+$globalAppPolicy = Get-CsTeamsAppPermissionPolicy -Identity Global
+
+Write-Host "`nGlobal App Permission Policy:" -ForegroundColor Cyan
+$msApps      = $globalAppPolicy.DefaultCatalogApps
+$thirdParty  = $globalAppPolicy.GlobalCatalogApps
+$privateApps = $globalAppPolicy.PrivateCatalogApps
+
+$col = if ($thirdParty -eq "Allow") { 'Red' } elseif ($thirdParty -eq "BlockWithNotification") { 'Yellow' } else { 'Green' }
+Write-Host "  Microsoft apps (DefaultCatalogApps)  : $msApps"
+Write-Host "  Third-party apps (GlobalCatalogApps) : $thirdParty" -ForegroundColor $col
+Write-Host "  Custom apps (PrivateCatalogApps)     : $privateApps"
+
+if ($thirdParty -eq "Allow") {
+    Write-Host "`n  RISK: All third-party apps from the Teams store are unrestricted." -ForegroundColor Red
+    Write-Host "  Users can install any app that may read messages, access files, or join meetings." -ForegroundColor Red
+    Write-Host "`n  To restrict:" -ForegroundColor Yellow
+    Write-Host "  Teams Admin Centre > Teams apps > Permission policies > Global" -ForegroundColor White
+    Write-Host "  Change Third-party apps from 'Allow all' to 'Block all' or an approved app list" -ForegroundColor White
+} else {
+    Write-Host "`n  Third-party apps are restricted. Good." -ForegroundColor Green
+}
+
+# Check allowed app list if using allow-specific
+if ($globalAppPolicy.AllowedAppList) {
+    Write-Host "`nApproved apps list:" -ForegroundColor Cyan
+    $globalAppPolicy.AllowedAppList | Format-Table -AutoSize
+}
+
+Write-Host "`nCustom app permission policies (may override global for some users):" -ForegroundColor Cyan
+Get-CsTeamsAppPermissionPolicy | Where-Object { $_.Identity -ne "Global" } |
+    Select-Object Identity, GlobalCatalogApps | Format-Table -AutoSize
+
+Disconnect-MicrosoftTeams"""
+    },
+
+    "SPO-003": {
+        "title": "OneDrive external sharing level",
+        "description": "Checks the OneDrive for Business sharing level — this is separate from the SharePoint sharing setting and often overlooked.",
+        "script": r"""# SPO-003 — OneDrive External Sharing Level
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+
+Write-Host "`n=== OneDrive External Sharing ===" -ForegroundColor Cyan
+Write-Host "Note: OneDrive sharing is controlled separately from SharePoint sharing.`n"
+
+$odLevel = $tenant.ODBSharingCapability
+$spLevel = $tenant.SharingCapability
+
+$levelDesc = {
+    param($lvl)
+    switch ($lvl) {
+        'Disabled'                       { 'Disabled — no external sharing' }
+        'ExistingExternalUserSharingOnly'{ 'Existing guests only' }
+        'ExternalUserSharingOnly'        { 'New and existing guests (sign-in required)' }
+        'ExternalUserAndGuestSharing'    { 'Anyone — anonymous links ALLOWED' }
+        default                          { $lvl }
+    }
+}
+
+$spCol = if ($spLevel -eq 'ExternalUserAndGuestSharing') {'Red'} elseif ($spLevel -eq 'ExternalUserSharingOnly') {'Yellow'} else {'Green'}
+$odCol = if ($odLevel -eq 'ExternalUserAndGuestSharing') {'Red'} elseif ($odLevel -eq 'ExternalUserSharingOnly') {'Yellow'} else {'Green'}
+
+Write-Host "SharePoint sharing : $spLevel" -ForegroundColor $spCol
+Write-Host "  $(& $levelDesc $spLevel)" -ForegroundColor $spCol
+Write-Host ""
+Write-Host "OneDrive sharing   : $odLevel" -ForegroundColor $odCol
+Write-Host "  $(& $levelDesc $odLevel)" -ForegroundColor $odCol
+
+if ($odLevel -eq 'ExternalUserAndGuestSharing') {
+    Write-Host "`n  RISK: OneDrive allows Anyone links — files can be shared with no authentication." -ForegroundColor Red
+    Write-Host "  Shared files are accessible to anyone with the URL — no sign-in or audit trail." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-SPOTenant -ODBSharingCapability ExistingExternalUserSharingOnly" -ForegroundColor White
+}
+
+Write-Host "`nAnonymous link settings:" -ForegroundColor Cyan
+Write-Host "  RequireAnonymousLinksExpireInDays : $($tenant.RequireAnonymousLinksExpireInDays) (0 = no expiry)"
+Write-Host "  DefaultLinkPermission             : $($tenant.DefaultLinkPermission)"
+Write-Host "  DefaultSharingLinkType            : $($tenant.DefaultSharingLinkType)"
+
+Disconnect-SPOService"""
+    },
+
+    "SPO-004": {
+        "title": "Guest access expiry configuration",
+        "description": "Checks whether external user (guest) access expiry is configured in SharePoint Online.",
+        "script": r"""# SPO-004 — Guest Access Expiry Configuration
+# Requires: Microsoft.Online.SharePoint.PowerShell module
+
+$spAdminUrl = Read-Host "Enter your SharePoint Admin URL (e.g. https://contoso-admin.sharepoint.com)"
+Connect-SPOService -Url $spAdminUrl
+
+$tenant = Get-SPOTenant
+
+Write-Host "`n=== Guest Access Expiry Settings ===" -ForegroundColor Cyan
+
+$expiryRequired = $tenant.ExternalUserExpirationRequired
+$expiryDays     = $tenant.ExternalUserExpireInDays
+$linkExpiry     = $tenant.RequireAnonymousLinksExpireInDays
+
+$col = if ($expiryRequired) { 'Green' } else { 'Red' }
+Write-Host "ExternalUserExpirationRequired : $expiryRequired" -ForegroundColor $col
+
+if ($expiryRequired) {
+    Write-Host "ExternalUserExpireInDays       : $expiryDays days" -ForegroundColor Green
+    Write-Host "`n  Guest access expires automatically after $expiryDays days. Good." -ForegroundColor Green
+} else {
+    Write-Host "`n  RISK: Guest accounts do not expire automatically." -ForegroundColor Red
+    Write-Host "  Ex-employees of partner orgs, ex-contractors, and stale service accounts retain access indefinitely." -ForegroundColor Red
+    Write-Host "`n  To fix:" -ForegroundColor Yellow
+    Write-Host "  Set-SPOTenant -ExternalUserExpirationRequired `$true -ExternalUserExpireInDays 60" -ForegroundColor White
+}
+
+$linkCol = if ($linkExpiry -gt 0) { 'Green' } else { 'Yellow' }
+Write-Host "`nAnonymous link expiry: $linkExpiry days $(if($linkExpiry -eq 0){'(no expiry — review recommended)'})" -ForegroundColor $linkCol
+
+Write-Host "`nCurrent sharing settings summary:" -ForegroundColor Cyan
+Write-Host "  SharingCapability    : $($tenant.SharingCapability)"
+Write-Host "  ODBSharingCapability : $($tenant.ODBSharingCapability)"
+Write-Host "  DefaultLinkPermission: $($tenant.DefaultLinkPermission)"
+
+Disconnect-SPOService"""
+    },
+
+    "MDM-005": {
+        "title": "Mobile device compliance policy coverage",
+        "description": "Checks whether Intune compliance policies exist for iOS and Android devices.",
+        "script": r"""# MDM-005 — Mobile Device Compliance Policy Inventory
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All","DeviceManagementManagedDevices.Read.All" -NoWelcome
+
+Write-Host "`n=== Mobile Device Compliance Policy Coverage ===" -ForegroundColor Cyan
+
+$allPolicies = Get-MgDeviceManagementDeviceCompliancePolicy -All -WarningAction SilentlyContinue
+Write-Host "Total compliance policies: $($allPolicies.Count)`n"
+
+$iosPolicies     = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*ios*' }
+$androidPolicies = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*android*' -or $_.AdditionalProperties['@odata.type'] -like '*Android*' }
+$windowsPolicies = $allPolicies | Where-Object { $_.AdditionalProperties['@odata.type'] -like '*windows*' }
+
+$iosCol     = if ($iosPolicies.Count -gt 0) { 'Green' } else { 'Red' }
+$androidCol = if ($androidPolicies.Count -gt 0) { 'Green' } else { 'Red' }
+
+Write-Host "iOS compliance policies     : $($iosPolicies.Count)" -ForegroundColor $iosCol
+Write-Host "Android compliance policies : $($androidPolicies.Count)" -ForegroundColor $androidCol
+Write-Host "Windows compliance policies : $($windowsPolicies.Count)" -ForegroundColor $(if($windowsPolicies.Count -gt 0){'Green'}else{'Yellow'})
+
+if ($iosPolicies.Count -gt 0) {
+    Write-Host "`niOS Policies:" -ForegroundColor Cyan
+    $iosPolicies | Select-Object DisplayName, @{N="Type";E={$_.AdditionalProperties['@odata.type']}} | Format-Table -AutoSize
+}
+
+if ($androidPolicies.Count -gt 0) {
+    Write-Host "Android Policies:" -ForegroundColor Cyan
+    $androidPolicies | Select-Object DisplayName, @{N="Type";E={$_.AdditionalProperties['@odata.type']}} | Format-Table -AutoSize
+}
+
+if ($iosPolicies.Count -eq 0 -or $androidPolicies.Count -eq 0) {
+    Write-Host "`n  RISK: Mobile devices can connect to M365 with no compliance requirement." -ForegroundColor Red
+    Write-Host "  Jailbroken, unmanaged, or compromised phones may access Exchange, Teams and SharePoint." -ForegroundColor Red
+    Write-Host "`n  Create compliance policies at: Intune > Devices > Compliance policies" -ForegroundColor Yellow
+}
+
+# Enrolled mobile device count
+Write-Host "`nEnrolled mobile devices (top 100):" -ForegroundColor Cyan
+$mobileDevices = Get-MgDeviceManagementManagedDevice -All -WarningAction SilentlyContinue |
+    Where-Object { $_.OperatingSystem -in @('iOS','Android') } | Select-Object -First 100
+Write-Host "  iOS:     $(($mobileDevices | Where-Object OperatingSystem -eq 'iOS').Count)"
+Write-Host "  Android: $(($mobileDevices | Where-Object OperatingSystem -eq 'Android').Count)"
+
+Disconnect-MgGraph"""
+    },
+
+    "MDM-006": {
+        "title": "Defender for Endpoint Intune integration",
+        "description": "Checks whether Microsoft Defender for Endpoint is connected to Intune via Mobile Threat Defence connector.",
+        "script": r"""# MDM-006 — Defender for Endpoint MTD Connector Status
+# Requires: Microsoft.Graph module
+# Permissions: DeviceManagementConfiguration.Read.All
+
+Connect-MgGraph -Scopes "DeviceManagementConfiguration.Read.All" -NoWelcome
+
+Write-Host "`n=== Microsoft Defender for Endpoint — Intune Integration ===" -ForegroundColor Cyan
+Write-Host "The MTD connector passes device risk signals from Defender into Conditional Access.`n"
+
+try {
+    $connectors = Invoke-MgGraphRequest -Method GET `
+        -Uri "https://graph.microsoft.com/v1.0/deviceManagement/mobileThreatDefenseConnectors"
+
+    if (-not $connectors.value -or $connectors.value.Count -eq 0) {
+        Write-Host "  No Mobile Threat Defence connectors configured." -ForegroundColor Red
+        Write-Host "  Device risk signals from Defender cannot flow into Conditional Access." -ForegroundColor Red
+    } else {
+        Write-Host "Configured MTD connectors:" -ForegroundColor Cyan
+        foreach ($c in $connectors.value) {
+            Write-Host "`n  Connector: $($c.id)" -ForegroundColor White
+            Write-Host "  Android enabled : $($c.androidEnabled)" -ForegroundColor $(if($c.androidEnabled){'Green'}else{'Yellow'})
+            Write-Host "  iOS enabled     : $($c.iosEnabled)" -ForegroundColor $(if($c.iosEnabled){'Green'}else{'Yellow'})
+            Write-Host "  Windows enabled : $($c.windowsEnabled)" -ForegroundColor $(if($c.windowsEnabled){'Green'}else{'Yellow'})
+            $anyEnabled = $c.androidEnabled -or $c.iosEnabled -or $c.windowsEnabled
+            if ($anyEnabled) {
+                Write-Host "  STATUS: Active — at least one platform is connected" -ForegroundColor Green
+            } else {
+                Write-Host "  STATUS: Connector exists but no platforms are enabled" -ForegroundColor Red
+            }
+        }
+    }
+} catch {
+    Write-Host "  Could not retrieve MTD connectors: $_" -ForegroundColor Red
+}
+
+Write-Host "`nTo configure:" -ForegroundColor Yellow
+Write-Host "  Intune > Endpoint security > Microsoft Defender for Endpoint"
+Write-Host "  Portal: https://intune.microsoft.com/#view/Microsoft_Intune_Workflows/SecurityManagementMenu/~/mdeConnector"
 
 Disconnect-MgGraph"""
     },

@@ -96,6 +96,7 @@ try {
     # ── Conditional Access ────────────────────────────────────
     $CAEnabledCount    = 0
     $LegacyAuthBlocked = $false
+    $MfaAllUsersPolicy = $false
     try {
         $CAPolicies      = Get-MgIdentityConditionalAccessPolicy -All -WarningAction SilentlyContinue
         $EnabledPolicies = $CAPolicies | Where-Object { $_.State -eq "enabled" }
@@ -104,7 +105,17 @@ try {
             $ClientApps = $Policy.Conditions.ClientAppTypes
             if ($ClientApps -and ($ClientApps -contains "exchangeActiveSync" -or $ClientApps -contains "other")) {
                 $Controls = $Policy.GrantControls.BuiltInControls
-                if ($Controls -contains "block") { $LegacyAuthBlocked = $true; break }
+                if ($Controls -contains "block") { $LegacyAuthBlocked = $true }
+            }
+            # CA-003: check for broad MFA enforcement (All users, MFA grant)
+            if (-not $MfaAllUsersPolicy) {
+                $IncludeUsers  = $Policy.Conditions.Users.IncludeUsers
+                $IncludeGroups = $Policy.Conditions.Users.IncludeGroups
+                $Grants        = $Policy.GrantControls.BuiltInControls
+                # Counts as broad MFA if: targets All users and requires MFA
+                if ($IncludeUsers -contains "All" -and $Grants -contains "mfa") {
+                    $MfaAllUsersPolicy = $true
+                }
             }
         }
     } catch {}
@@ -209,6 +220,7 @@ try {
         security_defaults_enabled   = $SecurityDefaultsEnabled
         ca_enabled_policy_count     = $CAEnabledCount
         legacy_auth_blocked         = $LegacyAuthBlocked
+        mfa_all_users_ca_policy     = $MfaAllUsersPolicy
         high_privilege_app_count    = $HighPrivAppCount
         defender_alert_policy_count = $DefenderAlertPolicyCount
         mfa_number_matching_enabled = $NumberMatchingEnabled

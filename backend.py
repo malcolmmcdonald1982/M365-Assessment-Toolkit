@@ -711,7 +711,9 @@ def save_session(session_data):
 #  ROUTES
 # ─────────────────────────────────────────────────────────────
 
-CURRENT_VERSION = "1.3.0"
+# Read version from VERSION file — never hardcode so updates always reflect correctly
+_ver_file = os.path.join(BASE_DIR, "VERSION")
+CURRENT_VERSION = open(_ver_file).read().strip() if os.path.exists(_ver_file) else "1.4.0"
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
 RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
 

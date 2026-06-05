@@ -5,48 +5,51 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234f9cf9' d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M365 Assessment Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d0f14;
-    --bg2: #13161e;
-    --bg3: #1a1e2a;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.12);
-    --text: #e8eaf0;
-    --muted: #6b7280;
-    --accent: #4f9cf9;
-    --accent2: #7c3aed;
+    --bg: #080e1c;
+    --bg2: #0d1828;
+    --bg3: #132135;
+    --bg4: #1b2d47;
+    --border: rgba(59,130,246,0.09);
+    --border2: rgba(59,130,246,0.22);
+    --text: #dce5f7;
+    --muted: #7888a4;
+    --accent: #1d75e8;
+    --accent2: #5b5fc7;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
     --mono: 'DM Mono', monospace;
-    --sans: 'Syne', sans-serif;
+    --sans: 'Inter', sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
 
   header {
-    border-bottom: 1px solid var(--border);
-    padding: 1.25rem 2rem;
+    border-top: 2px solid var(--accent);
+    border-bottom: 1px solid var(--border2);
+    padding: 1.1rem 2rem;
     display: flex; align-items: center; justify-content: space-between;
     background: var(--bg2);
     position: relative; z-index: 10;
+    box-shadow: 0 1px 12px rgba(0,0,0,0.45);
   }
   .logo { display: flex; align-items: center; gap: 12px; }
   .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
   .logo-icon svg { width: 18px; height: 18px; fill: white; }
-  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
-  .logo-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+  .logo-text { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
+  .logo-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 2px; letter-spacing: 0.04em; }
   .status-pill { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); color: var(--muted); display: flex; align-items: center; gap: 6px; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
   .status-dot.online { background: var(--success); }
 
   main { flex: 1; display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 65px); }
 
-  aside { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  aside { background: var(--bg2); border-right: 1px solid var(--border2); display: flex; flex-direction: column; overflow-y: auto; }
   .sidebar-section { padding: 1.25rem; border-bottom: 1px solid var(--border); }
-  .sidebar-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+  .sidebar-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; font-weight: 500; }
 
   /* Auth toggle */
   .auth-toggle { display: flex; background: var(--bg); border: 1px solid var(--border2); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 14px; }
@@ -66,8 +69,8 @@
 
   .module-list { display: flex; flex-direction: column; gap: 6px; }
   .module-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; user-select: none; }
-  .module-item:hover { border-color: var(--border2); background: var(--bg3); }
-  .module-item.checked { border-color: var(--accent); background: rgba(79,156,249,0.05); }
+  .module-item:hover { border-color: var(--border2); background: var(--bg4); }
+  .module-item.checked { border-color: rgba(29,117,232,0.55); background: rgba(29,117,232,0.07); }
   .module-item.disabled { opacity: 0.4; cursor: not-allowed; }
   .module-check { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
   .module-item.checked .module-check { background: var(--accent); border-color: var(--accent); }
@@ -83,10 +86,10 @@
   /* Interactive auth warning banner */
   .interactive-warning { display: none; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); border-radius: 6px; padding: 8px 10px; margin-top: 8px; font-family: var(--sans); font-size: 11px; color: var(--warning); line-height: 1.6; }
 
-  .run-btn { margin: 1.25rem; width: calc(100% - 2.5rem); padding: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 8px; color: white; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .run-btn:hover { opacity: 0.9; }
+  .run-btn { margin: 1.25rem; width: calc(100% - 2.5rem); padding: 12px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 8px; color: white; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 12px rgba(29,117,232,0.35); }
+  .run-btn:hover { opacity: 0.92; box-shadow: 0 4px 20px rgba(29,117,232,0.5); }
   .run-btn:active { transform: scale(0.98); }
-  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .run-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
   .run-btn svg { width: 16px; height: 16px; fill: none; stroke: white; stroke-width: 2; }
 
   .panel { display: flex; flex-direction: column; overflow: hidden; }
@@ -119,9 +122,9 @@
   .loaded-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--success); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 4px; padding: 2px 8px; margin-left: 8px; }
 
   .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg2); padding: 0 1.5rem; }
-  .tab { font-family: var(--mono); font-size: 11px; padding: 14px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; letter-spacing: 0.05em; }
+  .tab { font-family: var(--mono); font-size: 11px; padding: 14px 18px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; letter-spacing: 0.06em; text-transform: uppercase; }
   .tab:hover { color: var(--text); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 
   .content { flex: 1; overflow-y: auto; padding: 2rem; }
 
@@ -133,11 +136,11 @@
 
   .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 2rem; }
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 2rem; }
-  .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.2s; position: relative; overflow: hidden; }
-  .metric-card:hover { border-color: var(--border2); }
+  .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+  .metric-card:hover { border-color: var(--border2); box-shadow: 0 3px 12px rgba(0,0,0,0.5); }
   .metric-card:hover .metric-tooltip { display: block; }
   .metric-label { font-family: var(--sans); font-size: 11px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; min-height: 28px; }
-  .metric-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; word-break: break-word; }
+  .metric-value { font-size: 22px; font-weight: 700; line-height: 1.2; margin-bottom: 4px; word-break: break-word; letter-spacing: -0.02em; }
   .metric-value.good { color: var(--success); }
   .metric-value.warn { color: var(--warning); }
   .metric-value.bad { color: var(--danger); }
@@ -149,7 +152,8 @@
   .metric-tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; font-family: var(--mono); font-size: 10px; color: var(--text); width: 200px; z-index: 100; line-height: 1.5; white-space: normal; }
 
   .findings-list { display: flex; flex-direction: column; gap: 10px; }
-  .finding-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; gap: 14px; align-items: flex-start; }
+  .finding-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,0.45); transition: border-color 0.15s, box-shadow 0.15s; }
+  .finding-card:hover { border-color: var(--border2); box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
   .finding-severity { width: 8px; border-radius: 4px; flex-shrink: 0; align-self: stretch; }
   .finding-severity.critical { background: var(--danger); }
   .finding-severity.high { background: var(--warning); }
@@ -186,7 +190,7 @@
   .log-line.error .msg { color: var(--danger); }
 
   .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-  .section-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .section-title { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
   .section-count { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--bg3); padding: 2px 8px; border-radius: 10px; }
 
   .report-actions { display: flex; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap; }
@@ -271,15 +275,17 @@
 
   /* Simulator */
   .sim-layout { display: grid; grid-template-columns: 280px 1fr 1fr; gap: 16px; height: calc(100vh - 180px); }
-  .sim-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .sim-panel { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 8px rgba(0,0,0,0.45); }
   .sim-panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   .sim-panel-title { font-size: 12px; font-weight: 600; }
   .sim-panel-body { flex: 1; overflow-y: auto; padding: 12px; }
-  .sim-score-banner { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
-  .sim-score-block { text-align: center; }
-  .sim-score-label { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 4px; }
-  .sim-score-val { font-size: 32px; font-weight: 700; line-height: 1; }
-  .sim-score-arrow { font-size: 24px; color: var(--muted); }
+  .sim-score-banner { display: flex; align-items: center; justify-content: space-between; background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 16px 24px; margin-bottom: 16px; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+  .sim-score-block { text-align: center; min-width: 80px; }
+  .sim-score-label { font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sim-score-val { font-size: 30px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-family: var(--sans); }
+  .sim-score-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); text-align: center; margin-top: 4px; }
+  .sim-score-separator { width: 1px; background: var(--border2); align-self: stretch; margin: 0 4px; font-size: 0; }
+  .sim-score-arrow { font-size: 18px; color: var(--muted); }
   .sim-finding-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: all 0.15s; user-select: none; }
   .sim-finding-row:hover { border-color: var(--border2); }
   .sim-finding-row.fixed { opacity: 0.5; border-style: dashed; }
@@ -365,9 +371,39 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.35); }
 
   @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* ── Polish ── */
+  .tabs { background: var(--bg2); border-bottom: 1px solid var(--border2); }
+
+  .logo-icon { background: linear-gradient(140deg, var(--accent), var(--accent2)) !important; box-shadow: 0 2px 10px rgba(29,117,232,0.4); }
+
+  .welcome-icon { background: var(--bg3); border-color: var(--border2); }
+
+  .session-card { box-shadow: 0 1px 4px rgba(0,0,0,0.45); transition: border-color 0.15s, box-shadow 0.15s; }
+  .session-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.5); }
+
+  .report-preview { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.45); }
+
+  .rem-card { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+  /* Finding severity bar — make the left strip more prominent */
+  .finding-severity { width: 3px; border-radius: 2px; flex-shrink: 0; align-self: stretch; }
+
+  /* Section count badge */
+  .section-count { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--bg3); border: 1px solid var(--border2); padding: 2px 10px; border-radius: 20px; }
+
+  /* Input focus ring */
+  .field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,117,232,0.15); }
+
+  /* Rem warning stronger border */
+  .rem-warning { border-left: 3px solid var(--warning); }
+
+  /* Overall score display */
+  #overallScore { letter-spacing: -0.03em; }
 
   /* Update banner */
   #updateBanner { display: none; background: rgba(79,156,249,0.08); border-bottom: 1px solid rgba(79,156,249,0.25); padding: 9px 2rem; align-items: center; gap: 12px; font-family: var(--mono); font-size: 11px; flex-shrink: 0; }
@@ -391,7 +427,7 @@
     </div>
     <div>
       <div class="logo-text">M365 Assessment Tool</div>
-      <div class="logo-sub">M365 Assessment Toolkit</div>
+      <div class="logo-sub">Security Assessment Platform</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
@@ -789,26 +825,45 @@
       <div id="simContent" style="display:none;">
         <!-- Score banner -->
         <div class="sim-score-banner">
-          <div class="sim-score-block">
-            <div class="sim-score-label">Current Score</div>
+          <div class="sim-score-block" title="Your current attack path score with all open findings active. Starts at 100 — each finding deducts points by severity.">
+            <div class="sim-score-label">Attack Path Score</div>
             <div class="sim-score-val" id="simScoreCurrent" style="color:var(--danger)">—</div>
           </div>
           <div class="sim-score-arrow">→</div>
-          <div class="sim-score-block">
-            <div class="sim-score-label">Simulated Score</div>
+          <div class="sim-score-block" title="Your projected attack path score if the findings you have toggled below were fixed.">
+            <div class="sim-score-label">Simulated Path Score</div>
             <div class="sim-score-val" id="simScoreSim" style="color:var(--success)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="The point improvement in attack path score your simulated fixes would deliver.">
             <div class="sim-score-label">Improvement</div>
             <div class="sim-score-val" id="simScoreDiff" style="color:var(--accent)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Number of attack chains that can currently be executed against this tenant based on open findings.">
             <div class="sim-score-label">Active Chains</div>
             <div class="sim-score-val" id="simActiveChains" style="color:var(--danger)">—</div>
           </div>
-          <div class="sim-score-block">
+          <div class="sim-score-block" title="Number of attack chains that would be broken if you applied your simulated fixes.">
             <div class="sim-score-label">Chains Broken</div>
             <div class="sim-score-val" id="simBrokenChains" style="color:var(--success)">—</div>
+          </div>
+
+          <div class="sim-score-separator">|</div>
+
+          <div class="sim-score-block" title="Your actual Microsoft Secure Score fetched from Graph. Requires the Security module to have been run in this session. This is Microsoft's compliance-based score — separate from the attack path score above.">
+            <div class="sim-score-label">MS Secure Score</div>
+            <div class="sim-score-val" id="simSSBaseline" style="color:var(--muted)">—</div>
+            <div class="sim-score-sub" id="simSSHint" style="color:var(--muted);font-size:9px;margin-top:2px;">Run Security module</div>
+          </div>
+
+          <div class="sim-score-block" title="Estimated Microsoft Secure Score after applying your simulated fixes. Based on the known Secure Score impact of each finding. Actual Microsoft results may vary slightly.">
+            <div class="sim-score-label">MS Projected</div>
+            <div class="sim-score-val" id="simSSProjected" style="color:var(--success)">—</div>
+            <div class="sim-score-sub" id="simSSEstLabel" style="display:none;">Estimated</div>
+          </div>
+
+          <div class="sim-score-block" title="The additional Microsoft Secure Score points your simulated fixes are estimated to deliver. Only findings with a known Secure Score impact contribute to this value.">
+            <div class="sim-score-label">MS Uplift</div>
+            <div class="sim-score-val" id="simSSDelta" style="color:var(--accent)">—</div>
           </div>
         </div>
 
@@ -1302,7 +1357,7 @@ function renderOverview(data) {
 }
 
 // Finding IDs that have a server-side investigation script available
-const INVESTIGATE_IDS = new Set(['ID-001','ID-002','ID-003','ID-004','ID-005','APP-001','MON-001','EXO-001','MDM-001']);
+const INVESTIGATE_IDS = new Set(['ID-001','ID-002','ID-003','ID-004','ID-005','APP-001','MON-001','EXO-001','MDM-001','ENTRA-001','ENTRA-002','ENTRA-003','ENTRA-004','ENTRA-005','ENTRA-006','ENTRA-007','ENTRA-008','ENTRA-009','ENTRA-010']);
 const investCache = {};
 
 function renderFindings(findings) {
@@ -1799,6 +1854,12 @@ function initSimulator() {
   const col = (assessmentData.score || 0) >= 70 ? 'var(--success)' : (assessmentData.score || 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
   document.getElementById('simScoreCurrent').style.color = col;
 
+  const hasActualOnInit = assessmentData?.rawMetrics?.secure_score_percentage != null;
+  const baselineOnInit  = Math.round(assessmentData?.rawMetrics?.secure_score_percentage ?? 0);
+  document.getElementById('simSSBaseline').textContent = hasActualOnInit ? `${baselineOnInit}/100` : '—';
+  document.getElementById('simSSEstLabel').style.display = hasActualOnInit ? 'none' : 'block';
+  document.getElementById('simSSHint').style.display = hasActualOnInit ? 'none' : 'block';
+
   renderSimFindings();
   runSimulation();
   document.getElementById('simExportBtn').disabled = false;
@@ -1879,6 +1940,24 @@ function renderSimResults() {
   document.getElementById('simScoreDiff').style.color  = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--muted)';
   document.getElementById('simActiveChains').textContent = simData.activeCount || 0;
   document.getElementById('simBrokenChains').textContent = simData.brokenCount || 0;
+
+  // Secure Score estimation
+  const baseline  = Math.round(assessmentData?.rawMetrics?.secure_score_percentage ?? 0);
+  const hasActual = assessmentData?.rawMetrics?.secure_score_percentage != null;
+  const uplift    = simFindings
+    .filter(f => simState[f.id] === false)
+    .reduce((sum, f) => sum + (f.secure_score_impact || 0), 0);
+  const projected = Math.min(100, baseline + uplift);
+  const delta     = projected - baseline;
+
+  const ssCol = projected >= 70 ? 'var(--success)' : projected >= 50 ? 'var(--warning)' : 'var(--danger)';
+  document.getElementById('simSSBaseline').textContent  = hasActual ? `${baseline}/100` : '—';
+  document.getElementById('simSSProjected').textContent = `${projected}/100`;
+  document.getElementById('simSSProjected').style.color = ssCol;
+  document.getElementById('simSSDelta').textContent     = `+${delta} pts`;
+  document.getElementById('simSSDelta').style.color     = delta > 0 ? 'var(--success)' : 'var(--muted)';
+  document.getElementById('simSSEstLabel').style.display = hasActual ? 'none' : 'block';
+  document.getElementById('simSSHint').style.display    = hasActual ? 'none' : 'block';
 
   renderSimChains();
   renderSimNarrative();

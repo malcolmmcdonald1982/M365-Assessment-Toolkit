@@ -61,6 +61,26 @@ try {
         $EmailIntoChannelEnabled = [bool]$ClientConfig.AllowEmailIntoChannel
     } catch {}
 
+    # ── Anonymous Meeting Join ────────────────────────────────
+    $AnonMeetingJoinEnabled = $false
+    try {
+        $MeetingPolicy = Get-CsTeamsMeetingPolicy -Identity Global -ErrorAction SilentlyContinue
+        if ($MeetingPolicy) {
+            $AnonMeetingJoinEnabled = [bool]$MeetingPolicy.AllowAnonymousUsersToJoinMeeting
+        }
+    } catch {}
+
+    # ── Third-Party Apps Policy ───────────────────────────────
+    # Fires when the Global app permission policy allows all third-party store apps
+    $ThirdPartyAppsAllowed = $false
+    try {
+        $AppPolicy = Get-CsTeamsAppPermissionPolicy -Identity Global -ErrorAction SilentlyContinue
+        if ($AppPolicy) {
+            # GlobalCatalogApps = third-party store apps; "Allow" means unrestricted
+            $ThirdPartyAppsAllowed = ($AppPolicy.GlobalCatalogApps -eq "Allow")
+        }
+    } catch {}
+
     Disconnect-MicrosoftTeams | Out-Null
 
     # ── Output JSON ────────────────────────────────────────────
@@ -68,6 +88,8 @@ try {
         teams_external_access_restricted = $ExternalAccessRestricted
         teams_consumer_access_blocked    = $ConsumerAccessBlocked
         teams_email_into_channel         = $EmailIntoChannelEnabled
+        teams_anon_meeting_join_enabled  = $AnonMeetingJoinEnabled
+        teams_third_party_apps_allowed   = $ThirdPartyAppsAllowed
     } | ConvertTo-Json -Compress | Write-Output
 
     exit 0

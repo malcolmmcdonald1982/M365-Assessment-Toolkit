@@ -53,19 +53,27 @@ if ($SpAdminUrl -eq "") {
 try {
     Connect-SPOService -Url $SpAdminUrl | Out-Null
 
-    $SharingLevel      = "Unknown"
-    $LegacyAuthEnabled = $false
+    $SharingLevel               = "Unknown"
+    $LegacyAuthEnabled          = $false
+    $OneDriveSharingLevel       = "Unknown"
+    $GuestAccessExpiryConfigured = $false
     try {
-        $Tenant            = Get-SPOTenant
-        $SharingLevel      = $Tenant.SharingCapability.ToString()
-        $LegacyAuthEnabled = [bool]$Tenant.LegacyAuthProtocolsEnabled
+        $Tenant                     = Get-SPOTenant
+        $SharingLevel               = $Tenant.SharingCapability.ToString()
+        $LegacyAuthEnabled          = [bool]$Tenant.LegacyAuthProtocolsEnabled
+        # OneDrive for Business has a separate sharing capability setting
+        $OneDriveSharingLevel       = $Tenant.ODBSharingCapability.ToString()
+        # Guest access expiry — ExternalUserExpirationRequired must be $true
+        $GuestAccessExpiryConfigured = [bool]$Tenant.ExternalUserExpirationRequired
     } catch {}
 
     Disconnect-SPOService | Out-Null
 
     $result = @{
-        spo_sharing_level = $SharingLevel
-        spo_legacy_auth   = $LegacyAuthEnabled
+        spo_sharing_level              = $SharingLevel
+        spo_legacy_auth                = $LegacyAuthEnabled
+        onedrive_sharing_level         = $OneDriveSharingLevel
+        guest_access_expiry_configured = $GuestAccessExpiryConfigured
     } | ConvertTo-Json -Compress
 
     [Console]::Out.WriteLine($result)

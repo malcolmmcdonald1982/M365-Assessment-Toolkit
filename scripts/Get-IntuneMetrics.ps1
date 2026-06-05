@@ -104,14 +104,52 @@ try {
         }
     } catch {}
 
+    # Mobile Device Compliance Policy (iOS / Android)
+    $MobileCompliancePolicyExists = $false
+    try {
+        $MobilePolicies = Get-MgDeviceManagementDeviceCompliancePolicy -All -WarningAction SilentlyContinue |
+            Where-Object {
+                $_.AdditionalProperties['@odata.type'] -like '*ios*' -or
+                $_.AdditionalProperties['@odata.type'] -like '*android*' -or
+                $_.AdditionalProperties['@odata.type'] -like '*Android*'
+            }
+        $MobileCompliancePolicyExists = ($MobilePolicies.Count -gt 0)
+    } catch {}
+
+    # Defender for Endpoint — Mobile Threat Defence connector
+    $DefenderMdeIntegrationEnabled = $false
+    try {
+        $MtdConnectors = Invoke-MgGraphRequest -Method GET `
+            -Uri "https://graph.microsoft.com/v1.0/deviceManagement/mobileThreatDefenseConnectors" `
+            -ErrorAction SilentlyContinue -WarningAction SilentlyContinue
+        if ($MtdConnectors -and $MtdConnectors.value) {
+            $DefenderConnector = $MtdConnectors.value | Where-Object {
+                $_.id -match 'microsoftdefender|windowsdefenderatp' -or
+                ($_.AdditionalProperties -and
+                 $_.AdditionalProperties['@odata.type'] -match 'defender')
+            }
+            if (-not $DefenderConnector) {
+                # Fallback: any connector with an active platform enabled
+                $DefenderConnector = $MtdConnectors.value
+            }
+            $DefenderMdeIntegrationEnabled = ($DefenderConnector | Where-Object {
+                $_.androidEnabled -eq $true -or
+                $_.iosEnabled -eq $true -or
+                $_.windowsEnabled -eq $true
+            }).Count -gt 0
+        }
+    } catch {}
+
     Disconnect-MgGraph -WarningAction SilentlyContinue | Out-Null
 
     $result = @{
-        intune_compliance_percentage   = $CompliancePct
-        intune_compliance_policy_count = $CompliancePolicyCount
-        intune_config_policy_count     = $ConfigPolicyCount
-        update_ring_count              = $UpdateRingCount
-        bitlocker_enforced             = $BitLockerEnforced
+        intune_compliance_percentage      = $CompliancePct
+        intune_compliance_policy_count    = $CompliancePolicyCount
+        intune_config_policy_count        = $ConfigPolicyCount
+        update_ring_count                 = $UpdateRingCount
+        bitlocker_enforced                = $BitLockerEnforced
+        mobile_compliance_policy_exists   = $MobileCompliancePolicyExists
+        defender_mde_integration_enabled  = $DefenderMdeIntegrationEnabled
     } | ConvertTo-Json -Compress
 
     [Console]::Out.WriteLine($result)

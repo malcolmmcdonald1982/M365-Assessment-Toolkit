@@ -57,6 +57,66 @@ try {
         Connect-MgGraph @ConnectArgs | Out-Null
     }
 
+    # ─── Entra ID Deep Findings — shared lookup tables ────────────────────────
+
+    # High-privilege Graph application permission classification
+    $HighPrivPermissions = @{
+        'Directory.ReadWrite.All'                = 'Critical'
+        'RoleManagement.ReadWrite.Directory'     = 'Critical'
+        'User.ReadWrite.All'                     = 'Critical'
+        'Group.ReadWrite.All'                    = 'Critical'
+        'Application.ReadWrite.All'              = 'Critical'
+        'Mail.ReadWrite'                         = 'Critical'
+        'Mail.Send'                              = 'Critical'
+        'Files.ReadWrite.All'                    = 'Critical'
+        'Sites.FullControl.All'                  = 'Critical'
+        'Sites.ReadWrite.All'                    = 'Critical'
+        'UserAuthenticationMethod.ReadWrite.All' = 'Critical'
+        'Policy.ReadWrite.ConditionalAccess'     = 'Critical'
+        'Domain.ReadWrite.All'                   = 'Critical'
+        'Mail.Read'                              = 'High'
+        'Mail.ReadBasic.All'                     = 'High'
+        'Files.Read.All'                         = 'High'
+        'Directory.Read.All'                     = 'High'
+        'RoleManagement.Read.Directory'          = 'High'
+        'AuditLog.Read.All'                      = 'High'
+        'IdentityRiskyUser.Read.All'             = 'High'
+        'SecurityEvents.ReadWrite.All'           = 'High'
+        'Organization.ReadWrite.All'             = 'High'
+    }
+
+    # Collect ObjectIds of principals that hold high-privilege directory roles
+    $PrivSPIds = @{}
+    $PrivRoleNames = @(
+        'Global Administrator', 'Privileged Role Administrator',
+        'Application Administrator', 'Cloud Application Administrator',
+        'Exchange Administrator', 'SharePoint Administrator',
+        'Security Administrator', 'Conditional Access Administrator',
+        'User Administrator', 'Hybrid Identity Administrator'
+    )
+    try {
+        # One bulk call instead of 10 filtered round-trips
+        $AllDirRoles = Get-MgDirectoryRole -All -ErrorAction SilentlyContinue
+        foreach ($role in ($AllDirRoles | Where-Object { $PrivRoleNames -contains $_.DisplayName })) {
+            $members = Get-MgDirectoryRoleMember -DirectoryRoleId $role.Id -All -ErrorAction SilentlyContinue
+            foreach ($m in $members) {
+                if (-not $PrivSPIds.ContainsKey($m.Id)) { $PrivSPIds[$m.Id] = $role.DisplayName }
+            }
+        }
+    } catch {}
+
+    # Default values — overwritten by query blocks below; stay 0 on any error
+    $HighPrivAppRegCount    = 0
+    $ExpiredCredCount       = 0
+    $ExpiringCred30dCount   = 0
+    $ExpiringCred90dCount   = 0
+    $NeverExpireCredCount   = 0
+    $UnownedAppRegCount     = 0
+    $MultitenantAppRegCount = 0
+    $ImplicitGrantAppCount  = 0
+    $PrivSPCount            = 0
+    $PrivMICount            = 0
+
     # Users
     $AllUsers      = Get-MgUser -All -Property Id,DisplayName,UserPrincipalName,AccountEnabled,UserType,AssignedLicenses -Filter "accountEnabled eq true"
     $LicensedUsers = ($AllUsers | Where-Object { $_.AssignedLicenses.Count -gt 0 })
@@ -148,6 +208,96 @@ try {
         }
     } catch {}
 
+    # ─── US1: App Registration Risk Review ──────────────────────────────────
+    try {
+        $Now  = Get-Date
+
+        # Get Microsoft Graph service principal and build AppRoleId → permission-name map
+        $GraphSP      = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'" `
+                        -ErrorAction SilentlyContinue
+        $GraphRoleMap = @{}
+        if ($GraphSP) {
+            foreach ($ar in $GraphSP.AppRoles) { $GraphRoleMap[$ar.Id] = $ar.Value }
+
+            # One call retrieves all app role assignments granted to Graph — no N+1
+            $AllGraphAssignments = Get-MgServicePrincipalAppRoleAssignedTo `
+                                   -ServicePrincipalId $GraphSP.Id -All -ErrorAction SilentlyContinue
+            $HighPrivPrincipalIds = @{}
+            foreach ($a in $AllGraphAssignments) {
+                $pName = $GraphRoleMap[$a.AppRoleId]
+                if ($pName -and $HighPrivPermissions.ContainsKey($pName)) {
+                    $HighPrivPrincipalIds[$a.PrincipalId] = $true
+                }
+            }
+            $HighPrivAppRegCount = $HighPrivPrincipalIds.Count
+        }
+
+        # Get all app registrations — credential health, implicit grant, multi-tenant
+        $AllApps     = Get-MgApplication -All `
+                       -Property Id,AppId,DisplayName,PasswordCredentials,KeyCredentials,Web,SignInAudience `
+                       -ErrorAction SilentlyContinue
+        $RiskyAppIds = [System.Collections.Generic.List[string]]::new()
+
+        foreach ($App in $AllApps) {
+            $IsRisky = $false
+
+            # Credential checks (password secrets + certificates)
+            $AllCreds = @($App.PasswordCredentials) + @($App.KeyCredentials)
+            foreach ($Cred in $AllCreds) {
+                if ($null -eq $Cred) { continue }
+                if ($null -eq $Cred.EndDateTime) {
+                    $NeverExpireCredCount++; $IsRisky = $true
+                } elseif ($Cred.EndDateTime -lt $Now) {
+                    $ExpiredCredCount++; $IsRisky = $true
+                } elseif ($Cred.EndDateTime -lt $Now.AddDays(30)) {
+                    $ExpiringCred30dCount++; $IsRisky = $true
+                } elseif ($Cred.EndDateTime -lt $Now.AddDays(90)) {
+                    $ExpiringCred90dCount++; $IsRisky = $true
+                }
+            }
+
+            # Implicit grant flow check
+            if ($App.Web -and $App.Web.ImplicitGrantSettings) {
+                if ($App.Web.ImplicitGrantSettings.EnableIdTokenIssuance -eq $true -or
+                    $App.Web.ImplicitGrantSettings.EnableAccessTokenIssuance -eq $true) {
+                    $ImplicitGrantAppCount++; $IsRisky = $true
+                }
+            }
+
+            # Multi-tenant check
+            if ($App.SignInAudience -and $App.SignInAudience -ne 'AzureADMyOrg') {
+                $MultitenantAppRegCount++; $IsRisky = $true
+            }
+
+            if ($IsRisky) { $RiskyAppIds.Add($App.Id) }
+        }
+
+        # Owner check — capped at 25 already-risky apps to avoid N×API-call blowout
+        foreach ($AppId in ($RiskyAppIds | Select-Object -First 25)) {
+            try {
+                $Owners = Get-MgApplicationOwner -ApplicationId $AppId -ErrorAction SilentlyContinue
+                if ($null -eq $Owners -or $Owners.Count -eq 0) { $UnownedAppRegCount++ }
+            } catch {}
+        }
+    } catch {}
+
+    # ─── US2 + US3: Privileged SP / Managed Identity check ──────────────────
+    # $PrivSPIds already has the answer — look up only those IDs rather than
+    # enumerating every service principal in the tenant.
+    try {
+        foreach ($spId in $PrivSPIds.Keys) {
+            try {
+                $sp = Get-MgServicePrincipal -ServicePrincipalId $spId `
+                      -Property ServicePrincipalType -ErrorAction SilentlyContinue
+                if ($null -eq $sp) { continue }
+                switch ($sp.ServicePrincipalType) {
+                    'Application'     { $PrivSPCount++ }
+                    'ManagedIdentity' { $PrivMICount++ }
+                }
+            } catch {}
+        }
+    } catch {}
+
     Disconnect-MgGraph -WarningAction SilentlyContinue | Out-Null
 
     # Output JSON - write directly to stdout
@@ -159,6 +309,16 @@ try {
         unassigned_licence_percentage = $UnassignedPct
         risky_users_count             = $RiskyUsersCount
         emergency_access_exists       = $EmergencyAccessExists
+        high_priv_app_reg_count       = $HighPrivAppRegCount
+        expired_cred_count            = $ExpiredCredCount
+        expiring_cred_30d_count       = $ExpiringCred30dCount
+        expiring_cred_90d_count       = $ExpiringCred90dCount
+        never_expire_cred_count       = $NeverExpireCredCount
+        unowned_app_reg_count         = $UnownedAppRegCount
+        multitenant_app_reg_count     = $MultitenantAppRegCount
+        implicit_grant_app_count      = $ImplicitGrantAppCount
+        priv_service_principal_count  = $PrivSPCount
+        priv_managed_identity_count   = $PrivMICount
     } | ConvertTo-Json -Compress
 
     [Console]::Out.WriteLine($result)

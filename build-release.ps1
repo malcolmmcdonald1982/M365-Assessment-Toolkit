@@ -36,7 +36,8 @@ $Include = @(
     "CONTRIBUTING.md",
     "LICENSE",
     "scripts",
-    "remediation"
+    "remediation",
+    "Start-Tool.bat"
     # Note: docs/ folder excluded — internal planning files only, not for end users
 )
 
@@ -75,3 +76,4 @@ Write-Host "Release zip built successfully:" -ForegroundColor Green
 Write-Host "  $ZipPath" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next step: attach this file to the v$Version release on GitHub." -ForegroundColor Gray
+

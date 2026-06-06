@@ -71,6 +71,8 @@ $UpdateFiles = @(
     "index.html",
     "generate-report.js",
     "package.json",
+    "Start-Tool.bat",
+    "update.ps1",
     "scripts/Get-IdentityMetrics.ps1",
     "scripts/Get-SecurityMetrics.ps1",
     "scripts/Get-ExchangeMetrics.ps1",

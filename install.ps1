@@ -24,7 +24,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"
-$VERSION               = "1.2.0"
+$VERSION               = "1.4.0"
 
 function Write-Header { param($t) Write-Host "" ; Write-Host $t -ForegroundColor Cyan }
 function Write-OK      { param($t) Write-Host "  [OK]  $t" -ForegroundColor Green }
@@ -207,7 +207,7 @@ if ($SourcePath) {
 if ($UseGitHub) {
     Write-Step "Downloading tool files from GitHub..."
 
-    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx")
+    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx","VERSION","CHANGELOG.md","README.md","update.ps1","uninstall.ps1")
     foreach ($File in $CoreFiles) {
         try {
             Invoke-WebRequest -Uri "$RepoBase/$File" -OutFile (Join-Path $InstallPath $File) -UseBasicParsing
@@ -255,7 +255,7 @@ if ($UseGitHub) {
 } else {
     Write-Step "Copying tool files from local source: $SourcePath"
 
-    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx")
+    $CoreFiles = @("backend.py","index.html","generate-report.js","package.json","sample-data.json","sample-report.docx","VERSION","CHANGELOG.md","README.md","update.ps1","uninstall.ps1")
     foreach ($File in $CoreFiles) {
         $Src = Join-Path $SourcePath $File
         $Dst = Join-Path $InstallPath $File

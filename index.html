@@ -5,24 +5,24 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234f9cf9' d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M365 Assessment Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #080e1c;
-    --bg2: #0d1828;
-    --bg3: #132135;
-    --bg4: #1b2d47;
-    --border: rgba(59,130,246,0.09);
-    --border2: rgba(59,130,246,0.22);
-    --text: #dce5f7;
-    --muted: #7888a4;
-    --accent: #1d75e8;
-    --accent2: #5b5fc7;
+    --bg:    #0a0b0f;
+    --bg2:   #111318;
+    --bg3:   #191d24;
+    --bg4:   #20252f;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text:  #f7f8fd;
+    --muted: #b8bfd0;
+    --accent:  #3b82f6;
+    --accent2: #6366f1;
     --success: #10b981;
     --warning: #f59e0b;
-    --danger: #ef4444;
+    --danger:  #ef4444;
     --mono: 'DM Mono', monospace;
-    --sans: 'Inter', sans-serif;
+    --sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
@@ -66,6 +66,18 @@
   .field input::placeholder { color: var(--muted); }
   .field.hidden { display: none; }
   .field-optional { font-size: 9px; color: var(--muted); margin-left: 4px; }
+
+  /* Framework selector */
+  .fw-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); cursor: pointer; padding: 3px 0; }
+  .fw-check input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; }
+  .fw-check span:first-of-type { flex: 1; font-family: var(--sans); }
+
+  /* Framework badges on finding cards */
+  .fw-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .fw-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border2); color: var(--muted); background: var(--bg3); white-space: nowrap; cursor: default; }
+  .fw-badge:hover { border-color: var(--accent); color: var(--text); }
+  .fw-badge.fw-e5 { border-color: rgba(245,158,11,0.4); color: #d97706; }
+  .fw-badge.fw-none { opacity: 0.4; text-decoration: line-through; }
 
   .module-list { display: flex; flex-direction: column; gap: 6px; }
   .module-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; user-select: none; }
@@ -416,6 +428,248 @@
   .update-now-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .update-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; flex-shrink: 0; }
   .update-dismiss:hover { color: var(--text); }
+
+  /* ─── Enterprise UI polish — v1.5 ─── */
+
+  /* ── Posture banner — Overview hero ── */
+  .posture-banner {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .posture-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .posture-client-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .posture-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .posture-score-section { text-align: center; flex-shrink: 0; }
+  .posture-score-value {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-family: var(--sans);
+  }
+  .posture-score-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+  }
+  /* Severity breakdown chips in posture banner */
+  .posture-severity-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .posture-sev-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; font-weight: 500;
+  }
+  .posture-sev-chip.critical { background: rgba(239,68,68,0.12); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+  .posture-sev-chip.high    { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
+  .posture-sev-chip.medium  { background: rgba(29,117,232,0.12); color: var(--accent); border: 1px solid rgba(29,117,232,0.25); }
+  .posture-sev-chip.low     { background: rgba(16,185,129,0.12); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
+  .posture-sev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .posture-sev-chip.critical .posture-sev-dot { background: var(--danger); }
+  .posture-sev-chip.high    .posture-sev-dot { background: var(--warning); }
+  .posture-sev-chip.medium  .posture-sev-dot { background: var(--accent); }
+  .posture-sev-chip.low     .posture-sev-dot { background: var(--success); }
+
+  /* ── Finding cards — severity as card-level left border ── */
+  .finding-severity { display: none !important; }
+  .finding-card:has(.finding-severity.critical) { border-left: 3px solid var(--danger) !important; }
+  .finding-card:has(.finding-severity.high)     { border-left: 3px solid var(--warning) !important; }
+  .finding-card:has(.finding-severity.medium)   { border-left: 3px solid var(--accent) !important; }
+  .finding-card:has(.finding-severity.low)      { border-left: 3px solid var(--success) !important; }
+
+  /* ── Framework badges — larger, more readable ── */
+  .fw-badge { font-size: 10px !important; padding: 3px 8px !important; border-radius: 4px !important; letter-spacing: 0.01em; }
+
+  /* ── Tabs — more substantial, stronger active state ── */
+  .tab { padding: 15px 20px !important; }
+  .tab.active { background: rgba(29,117,232,0.06); }
+
+  /* ── Section titles — stronger hierarchy ── */
+  .section-title { font-size: 15px !important; letter-spacing: -0.01em; }
+
+  /* ── Metric cards — refined corners ── */
+  .metric-card { border-radius: 12px !important; }
+
+  /* ── Sidebar info banners — professional SVG-icon style ── */
+  .sidebar-notice {
+    margin: 0 1.25rem;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .sidebar-notice.success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); color: var(--success); }
+  .sidebar-notice.warn    { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); color: #d97706; }
+  .sidebar-notice svg { flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Header — stronger top accent ── */
+  header { border-top-width: 3px !important; }
+
+  /* ── Scrollbar refinement ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* ═══════════════════════════════════════════════════
+     GLASS-FRAME TREATMENT — v1.5
+     Strategy: gradient light sources on the body give
+     glass surfaces something to catch. Blur only on
+     chrome (header, sidebar, tabs). Data surfaces stay
+     solid — readability over aesthetics.
+  ════════════════════════════════════════════════════ */
+
+  /* Body — two subtle radial light sources */
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% -5%,  rgba(59,130,246,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse 55% 40% at 88% 105%, rgba(99,102,241,0.08) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+
+  /* Header glass — content scrolls beneath it */
+  header {
+    background: rgba(10,11,15,0.82) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-top-width: 2px !important;
+  }
+
+  /* Sidebar glass */
+  aside {
+    background: rgba(12,13,18,0.78) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  }
+
+  /* Tab bar glass — sits above scrollable content */
+  .tabs {
+    background: rgba(10,11,15,0.88) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  /* Sessions panel glass */
+  .sessions-panel {
+    background: rgba(10,11,15,0.92) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+  }
+
+  /* Posture banner — the showpiece glass card */
+  .posture-banner {
+    background: rgba(255,255,255,0.04) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  }
+  .posture-banner::before {
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent)) !important;
+    opacity: 0.9;
+  }
+
+  /* Score number — the hero moment. Glow matches its colour. */
+  .posture-score-value {
+    filter: drop-shadow(0 0 28px currentColor);
+    opacity: 0.95;
+  }
+
+  /* Simulator panels */
+  .sim-panel {
+    background: rgba(255,255,255,0.03) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+  }
+  .sim-score-banner {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Run button — stronger gradient + glow presence */
+  .run-btn {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+    box-shadow: 0 0 24px rgba(59,130,246,0.28), 0 2px 8px rgba(0,0,0,0.5) !important;
+  }
+  .run-btn:hover {
+    opacity: 1 !important;
+    box-shadow: 0 0 40px rgba(59,130,246,0.45), 0 4px 20px rgba(0,0,0,0.6) !important;
+  }
+
+  /* Logo icon — accent glow */
+  .logo-icon {
+    background: linear-gradient(140deg, var(--accent), var(--accent2)) !important;
+    box-shadow: 0 0 18px rgba(59,130,246,0.45) !important;
+  }
+
+  /* Status dot online — subtle pulse glow */
+  .status-dot.online {
+    box-shadow: 0 0 7px var(--success) !important;
+  }
+
+  /* Progress bar gradient refresh */
+  .prog-fill {
+    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+  }
+
+  /* Sim framework compliance bar */
+  .sim-fw-bar {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+  }
+
+  /* ── Framework filter bar (Findings tab) ── */
+  .fw-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .fw-filter-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .fw-filter-btn { font-family: var(--mono); font-size: 10px; padding: 4px 12px; border-radius: 12px; border: 1px solid var(--border2); background: var(--bg3); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .fw-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .fw-filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ── Simulator framework compliance meters ── */
+  .sim-fw-bar { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 18px; }
+  .sim-fw-header { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+  .sim-fw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .sim-fw-label { font-family: var(--mono); font-size: 10px; display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .sim-fw-label span:first-child { color: var(--text); }
+  .sim-fw-track { background: var(--bg3); border-radius: 3px; height: 5px; overflow: hidden; border: 1px solid var(--border); }
+  .sim-fw-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.4s; }
+  .sim-fw-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -495,6 +749,23 @@
       <div class="field">
         <label>Assessment Date</label>
         <input type="date" id="assessDate">
+      </div>
+      <div class="field">
+        <label style="margin-bottom:6px;">Compliance Frameworks in Scope</label>
+        <div id="frameworkSelector" style="display:flex;flex-direction:column;gap:4px;">
+          <label class="fw-check"><input type="checkbox" value="cis"  checked> <span>CIS M365 v7.0.0</span> <span style="color:var(--muted);font-size:10px;">Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="nist" checked> <span>NIST CSF 2.0</span> <span style="color:var(--muted);font-size:10px;">US / Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="iso"  checked> <span>ISO 27001:2022</span> <span style="color:var(--muted);font-size:10px;">Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="ce"   checked> <span>Cyber Essentials</span> <span style="color:var(--muted);font-size:10px;">🇬🇧 UK</span></label>
+          <label class="fw-check"><input type="checkbox" value="soc2" checked> <span>SOC 2 CC6/CC7</span> <span style="color:var(--muted);font-size:10px;">🇺🇸 US / SaaS</span></label>
+          <label class="fw-check"><input type="checkbox" value="caf"  checked> <span>NCSC CAF v4.0</span> <span style="color:var(--muted);font-size:10px;">🇬🇧 UK CNI</span></label>
+          <label class="fw-check"><input type="checkbox" value="e8"   checked> <span>Essential Eight</span> <span style="color:var(--muted);font-size:10px;">🇦🇺 Australia</span></label>
+          <label class="fw-check"><input type="checkbox" value="nis2" checked> <span>EU NIS2</span> <span style="color:var(--muted);font-size:10px;">🇪🇺 EU</span></label>
+        </div>
+        <div style="margin-top:5px;display:flex;gap:8px;">
+          <button onclick="setAllFrameworks(true)"  style="font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">All</button>
+          <button onclick="setAllFrameworks(false)" style="font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">None</button>
+        </div>
       </div>
     </div>
 
@@ -662,14 +933,33 @@
       </div>
     </div>
 
-    <div style="margin: 0 1.25rem; padding: 8px 10px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; font-family: var(--mono); font-size: 10px; color: var(--success); line-height: 1.5;">
-      🔒 Assessment is read-only. No changes are made to your tenant during a scan. Remediation requires explicit approval.
+    <div class="sidebar-notice success">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Assessment is read-only. No changes are made to your tenant during a scan. Remediation requires explicit approval.
+    </div>
+
+    <div class="sidebar-notice warn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      First scan takes 5–12 min while PowerShell modules load. Subsequent scans are faster.
     </div>
 
     <button class="run-btn" id="runBtn" onclick="runAssessment()">
       <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
       Run Assessment
     </button>
+
+    <!-- Progress bar -->
+    <div id="scanProgressBar" style="display:none;margin:0 1.25rem;padding:8px 0;">
+      <div id="scanProgressLabel" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px;">Running...</div>
+      <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--border);">
+        <div class="prog-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width 0.5s ease;"></div>
+      </div>
+    </div>
+
+    <!-- Stop Tool button -->
+    <div style="margin:0 1.25rem 1rem;text-align:center;">
+      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer;font-family:var(--mono);" title="Stops the backend Python process">⏹ Stop Tool</button>
+    </div>
 
     <!-- 6. Remediation Settings -->
     <div class="sidebar-section">
@@ -721,15 +1011,19 @@
         <p>Enter assessment details, choose your authentication method, select modules, then click Run Assessment.</p>
       </div>
       <div id="overviewResults" style="display:none;">
-        <div class="section-head" style="margin-bottom:1.5rem; align-items:flex-start;">
+        <div class="posture-banner">
           <div>
-            <div style="display:flex;align-items:center;"><div class="section-title" id="overviewClientName" style="font-size:16px;">—</div><span id="loadedBadge" class="loaded-badge" style="display:none;">&#x2713; Loaded from file</span></div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;" id="overviewDate">—</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="overviewAuthMethod">—</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <div class="posture-client-name" id="overviewClientName">—</div>
+              <span id="loadedBadge" class="loaded-badge" style="display:none;">&#x2713; Loaded from file</span>
+            </div>
+            <div class="posture-meta" id="overviewDate">—</div>
+            <div class="posture-meta" id="overviewAuthMethod">—</div>
+            <div class="posture-severity-row" id="postureSevRow"></div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:36px;font-weight:700;" id="overallScore">—</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">overall score</div>
+          <div class="posture-score-section">
+            <div class="posture-score-value" id="overallScore">—</div>
+            <div class="posture-score-label">Attack Path Score</div>
           </div>
         </div>
         <div class="metrics-grid" id="metricsGrid"></div>
@@ -738,10 +1032,11 @@
 
     <!-- Findings -->
     <div class="content" id="tab-findings" style="display:none;">
-      <div class="section-head">
+      <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">Triggered Findings</div>
         <div class="section-count" id="findingsCount">0 findings</div>
       </div>
+      <div id="fwFilterBar" class="fw-filter-bar" style="display:none;"></div>
       <div class="findings-list" id="findingsList">
         <div class="empty-state">No findings yet — run an assessment to see results.</div>
       </div>
@@ -866,6 +1161,9 @@
             <div class="sim-score-val" id="simSSDelta" style="color:var(--accent)">—</div>
           </div>
         </div>
+
+        <!-- Framework compliance meters — updates as findings are toggled -->
+        <div id="simFwCompliance" style="display:none;margin-bottom:16px;"></div>
 
         <div class="sim-layout">
           <!-- Findings panel -->
@@ -1046,7 +1344,7 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.3.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span id="footerVersion" style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.4.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -1059,12 +1357,150 @@ let currentEnvironment = 'commercial';
 
 document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
 
+// ── Framework helpers ────────────────────────────────────────
+const FW_LABELS = {
+  cis:  'CIS v7.0', nist: 'NIST CSF', iso: 'ISO 27001',
+  ce:   'Cyber Essentials', soc2: 'SOC 2', caf: 'NCSC CAF',
+  e8:   'Essential 8', nis2: 'NIS2'
+};
+function getActiveFrameworks() {
+  return [...document.querySelectorAll('#frameworkSelector input[type=checkbox]:checked')]
+    .map(c => c.value);
+}
+function setAllFrameworks(checked) {
+  document.querySelectorAll('#frameworkSelector input[type=checkbox]')
+    .forEach(c => c.checked = checked);
+}
+function buildFwBadges(frameworks) {
+  const active = getActiveFrameworks();
+  if (!frameworks || active.length === 0) return '';
+  return '<div class="fw-badges">' +
+    active.map(k => {
+      const fw = frameworks[k];
+      if (!fw) return '';
+      const isE5 = fw.profile && fw.profile.includes('E5');
+      const tip = fw.id + (fw.profile ? ' · ' + fw.profile : '') + '\n' + (fw.title || '');
+      return `<span class="fw-badge${isE5?' fw-e5':''}" title="${tip}">${FW_LABELS[k] || k}${fw.id ? ' · '+fw.id : ''}</span>`;
+    }).join('') +
+  '</div>';
+}
+
+// ── Framework filter bar (Findings tab) ─────────────────────
+function buildFwFilterBar(findings) {
+  const bar = document.getElementById('fwFilterBar');
+  if (!bar) return;
+  const active = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  // Only show frameworks that have at least one triggered finding mapped
+  const present = active.filter(fw => findings.some(f => f.frameworks && f.frameworks[fw]));
+  if (!present.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML =
+    `<span class="fw-filter-label">Filter:</span>` +
+    `<button class="fw-filter-btn active" data-fw="all" onclick="filterFindings('all')">All findings</button>` +
+    present.map(fw =>
+      `<button class="fw-filter-btn" data-fw="${fw}" onclick="filterFindings('${fw}')">${FW_LABELS[fw]||fw}</button>`
+    ).join('');
+}
+
+function filterFindings(fw) {
+  document.querySelectorAll('#fwFilterBar .fw-filter-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.fw === fw)
+  );
+  const cards = document.querySelectorAll('#findingsList .finding-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const mapped = (card.dataset.frameworks || '').split(',').filter(Boolean);
+    const show = fw === 'all' || mapped.includes(fw);
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const total = cards.length;
+  const countEl = document.getElementById('findingsCount');
+  if (fw === 'all') {
+    countEl.textContent = `${total} finding${total !== 1 ? 's' : ''}`;
+  } else {
+    countEl.textContent = `${visible} of ${total} — ${FW_LABELS[fw]||fw}`;
+  }
+}
+
+// ── Simulator framework compliance meters ────────────────────
+function renderFwCompliance() {
+  const container = document.getElementById('simFwCompliance');
+  if (!container || !simFindings || !simFindings.length) return;
+  const active = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  if (!active.length) { container.style.display = 'none'; return; }
+
+  const items = active.map(fw => {
+    const mapped = simFindings.filter(f => f.frameworks && f.frameworks[fw]);
+    if (!mapped.length) return null;
+    const open  = mapped.filter(f => simState[f.id] !== false).length;
+    const fixed = mapped.length - open;
+    const pct   = Math.round((fixed / mapped.length) * 100);
+    const color = pct === 100 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+    return `
+      <div>
+        <div class="sim-fw-label">
+          <span>${FW_LABELS[fw]||fw}</span>
+          <span style="color:${color}">${fixed}/${mapped.length} gaps closed</span>
+        </div>
+        <div class="sim-fw-track">
+          <div class="sim-fw-fill" style="width:${pct}%;background:${color};"></div>
+        </div>
+        <div class="sim-fw-sub">${open} gap${open !== 1 ? 's' : ''} remaining</div>
+      </div>`;
+  }).filter(Boolean);
+
+  if (!items.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="sim-fw-bar">
+      <div class="sim-fw-header">Framework Gap Coverage — simulated fixes applied</div>
+      <div class="sim-fw-grid">${items.join('')}</div>
+    </div>`;
+}
+
+// ── Heartbeat (keeps backend alive while browser is open) ────
+setInterval(() => {
+  fetch(`${BACKEND}/heartbeat`, {method:'POST'}).catch(()=>{});
+}, 30000);
+
+// ── Progress bar polling ─────────────────────────────────────
+let _progressInterval = null;
+function startProgressPolling() {
+  const bar = document.getElementById('scanProgressBar');
+  const label = document.getElementById('scanProgressLabel');
+  if (!bar) return;
+  bar.style.display = 'block';
+  _progressInterval = setInterval(async () => {
+    try {
+      const r = await fetch(`${BACKEND}/progress`);
+      const d = await r.json();
+      const pct = d.total > 0 ? Math.round((d.step / d.total) * 100) : 0;
+      bar.querySelector('.prog-fill').style.width = pct + '%';
+      label.textContent = d.label || 'Running...';
+      if (d.status === 'complete' || d.status === 'idle') stopProgressPolling();
+    } catch {}
+  }, 1000);
+}
+function stopProgressPolling() {
+  clearInterval(_progressInterval);
+  _progressInterval = null;
+  const bar = document.getElementById('scanProgressBar');
+  if (bar) setTimeout(() => { bar.style.display = 'none'; }, 1500);
+}
+
 async function checkBackend() {
   try {
     const r = await fetch(`${BACKEND}/status`, { signal: AbortSignal.timeout(2000) });
     if (r.ok) {
       document.getElementById('statusDot').className = 'status-dot online';
       document.getElementById('statusText').textContent = 'backend online';
+      // Update footer version dynamically from backend
+      const data = await r.json();
+      if (data.version) {
+        const el = document.getElementById('footerVersion');
+        if (el) el.innerHTML = `M365 Assessment Toolkit v${data.version} &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a>`;
+      }
     } else { setOffline(); }
   } catch { setOffline(); }
 }
@@ -1279,6 +1715,7 @@ async function runAssessment() {
 
   const modules = [...document.querySelectorAll('.module-item.checked')].map(m => m.dataset.module);
   const clientName = document.getElementById('orgName').value.trim();
+  const activeFrameworks = getActiveFrameworks();
 
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
@@ -1289,16 +1726,20 @@ async function runAssessment() {
   const authLabel = auth.authMethod === 'interactive' ? 'Interactive Login' : auth.authMethod === 'certificate' ? 'Certificate' : 'App Registration';
   addLog(`Auth method: ${authLabel}`, 'info');
   addLog(`Modules: ${modules.join(', ')}`, 'info');
+  addLog(`Frameworks in scope: ${activeFrameworks.map(f => FW_LABELS[f]||f).join(', ')}`, 'info');
+  addLog(`First scan takes 5–12 minutes while PowerShell modules load. Subsequent scans are faster. Please wait...`, 'warn');
 
   if (auth.authMethod === 'interactive') {
     addLog('Browser login popups will appear for each workload — complete each sign-in to continue.', 'warn');
   }
 
+  startProgressPolling();
+
   try {
     const response = await fetch(`${BACKEND}/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientName, modules, ...auth })
+      body: JSON.stringify({ clientName, modules, activeFrameworks, ...auth })
     });
     if (!response.ok) throw new Error(`Backend returned ${response.status}`);
 
@@ -1318,8 +1759,15 @@ async function runAssessment() {
     addLog('Is backend.py running? Start it with: python backend.py', 'warn');
   }
 
+  stopProgressPolling();
   btn.disabled = false;
   btn.innerHTML = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg> Run Assessment`;
+}
+
+async function stopTool() {
+  if (!confirm('Stop the M365 Assessment Toolkit backend? The browser tab will no longer work after this.')) return;
+  try { await fetch(`${BACKEND}/shutdown`, {method:'POST'}); } catch {}
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;color:#6b7280;font-size:14px;">Tool stopped. Close this tab.</div>';
 }
 
 function renderOverview(data) {
@@ -1334,6 +1782,16 @@ function renderOverview(data) {
   const scoreEl = document.getElementById('overallScore');
   scoreEl.textContent = `${score}/100`;
   scoreEl.style.color = score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
+
+  // Severity breakdown chips
+  const sevCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  (data.findings || []).forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
+  const sevRow = document.getElementById('postureSevRow');
+  if (sevRow) {
+    sevRow.innerHTML = Object.entries(sevCounts).filter(([,n]) => n > 0)
+      .map(([sev, n]) => `<span class="posture-sev-chip ${sev}"><span class="posture-sev-dot"></span>${n} ${sev}</span>`)
+      .join('');
+  }
 
   const grid = document.getElementById('metricsGrid');
   grid.innerHTML = '';
@@ -1374,6 +1832,9 @@ function renderFindings(findings) {
     const hasScript = INVESTIGATE_IDS.has(f.id);
     const card = document.createElement('div');
     card.className = 'finding-card';
+    card.dataset.frameworks = f.frameworks
+      ? Object.keys(f.frameworks).filter(k => f.frameworks[k]).join(',')
+      : '';
     card.innerHTML = `
       <div class="finding-severity ${f.severity}"></div>
       <div class="finding-body">
@@ -1386,6 +1847,7 @@ function renderFindings(findings) {
         <div class="finding-desc">${f.description}</div>
         <div class="finding-rec">${f.recommendation}</div>
         <div class="finding-meta">Module: ${f.module} &nbsp;|&nbsp; Metric: ${f.metric} &nbsp;|&nbsp; Observed: ${f.observed_value}</div>
+        ${f.frameworks ? buildFwBadges(f.frameworks) : ''}
         ${hasScript ? `
         <div class="invest-block" id="invest-block-${f.id}">
           <div class="invest-block-header">
@@ -1397,6 +1859,7 @@ function renderFindings(findings) {
       </div>`;
     list.appendChild(card);
   });
+  buildFwFilterBar(findings);
 }
 
 async function toggleInvestScript(findingId) {
@@ -1961,6 +2424,7 @@ function renderSimResults() {
 
   renderSimChains();
   renderSimNarrative();
+  renderFwCompliance();
 }
 
 function renderSimChains() {
@@ -2140,6 +2604,38 @@ async function exportSimReport() {
 <p>${fixedIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-fixed">&#10003; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
 <h2>Still Open (${openIds.length})</h2>
 <p>${openIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-open">&#10007; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
+<h2>Framework Compliance Projection</h2>
+${(() => {
+  const activeFws = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  if (!activeFws.length) return '<p style="color:#6c757d">No frameworks selected.</p>';
+  const rows = activeFws.map(fw => {
+    const mapped  = simFindings.filter(f => f.frameworks && f.frameworks[fw]);
+    if (!mapped.length) return '';
+    const open    = mapped.filter(f => simState[f.id] !== false).length;
+    const closed  = mapped.length - open;
+    const pct     = Math.round((closed / mapped.length) * 100);
+    const col     = pct === 100 ? '#27AE60' : pct >= 50 ? '#D4AC0D' : '#C0392B';
+    const bg      = pct === 100 ? '#EAF7EE' : pct >= 50 ? '#FEFAE7' : '#FDECEA';
+    return `<tr>
+      <td style="padding:8px 12px;font-weight:600">${FW_LABELS[fw]||fw}</td>
+      <td style="padding:8px 12px;text-align:center">${mapped.length}</td>
+      <td style="padding:8px 12px;text-align:center;color:#C0392B;font-weight:${open>0?'bold':'normal'}">${open}</td>
+      <td style="padding:8px 12px;text-align:center;color:#27AE60;font-weight:${closed>0?'bold':'normal'}">${closed}</td>
+      <td style="padding:8px 12px;text-align:center;background:${bg};color:${col};font-weight:bold">${pct}%</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+  if (!rows) return '<p style="color:#6c757d">No framework data available.</p>';
+  return `<table style="width:100%;border-collapse:collapse;border:1px solid #dee2e6;">
+    <thead><tr style="background:#1B2A4A;color:#fff">
+      <th style="padding:8px 12px;text-align:left">Framework</th>
+      <th style="padding:8px 12px">Gaps in scope</th>
+      <th style="padding:8px 12px">Still open</th>
+      <th style="padding:8px 12px">Closed by fixes</th>
+      <th style="padding:8px 12px">Coverage</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+})()}
 <h2>Attack Chain Impact</h2>
 ${chains.map(c => `<div class="chain ${c.status}">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -2765,6 +3261,32 @@ function renderComparisonResults(data) {
   html += findingRows(data.newFindings, '! NEW FINDINGS', 'var(--danger)');
   html += findingRows(data.stillOpen,   '— STILL OPEN',  'var(--warning)');
   html += findingRows(data.improved,    '↑ IMPROVED',    'var(--accent)');
+
+  // Framework compliance delta
+  const fwsA = sA.activeFrameworks || [];
+  const fwsB = sB.activeFrameworks || [];
+  const allFws = [...new Set([...fwsA, ...fwsB])].filter(fw => FW_LABELS[fw]);
+  if (allFws.length > 0) {
+    const fwRows = allFws.map(fw => {
+      const gapsA = (sA.findings || []).filter(f => f.frameworks && f.frameworks[fw]).length;
+      const gapsB = (sB.findings || []).filter(f => f.frameworks && f.frameworks[fw]).length;
+      const delta = gapsB - gapsA;
+      const deltaCol = delta < 0 ? 'var(--success)' : delta > 0 ? 'var(--danger)' : 'var(--muted)';
+      const deltaStr = delta === 0 ? 'No change' : delta < 0 ? `${Math.abs(delta)} fewer gaps` : `${delta} more gaps`;
+      const deltaIcon = delta < 0 ? '↓' : delta > 0 ? '↑' : '=';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+        <span style="font-family:var(--mono);font-size:10px;flex:1;color:var(--text);">${FW_LABELS[fw]||fw}</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${gapsA} gaps</span>
+        <span style="color:var(--muted);">→</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${gapsB} gaps</span>
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:${deltaCol};min-width:120px;text-align:right;">${deltaIcon} ${deltaStr}</span>
+      </div>`;
+    }).join('');
+    html += `<div style="margin-bottom:1.5rem;">
+      <div style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono);margin-bottom:10px;letter-spacing:0.05em;">FRAMEWORK COMPLIANCE CHANGE</div>
+      ${fwRows}
+    </div>`;
+  }
 
   if (data.metricChanges && data.metricChanges.length > 0) {
     html += `<div style="margin-bottom:1.5rem;">

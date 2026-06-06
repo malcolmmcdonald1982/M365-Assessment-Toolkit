@@ -22,10 +22,13 @@ $Include = @(
     "index.html",
     "generate-report.js",
     "package.json",
+    "sample-data.json",
+    "sample-report.docx",
     "requirements.txt",
     "install.ps1",
     "update.ps1",
     "uninstall.ps1",
+    "Setup-M365AssessmentToolkit.ps1",
     "VERSION",
     "CHANGELOG.md",
     "README.md",
@@ -33,8 +36,8 @@ $Include = @(
     "CONTRIBUTING.md",
     "LICENSE",
     "scripts",
-    "remediation",
-    "docs"
+    "remediation"
+    # Note: docs/ folder excluded — internal planning files only, not for end users
 )
 
 # Create release folder if it doesn't exist

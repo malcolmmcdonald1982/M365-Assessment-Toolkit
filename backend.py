@@ -32,10 +32,499 @@ for d in [SCRIPTS_DIR, OUTPUT_DIR, REPORTS_DIR]:
 
 
 # ─────────────────────────────────────────────────────────────
+#  FRAMEWORK MAPPING
+#  Maps each finding ID to CIS, NIST, ISO, CE, SOC2, CAF, E8, NIS2
+#  active_frameworks in the session config controls which are shown
+# ─────────────────────────────────────────────────────────────
+FRAMEWORK_MAPPING = {
+    "ID-001": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "ID-002": {
+        "cis":  {"id": "1.1.3", "title": "Between two and four global admins designated", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ID-003": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1"},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed"},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ID-004": {
+        "cis":  {"id": "5.1.6.2", "title": "Guest user access is restricted", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.18", "title": "Access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ID-005": {
+        "cis":  None,
+        "nist": {"id": "ID.AM-01", "title": "Inventories of hardware managed by the organisation"},
+        "iso":  {"id": "A.5.9", "title": "Inventory of information and other associated assets"},
+        "ce":   None,
+        "soc2": {"id": "CC6.2", "title": "Access reviews and timely revocation"},
+        "caf":  {"id": "A2", "title": "Risk Management"},
+        "e8":   None,
+        "nis2": None,
+    },
+    "ID-006": {
+        "cis":  {"id": "5.2.2.6", "title": "Enable Identity Protection user risk policies", "profile": "E5 L1"},
+        "nist": {"id": "DE.AE-02, ID.RA-01", "title": "Adverse events analysed / vulnerabilities identified"},
+        "iso":  {"id": "A.8.16, A.5.25", "title": "Monitoring activities / Assessment of security events"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC7.2, CC7.3", "title": "Anomaly detection and security event triage"},
+        "caf":  {"id": "C1, C2", "title": "Security Monitoring / Proactive Security Event Discovery"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-b", "title": "Incident handling"},
+    },
+    "ID-007": {
+        "cis":  {"id": "1.1.2", "title": "Two emergency access accounts have been defined", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-01, PR.AA-05", "title": "Identities and credentials managed / access permissions managed"},
+        "iso":  {"id": "A.5.17, A.5.15", "title": "Authentication information / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.2", "title": "Logical access restrictions and access reviews"},
+        "caf":  {"id": "B2, A2", "title": "Identity and Access Control / Risk Management"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "SEC-001": {
+        "cis":  None,
+        "nist": {"id": "ID.RA-01", "title": "Vulnerabilities in assets are identified, validated, and recorded"},
+        "iso":  {"id": "A.5.35", "title": "Independent review of information security"},
+        "ce":   None,
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "A2", "title": "Risk Management"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "SEC-002": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03, PR.AA-05", "title": "Users authenticated / access permissions managed"},
+        "iso":  {"id": "A.8.5, A.5.15", "title": "Secure Authentication / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "SEC-003": {
+        "cis":  {"id": "5.2.3.1", "title": "Microsoft Authenticator configured to protect against MFA fatigue", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "SEC-004": {
+        "cis":  {"id": "5.2.3.5", "title": "Weak authentication methods are disabled", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "SEC-005": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.8.26", "title": "Access control / Application security requirements"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "SEC-006": {
+        "cis":  None,
+        "nist": {"id": "DE.CM-01", "title": "Networks and network services are monitored"},
+        "iso":  {"id": "A.8.15, A.8.16", "title": "Logging / Monitoring activities"},
+        "ce":   None,
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "C1", "title": "Security Monitoring"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling"},
+    },
+    "CA-001": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03, PR.AA-05", "title": "Users authenticated / access permissions managed"},
+        "iso":  {"id": "A.5.15, A.8.5", "title": "Access control / Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-j, NIS2-k", "title": "Access control / Multi-factor authentication"},
+    },
+    "CA-002": {
+        "cis":  {"id": "5.2.2.3", "title": "CA policy to block legacy authentication", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "CA-003": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "EXO-001": {
+        "cis":  {"id": "6.2.1", "title": "All forms of mail forwarding are blocked and/or disabled", "profile": "E3 L1"},
+        "nist": {"id": "PR.DS-02", "title": "Data-in-transit is protected"},
+        "iso":  {"id": "A.5.14", "title": "Information transfer"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data"},
+        "caf":  {"id": "B3", "title": "Data Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "EXO-002": {
+        "cis":  {"id": "6.1.2", "title": "Mailbox audit actions are configured", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-04", "title": "Logs of events are created"},
+        "iso":  {"id": "A.8.15", "title": "Logging"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "C1", "title": "Security Monitoring"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling"},
+    },
+    "EXO-003": {
+        "cis":  {"id": "2.1.7", "title": "An anti-phishing policy has been created", "profile": "E3 L1"},
+        "nist": {"id": "PR.DS-02", "title": "Data-in-transit is protected"},
+        "iso":  {"id": "A.8.7", "title": "Protection against malware"},
+        "ce":   {"pillar": "MP", "title": "Malware Protection"},
+        "soc2": {"id": "CC6.8", "title": "Change management controls"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   {"id": "E8-4", "title": "User Application Hardening"},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "EXO-004": {
+        "cis":  {"id": "2.1.10", "title": "DMARC records published for all Exchange Online domains", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01, PR.DS-02", "title": "Configuration management / Data-in-transit protected"},
+        "iso":  {"id": "A.8.20, A.8.24", "title": "Network security / Use of cryptography"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.8", "title": "Change management controls"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption"},
+    },
+    "EXO-005": {
+        "cis":  {"id": "2.1.8 / 2.1.9", "title": "SPF records published / DKIM enabled for all domains", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01, PR.DS-02", "title": "Configuration management / Data-in-transit protected"},
+        "iso":  {"id": "A.8.20, A.8.24", "title": "Network security / Use of cryptography"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.8", "title": "Change management controls"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption"},
+    },
+    "EXO-006": {
+        "cis":  {"id": "2.1.6 / 2.1.7", "title": "Anti-spam / Anti-phishing policies (ZAP governed by these)", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied"},
+        "iso":  {"id": "A.8.7", "title": "Protection against malware"},
+        "ce":   {"pillar": "MP", "title": "Malware Protection"},
+        "soc2": {"id": "CC6.8", "title": "Change management controls"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "TEAMS-001": {
+        "cis":  {"id": "8.2.2", "title": "Communication with unmanaged Teams users is disabled", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05, PR.IR-01", "title": "Access permissions managed / Networks protected"},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction"},
+        "ce":   {"pillar": "FW", "title": "Firewalls"},
+        "soc2": {"id": "CC6.6, CC6.7", "title": "Boundary protection and data access restrictions"},
+        "caf":  {"id": "B2, B3", "title": "Identity and Access Control / Data Security"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "TEAMS-002": {
+        "cis":  {"id": "8.2.3", "title": "External Teams users cannot initiate conversations", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.5.18", "title": "Access control / Access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.3, CC6.7", "title": "Role-based access and data access restrictions"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "TEAMS-003": {
+        "cis":  {"id": "8.5.1", "title": "Anonymous users cannot join a meeting", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.6, CC6.7", "title": "Boundary protection and data access restrictions"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "TEAMS-004": {
+        "cis":  {"id": "8.4.1", "title": "App permission policies are configured", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied"},
+        "iso":  {"id": "A.5.23, A.8.9", "title": "Cloud services / Configuration management"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.8", "title": "Change management controls"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   {"id": "E8-1", "title": "Application Control"},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "SPO-001": {
+        "cis":  {"id": "7.2.6", "title": "SharePoint external sharing is restricted", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05, PR.DS-01", "title": "Access permissions managed / Data-at-rest protected"},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data"},
+        "caf":  {"id": "B2, B3", "title": "Identity and Access Control / Data Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "SPO-002": {
+        "cis":  {"id": "7.2.1", "title": "Modern authentication for SharePoint applications is required", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated"},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication"},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication"},
+    },
+    "SPO-003": {
+        "cis":  {"id": "7.2.4", "title": "OneDrive content sharing is restricted", "profile": "E3 L1"},
+        "nist": {"id": "PR.DS-01", "title": "Data-at-rest is protected"},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data"},
+        "caf":  {"id": "B3", "title": "Data Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "SPO-004": {
+        "cis":  {"id": "7.2.9", "title": "Guest access to site or OneDrive expires automatically", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.18", "title": "Access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "APP-001": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "MON-001": {
+        "cis":  {"id": "3.1.1", "title": "Microsoft 365 audit log search is enabled", "profile": "E3 L1"},
+        "nist": {"id": "DE.CM-01", "title": "Networks and network services are monitored"},
+        "iso":  {"id": "A.8.16", "title": "Monitoring activities"},
+        "ce":   {"pillar": "MP", "title": "Malware Protection"},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "C1", "title": "Security Monitoring"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling"},
+    },
+    "MDM-001": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01, PR.AA-05", "title": "Configuration management / access permissions managed"},
+        "iso":  {"id": "A.8.1, A.8.9", "title": "User endpoint devices / Configuration management"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "MDM-002": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied"},
+        "iso":  {"id": "A.8.1, A.8.9", "title": "User endpoint devices / Configuration management"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "MDM-003": {
+        "cis":  None,
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied"},
+        "iso":  {"id": "A.8.8", "title": "Management of technical vulnerabilities"},
+        "ce":   {"pillar": "PM", "title": "Patch Management"},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   {"id": "E8-2, E8-6", "title": "Patch Applications / Patch Operating Systems"},
+        "nis2": {"id": "NIS2-f", "title": "Vulnerability handling and disclosure"},
+    },
+    "MDM-004": {
+        "cis":  {"id": "5.1.4.6", "title": "Users are restricted from recovering BitLocker keys (related)", "profile": "E3 L1"},
+        "nist": {"id": "PR.DS-01", "title": "Data-at-rest is protected"},
+        "iso":  {"id": "A.8.24", "title": "Use of cryptography"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data"},
+        "caf":  {"id": "B3", "title": "Data Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption"},
+    },
+    "MDM-005": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1"},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied"},
+        "iso":  {"id": "A.8.1", "title": "User endpoint devices"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "MDM-006": {
+        "cis":  None,
+        "nist": {"id": "DE.CM-09", "title": "Computing hardware and software are monitored"},
+        "iso":  {"id": "A.8.7, A.8.16", "title": "Protection against malware / Monitoring activities"},
+        "ce":   {"pillar": "MP", "title": "Malware Protection"},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring"},
+        "caf":  {"id": "C1", "title": "Security Monitoring"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling"},
+    },
+    "ENTRA-001": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-002": {
+        "cis":  {"id": "5.1.5.4", "title": "App password lifetime does not exceed 180 days", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed"},
+        "iso":  {"id": "A.5.17", "title": "Authentication information"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-003": {
+        "cis":  {"id": "5.1.5.4", "title": "App password lifetime does not exceed 180 days", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed"},
+        "iso":  {"id": "A.5.17", "title": "Authentication information"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-004": {
+        "cis":  {"id": "5.1.5.4 / 5.1.5.6", "title": "App password and certificate lifetime ≤180 days", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed"},
+        "iso":  {"id": "A.5.17", "title": "Authentication information"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-005": {
+        "cis":  {"id": "5.1.5.4 / 5.1.5.6", "title": "App password and certificate lifetime enforcement", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed"},
+        "iso":  {"id": "A.5.17", "title": "Authentication information"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-006": {
+        "cis":  None,
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.18, A.5.15", "title": "Access rights / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-007": {
+        "cis":  {"id": "5.1.2.2", "title": "Users cannot register applications", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.23", "title": "Information security for use of cloud services"},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration"},
+        "soc2": {"id": "CC6.6, CC6.8", "title": "Boundary protection and change management"},
+        "caf":  {"id": "B4", "title": "System Security"},
+        "e8":   {"id": "E8-1", "title": "Application Control"},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies"},
+    },
+    "ENTRA-008": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1"},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced"},
+        "iso":  {"id": "A.5.15, A.8.26", "title": "Access control / Application security requirements"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-009": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1"},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed"},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+    "ENTRA-010": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1"},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed"},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control"},
+        "ce":   {"pillar": "UAC", "title": "User Access Control"},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access"},
+        "caf":  {"id": "B2", "title": "Identity and Access Control"},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges"},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management"},
+    },
+}
+
+
+# ─────────────────────────────────────────────────────────────
 #  FINDINGS LIBRARY
 # ─────────────────────────────────────────────────────────────
 def build_findings_library():
-    return [
+    findings = [
         # Identity
         {"id":"ID-001","title":"Low MFA Coverage","module":"identity","metric":"mfa_percentage","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 95,
@@ -334,6 +823,10 @@ def build_findings_library():
          "recommendation":"Go to Entra ID > Roles and administrators and review managed identity role assignments. Remove high-privilege roles from managed identities and assign only the minimum permissions required for each workload.",
          "secure_score_impact": 3},
     ]
+    # Apply framework mappings to all findings
+    for f in findings:
+        f["frameworks"] = FRAMEWORK_MAPPING.get(f["id"], {})
+    return findings
 
 FINDINGS_LIBRARY = build_findings_library()
 
@@ -464,7 +957,18 @@ def build_ps_args(module, auth):
     return args
 
 
-def run_script(script_name, ps_args):
+# Per-module timeouts (seconds) — Security and Identity need more time for CA/Graph enumeration
+MODULE_TIMEOUTS = {
+    "security":   600,   # CA policy enumeration + Defender checks can be slow
+    "identity":   600,   # Entra ID deep checks — large tenants need extra time
+    "exchange":   300,
+    "teams":      300,
+    "sharepoint": 300,
+    "intune":     300,
+}
+DEFAULT_TIMEOUT = 300
+
+def run_script(script_name, ps_args, module=None):
     """
     Execute a PowerShell script and return parsed JSON output.
     App Registration: runs silently, captures stdout directly.
@@ -473,6 +977,8 @@ def run_script(script_name, ps_args):
     script_path = os.path.join(SCRIPTS_DIR, script_name)
     if not os.path.exists(script_path):
         return None, f"Script not found: {script_name}"
+
+    timeout = MODULE_TIMEOUTS.get(module, DEFAULT_TIMEOUT) if module else DEFAULT_TIMEOUT
 
     # Do NOT use -NonInteractive - it blocks login popups for interactive auth
     cmd = [
@@ -485,7 +991,7 @@ def run_script(script_name, ps_args):
             cmd,
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=timeout
         )
 
         stdout = result.stdout.strip()
@@ -511,7 +1017,7 @@ def run_script(script_name, ps_args):
         return data, None
 
     except subprocess.TimeoutExpired:
-        return None, "Script timed out after 300 seconds"
+        return None, f"Script timed out after {timeout} seconds"
     except json.JSONDecodeError as e:
         stderr = result.stderr.strip() if result else ""
         return None, f"Invalid JSON from script: {e}. stderr: {stderr[:300]}"
@@ -541,7 +1047,8 @@ def evaluate_findings(all_metrics):
                     "metric": metric, "severity": f["severity"],
                     "description": f["description"], "recommendation": f["recommendation"],
                     "observed_value": value,
-                    "secure_score_impact": f.get("secure_score_impact", 0)
+                    "secure_score_impact": f.get("secure_score_impact", 0),
+                    "frameworks": f.get("frameworks", {})
                 })
         except Exception:
             pass
@@ -711,7 +1218,9 @@ def save_session(session_data):
 #  ROUTES
 # ─────────────────────────────────────────────────────────────
 
-CURRENT_VERSION = "1.3.0"
+# Read version from VERSION file — never hardcode so updates always reflect correctly
+_ver_file = os.path.join(BASE_DIR, "VERSION")
+CURRENT_VERSION = open(_ver_file).read().strip() if os.path.exists(_ver_file) else "1.4.0"
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
 RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
 
@@ -730,7 +1239,10 @@ def check_update():
               headers={"User-Agent": "M365-Assessment-Toolkit"})
         with urllib.request.urlopen(req, timeout=5) as r:
             latest = r.read().decode().strip()
-        update_available = latest != CURRENT_VERSION
+        def _ver(v):
+            try: return tuple(int(x) for x in v.strip().split("."))
+            except: return (0,)
+        update_available = _ver(latest) > _ver(CURRENT_VERSION)
         return jsonify({
             "current":          CURRENT_VERSION,
             "latest":           latest,
@@ -767,11 +1279,67 @@ def apply_update():
         return jsonify({"success": False, "error": str(e)})
 
 
+ALL_FRAMEWORKS = ["cis", "nist", "iso", "ce", "soc2", "caf", "e8", "nis2"]
+
+# ── Scan progress tracker ────────────────────────────────────
+import threading
+_scan_progress = {"status": "idle", "module": "", "step": 0, "total": 0, "label": ""}
+_scan_lock     = threading.Lock()
+
+def _set_progress(status, module="", step=0, total=0, label=""):
+    with _scan_lock:
+        _scan_progress.update({"status": status, "module": module,
+                                "step": step, "total": total, "label": label})
+
+@app.route("/progress", methods=["GET"])
+def get_progress():
+    with _scan_lock:
+        return jsonify(dict(_scan_progress))
+
+# ── Heartbeat / shutdown ─────────────────────────────────────
+import time as _time
+_last_heartbeat = _time.time()
+_shutdown_enabled = False
+
+@app.route("/heartbeat", methods=["POST"])
+def heartbeat():
+    global _last_heartbeat
+    _last_heartbeat = _time.time()
+    return jsonify({"ok": True})
+
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    """Clean shutdown triggered by Stop button or heartbeat timeout."""
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func:
+        func()
+    else:
+        import os, signal
+        os.kill(os.getpid(), signal.SIGTERM)
+    return jsonify({"ok": True})
+
+def _heartbeat_watchdog():
+    """Auto-shutdown if no heartbeat received for 90 seconds."""
+    import time
+    time.sleep(30)  # grace period on startup
+    while True:
+        time.sleep(15)
+        if _shutdown_enabled and (_time.time() - _last_heartbeat) > 90:
+            print("[INFO] No heartbeat for 90s — shutting down.", flush=True)
+            import os, signal
+            os.kill(os.getpid(), signal.SIGTERM)
+
+_wd = threading.Thread(target=_heartbeat_watchdog, daemon=True)
+_wd.start()
+
 @app.route("/run", methods=["POST"])
 def run_assessment():
+    global _shutdown_enabled
+    _shutdown_enabled = True          # enable watchdog once a real session starts
     body          = request.get_json()
     client_name   = body.get("orgName", body.get("clientName", "Unknown"))
     modules       = body.get("modules", [])
+    active_frameworks = body.get("activeFrameworks", ALL_FRAMEWORKS)
     auth          = {k: body.get(k,"") for k in
                      ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
 
@@ -785,7 +1353,10 @@ def run_assessment():
     L(f"Assessment started — {client_name}")
     L(f"Auth method: {auth['authMethod']}")
 
-    for module in modules:
+    total_modules = len(modules)
+    _set_progress("running", step=0, total=total_modules, label="Starting...")
+
+    for idx, module in enumerate(modules, 1):
         script = MODULE_SCRIPTS.get(module)
         if not script:
             L(f"Unknown module: {module}", "warn"); continue
@@ -801,9 +1372,12 @@ def run_assessment():
         if is_interactive_only and auth["authMethod"] == "appreg":
             L(f"{module}: App Reg not supported for this workload — using interactive login", "warn")
 
+        module_label = module.replace("sharepoint","SharePoint").replace("exchange","Exchange").replace("identity","Identity").replace("security","Security").replace("teams","Teams").replace("intune","Intune")
+        _set_progress("running", module=module, step=idx, total=total_modules,
+                      label=f"Running {module_label}... ({idx} of {total_modules})")
         L(f"Running: {script} [{effective_auth}]")
         ps_args = build_ps_args(module, auth)
-        metrics, error = run_script(script, ps_args)
+        metrics, error = run_script(script, ps_args, module=module)
 
         if error:
             L(f"{module} failed: {error}", "error")
@@ -812,6 +1386,8 @@ def run_assessment():
             L(f"{module} complete — {len(metrics)} metrics collected", "success")
         else:
             L(f"{module} returned no data", "warn")
+
+    _set_progress("complete", step=total_modules, total=total_modules, label="Complete")
 
     # Derive composite metrics from raw values
     if any(k in all_metrics for k in ("zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled")):
@@ -857,7 +1433,8 @@ def run_assessment():
         "modulesRun": len(modules),
         "log": log,
         "savedAt": datetime.datetime.now().isoformat(),
-        "toolVersion": "1.2.0",
+        "toolVersion": CURRENT_VERSION,
+        "activeFrameworks": active_frameworks,
         "remediationLog": rem_log,
     }
 
@@ -896,6 +1473,16 @@ def download_report():
 
     if not os.path.exists(generator):
         return jsonify({"error": "generate-report.js not found. Place it in the same folder as backend.py."}), 500
+
+    # Compute framework totals dynamically from FRAMEWORK_MAPPING so
+    # generate-report.js never uses stale hardcoded numbers.
+    fw_totals = {}
+    for fw_id in body.get("activeFrameworks", list(FW_LABELS.keys())):
+        fw_totals[fw_id] = sum(
+            1 for mapping in FRAMEWORK_MAPPING.values()
+            if mapping.get(fw_id)
+        )
+    body["fwTotals"] = fw_totals
 
     # Write assessment data to a temp JSON file for the Node script
     with open(json_path, "w", encoding="utf-8") as f:
@@ -1476,6 +2063,11 @@ def load_session(filename):
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        # Upgrade legacy sessions — inject framework data into findings that predate v1.5
+        for finding in data.get("findings", []):
+            if not finding.get("frameworks"):
+                finding["frameworks"] = FRAMEWORK_MAPPING.get(finding.get("id", ""), {})
+
         client_name = data.get("clientName", "")
         safe        = client_name.replace(" ", "_").replace("/", "-")
 
@@ -1684,22 +2276,36 @@ def compare_assessments():
             if s in counts: counts[s] += 1
         return counts
 
+    def enrich_findings(findings_dict):
+        """Apply FRAMEWORK_MAPPING to findings for compare framework delta."""
+        result = []
+        for f in findings_dict.values():
+            fc = dict(f)
+            if not fc.get("frameworks"):
+                fc["frameworks"] = FRAMEWORK_MAPPING.get(fc.get("id", ""), {})
+            result.append(fc)
+        return result
+
     return jsonify({
         "sessionA": {
-            "filename":   file_a,
-            "orgName":    sess_a.get("orgName", sess_a.get("clientName", "Unknown")),
-            "assessDate": sess_a.get("assessDate", ""),
-            "score":      score_a,
-            "findingCount": len(ids_a),
-            "sevCounts":  sev_counts(findings_a),
+            "filename":        file_a,
+            "orgName":         sess_a.get("orgName", sess_a.get("clientName", "Unknown")),
+            "assessDate":      sess_a.get("assessDate", ""),
+            "score":           score_a,
+            "findingCount":    len(ids_a),
+            "sevCounts":       sev_counts(findings_a),
+            "activeFrameworks": sess_a.get("activeFrameworks", []),
+            "findings":        enrich_findings(findings_a),
         },
         "sessionB": {
-            "filename":   file_b,
-            "orgName":    sess_b.get("orgName", sess_b.get("clientName", "Unknown")),
-            "assessDate": sess_b.get("assessDate", ""),
-            "score":      score_b,
-            "findingCount": len(ids_b),
-            "sevCounts":  sev_counts(findings_b),
+            "filename":        file_b,
+            "orgName":         sess_b.get("orgName", sess_b.get("clientName", "Unknown")),
+            "assessDate":      sess_b.get("assessDate", ""),
+            "score":           score_b,
+            "findingCount":    len(ids_b),
+            "sevCounts":       sev_counts(findings_b),
+            "activeFrameworks": sess_b.get("activeFrameworks", []),
+            "findings":        enrich_findings(findings_b),
         },
         "scoreDelta":    score_delta,
         "resolved":      resolved,

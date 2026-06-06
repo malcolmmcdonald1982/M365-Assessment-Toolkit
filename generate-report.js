@@ -82,6 +82,22 @@ const SEV = {
   low:      { label: 'LOW',      colour: COLOURS.low,      bg: COLOURS.lowBg,      score: 2  },
 };
 
+// Framework labels and known library totals (findings that map to each framework)
+const FW_LABELS = {
+  cis:  'CIS M365 v7.0.0',
+  nist: 'NIST CSF 2.0',
+  iso:  'ISO 27001:2022',
+  ce:   'Cyber Essentials v3.3',
+  soc2: 'SOC 2 CC6/CC7',
+  caf:  'NCSC CAF v4.0',
+  e8:   'Essential Eight',
+  nis2: 'EU NIS2 Art.21',
+};
+// FW_TOTALS: hardcoded fallback only — backend now injects data.fwTotals computed
+// dynamically from FRAMEWORK_MAPPING, so these numbers auto-update when new findings
+// are added (v1.6+). This constant is only used if fwTotals is missing from data.
+const FW_TOTALS = { cis: 42, nist: 48, iso: 48, ce: 46, soc2: 48, caf: 48, e8: 34, nis2: 48 };
+
 const STATUS_COLOUR = {
   good: COLOURS.green,
   warn: COLOURS.amber,
@@ -683,6 +699,185 @@ function buildFooter() {
 }
 
 // --- Main builder -------------------------------------------------
+/** Framework compliance summary section */
+function buildFrameworkSection(data) {
+  const findings  = data.findings || [];
+  const active    = data.activeFrameworks || Object.keys(FW_LABELS);
+  if (!active.length) return [];
+
+  // Build rows: one per active framework
+  const colWidths = [2400, 1400, 1400, 1400, 2760];
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      'Framework', 'Checks in library', 'Gaps found', 'Passing', 'Status',
+    ].map((label, i) => new TableCell({
+      children: [para([run(label, { bold: true, colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 80, after: 80 })],
+      shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+      borders: allBorders(COLOURS.navyLight, 4),
+      width: { size: colWidths[i], type: WidthType.DXA },
+      verticalAlign: VerticalAlign.CENTER,
+      margins: { top: 60, bottom: 60, left: 120, right: 120 },
+    })),
+  });
+
+  const dataRows = active.map(fw => {
+    const label    = FW_LABELS[fw] || fw;
+    const total    = (data.fwTotals && data.fwTotals[fw]) || FW_TOTALS[fw] || '—';
+    const gaps     = findings.filter(f => f.frameworks && f.frameworks[fw]).length;
+    const passing  = typeof total === 'number' ? total - gaps : '—';
+    const passPct  = typeof total === 'number' ? Math.round((passing / total) * 100) : null;
+    const statusTxt = passPct === null ? '—'
+      : passPct >= 90 ? 'Good standing'
+      : passPct >= 70 ? 'Needs attention'
+      : 'Significant gaps';
+    const statusCol = passPct === null ? COLOURS.slate
+      : passPct >= 90 ? COLOURS.green
+      : passPct >= 70 ? COLOURS.amber
+      : COLOURS.red;
+    const statusBg  = passPct === null ? COLOURS.lightGrey
+      : passPct >= 90 ? COLOURS.greenBg
+      : passPct >= 70 ? COLOURS.amberBg
+      : COLOURS.redBg;
+
+    const cells = [
+      new TableCell({
+        children: [para([run(label, { bold: true, size: 20 })], { before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[0], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 120, right: 120 },
+      }),
+      new TableCell({
+        children: [para([run(String(total), { size: 20 })], { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[1], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(String(gaps), { bold: gaps > 0, colour: gaps > 0 ? COLOURS.red : COLOURS.green, size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[2], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(passPct !== null ? `${passing} (${passPct}%)` : '—', { size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[3], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(statusTxt, { bold: true, colour: statusCol, size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        shading: { fill: statusBg, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[4], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 120, right: 120 },
+      }),
+    ];
+    return new TableRow({ children: cells });
+  });
+
+  // Consolidated gap detail — one row per finding, all framework obligations in one column
+  const sevOrder      = { critical: 0, high: 1, medium: 2, low: 3 };
+  const gapColWidths  = [900, 1000, 4560, 2900];
+  const allGapFindings = findings
+    .filter(f => active.some(fw => f.frameworks && f.frameworks[fw]))
+    .sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+
+  const gapDetailSection = allGapFindings.length === 0 ? [] : (() => {
+    const gapHdr = new TableRow({
+      tableHeader: true,
+      children: ['Severity', 'Finding ID', 'Finding & Recommendation', 'Framework Obligations'].map((h, i) =>
+        new TableCell({
+          children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+          shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.navyLight, 4),
+          width: { size: gapColWidths[i], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        })
+      ),
+    });
+
+    const gapRows = allGapFindings.map((f, idx) => {
+      const sev   = SEV[f.severity] || SEV.medium;
+      const rowBg = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+
+      // Each active framework this finding maps to — one paragraph per framework
+      const fwParas = active
+        .filter(fw => f.frameworks && f.frameworks[fw])
+        .map(fw => {
+          const d   = f.frameworks[fw];
+          const ref = d.id ? `${FW_LABELS[fw] || fw}: ${d.id}` : (FW_LABELS[fw] || fw);
+          return para([run(ref, { size: 16, colour: COLOURS.slate })], { before: 20, after: 20, line: 240 });
+        });
+
+      return new TableRow({ children: [
+        new TableCell({
+          children: [para([run(sev.label, { bold: true, colour: sev.colour, size: 16 })], { before: 60, after: 60 })],
+          shading: { fill: sev.bg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[0], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.id, { size: 17, colour: COLOURS.navy, bold: true })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[1], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [
+            para([run(f.title, { bold: true, size: 18 })], { before: 40, after: 20 }),
+            para([run(f.recommendation, { size: 17, colour: COLOURS.darkGrey })], { before: 0, after: 40, line: 260 }),
+          ],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[2], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: fwParas.length ? fwParas : [para([run('—', { size: 16, colour: COLOURS.slate })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[3], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]});
+    });
+
+    return [
+      heading2('Gap Detail'),
+      para([run('Each triggered finding appears once. The Framework Obligations column lists every selected framework this finding has an obligation under, with the specific control reference. Findings are sorted by severity.')],
+        { before: 80, after: 160, line: 300, colour: COLOURS.darkGrey }),
+      new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: gapColWidths, rows: [gapHdr, ...gapRows] }),
+      spacer(1),
+    ];
+  })();
+
+  return [
+    pageBreak(),
+    heading1('5. Framework Compliance Summary'),
+    para([
+      run(`The table below shows compliance coverage across the frameworks selected for this engagement. ` +
+        `"Gaps found" reflects triggered findings that carry an obligation under each framework. ` +
+        `"Passing" is the number of library checks where no gap was identified. ` +
+        `Remediating the findings in Section 3 will directly improve these figures.`),
+    ], { before: 120, after: 200, line: 300 }),
+    new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: colWidths, rows: [headerRow, ...dataRows] }),
+    spacer(1),
+    para([
+      run('Note: ', { bold: true }),
+      run(`Coverage percentages are based on the known number of checks in this toolkit that map to each framework. ` +
+        `100% passing does not constitute a formal certification or audit.`),
+    ], { before: 0, after: 200, line: 300, colour: COLOURS.slate }),
+    ...gapDetailSection,
+  ];
+}
+
 async function buildReport(data, outputPath) {
   const doc = new Document({
     numbering: {
@@ -725,6 +920,7 @@ async function buildReport(data, outputPath) {
         ...buildScoreSection(data),
         ...buildFindingsSection(data),
         ...buildRecommendationsSection(data),
+        ...buildFrameworkSection(data),
         ...buildAppendix(data),
       ],
     }],
@@ -1003,6 +1199,159 @@ function buildRemOpenFindings(data) {
   ];
 }
 
+/** Framework compliance impact section for the remediation report */
+function buildRemFrameworkSection(data) {
+  const findings = data.findings || [];
+  const active   = data.activeFrameworks || Object.keys(FW_LABELS);
+  const remLog   = data.remediationLog  || [];
+  if (!active.length || !findings.length) return [];
+
+  // Determine which findings were net-remediated (remediate succeeds, not rolled back)
+  const remState = {};
+  remLog.forEach(e => {
+    if (!e.findingId || !e.success) return;
+    if (e.action === 'remediate') remState[e.findingId] = 'done';
+    if (e.action === 'rollback')  remState[e.findingId] = 'rolled';
+  });
+  const remediatedIds = Object.entries(remState).filter(([,s]) => s === 'done').map(([id]) => id);
+  if (!remediatedIds.length) return [];
+
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  // Summary table
+  const sumColW = [2800, 1400, 1400, 1400, 2360];
+  const sumHdr  = new TableRow({
+    tableHeader: true,
+    children: ['Framework', 'Total gaps', 'Closed', 'Remaining', 'Movement'].map((h, i) =>
+      new TableCell({
+        children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 80, after: 80 })],
+        shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.navyLight, 4),
+        width: { size: sumColW[i], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 100, right: 100 },
+      })
+    ),
+  });
+
+  const sumRows = active
+    .map(fw => {
+      const mapped    = findings.filter(f => f.frameworks && f.frameworks[fw]);
+      const closed    = mapped.filter(f => remediatedIds.includes(f.id)).length;
+      const remaining = mapped.length - closed;
+      const moveTxt   = closed > 0 ? `+${closed} closed` : 'No change';
+      const moveCol   = closed > 0 ? COLOURS.green : COLOURS.slate;
+      const moveBg    = closed > 0 ? COLOURS.greenBg : COLOURS.white;
+      return { fw, mapped, closed, remaining, moveTxt, moveCol, moveBg };
+    })
+    .filter(r => r.mapped.length > 0)
+    .map(({ fw, mapped, closed, remaining, moveTxt, moveCol, moveBg }) =>
+      new TableRow({ children: [
+        new TableCell({
+          children: [para([run(FW_LABELS[fw] || fw, { bold: true, size: 20 })], { before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[0], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: [para([run(String(mapped.length), { size: 20 })], { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[1], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(String(closed), { bold: closed > 0, colour: closed > 0 ? COLOURS.green : COLOURS.slate, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          shading: { fill: closed > 0 ? COLOURS.greenBg : COLOURS.white, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[2], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(String(remaining), { bold: remaining > 0, colour: remaining > 0 ? COLOURS.red : COLOURS.green, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[3], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(moveTxt, { bold: closed > 0, colour: moveCol, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          shading: { fill: moveBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[4], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]})
+    );
+
+  if (!sumRows.length) return [];
+
+  // Per-framework: which specific controls were closed
+  const detColW = [900, 1000, 4760, 2700];
+  const closedDetails = active.flatMap(fw => {
+    const closed = findings
+      .filter(f => f.frameworks && f.frameworks[fw] && remediatedIds.includes(f.id))
+      .sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+    if (!closed.length) return [];
+
+    const detHdr = new TableRow({
+      tableHeader: true,
+      children: ['Severity', 'Finding ID', 'Finding', 'Control Closed'].map((h, i) =>
+        new TableCell({
+          children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+          shading: { fill: COLOURS.navyLight, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.navyLight, 4), width: { size: detColW[i], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        })
+      ),
+    });
+
+    const detRows = closed.map((f, idx) => {
+      const sev    = SEV[f.severity] || SEV.medium;
+      const fwData = f.frameworks[fw];
+      const ctrl   = fwData ? [fwData.id, fwData.title].filter(Boolean).join(' — ') : '—';
+      const rowBg  = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+      return new TableRow({ children: [
+        new TableCell({
+          children: [para([run(sev.label, { bold: true, colour: sev.colour, size: 16 })], { before: 60, after: 60 })],
+          shading: { fill: sev.bg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[0], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.id, { size: 17, colour: COLOURS.navy, bold: true })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[1], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.title, { bold: true, size: 18 })], { before: 40, after: 40 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[2], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: [para([run(ctrl, { size: 17, colour: COLOURS.green })], { before: 60, after: 60, line: 260 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[3], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]});
+    });
+
+    return [
+      heading2(`${FW_LABELS[fw] || fw} — ${closed.length} control${closed.length !== 1 ? 's' : ''} closed`),
+      new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: detColW, rows: [detHdr, ...detRows] }),
+      spacer(1),
+    ];
+  });
+
+  return [
+    pageBreak(),
+    heading1('4. Framework Compliance Impact'),
+    para([run(
+      `The table below shows the direct compliance impact of the remediation work carried out. ` +
+      `Each closed gap represents a finding that was successfully remediated and that carried ` +
+      `an obligation under the listed framework. Where gaps remain, these represent findings ` +
+      `that were not in scope for this remediation engagement.`
+    )], { before: 120, after: 200, line: 300 }),
+    new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: sumColW, rows: [sumHdr, ...sumRows] }),
+    spacer(1),
+    ...closedDetails,
+  ];
+}
+
 async function buildRemediationReport(data, outputPath) {
   const doc = new Document({
     styles: {
@@ -1027,6 +1376,7 @@ async function buildRemediationReport(data, outputPath) {
         ...buildRemExecSummary(data),
         ...buildRemChangesSection(data),
         ...buildRemOpenFindings(data),
+        ...buildRemFrameworkSection(data),
       ],
     }],
   });

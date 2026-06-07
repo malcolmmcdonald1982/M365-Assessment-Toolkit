@@ -2,6 +2,93 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.6.0] - 2026-06-07
+
+### New Features
+
+**Severity Justification Per Finding**
+- Every finding now includes a `severity_reason` field — one clear sentence explaining exactly why that severity level was assigned (e.g. "Critical because legacy protocols bypass MFA entirely…")
+- Displayed as an italic callout under the description on each finding card in the UI
+- Included in the Word assessment report as a dedicated "Why this severity" row per finding card
+- Answers the question consultants and clients always ask: "Why Critical and not High?"
+
+**Remediation Effort Estimates**
+- Every finding now carries `effort` (Low / Medium / High) and `effort_hours` (estimated hours) fields
+- Displayed as a colour-coded effort badge in each finding card header (green = Low, amber = Medium, red = High)
+- Shown in the recommendations table in all Word reports with estimated hours (e.g. "Low (~1h)")
+- Allows clients and project managers to plan remediation sprints with realistic time budgets
+
+**Scheduled / Automated Scans**
+- New "Scheduled Scans" sidebar panel for configuring unattended recurring assessments
+- Uses App Registration credentials (Tenant ID, Client ID, Client Secret) — no interactive login required
+- Creates a Windows Task Scheduler task (`M365Scan_<ClientName>`) running weekly, daily, or monthly at 06:00
+- Auto-generates `run_scheduled_scan.py` headless runner — calls the scan engine and saves JSON output to the output folder
+- `/schedule` and `/schedule/list` API endpoints for task creation and management
+
+### Bug Fixes / Improvements
+- Recommendations table effort column now uses live `effort`/`effort_hours` from finding data instead of a hardcoded lookup map
+- All 48 findings have been reviewed and updated with accurate severity justifications and effort estimates
+
+---
+
+## [1.5.0] - 2026-06-06
+
+### Bug Fixes (UAT)
+
+- Fixed version comparison logic — update banner no longer shows when running a version ahead of the GitHub latest release
+- Fixed compare endpoint — now includes `activeFrameworks` and framework-enriched `findings` in both session objects, enabling the framework compliance delta section
+- Fixed framework totals — `fwTotals` now computed dynamically from `FRAMEWORK_MAPPING` at report time instead of hardcoded constants; auto-updates when new workloads are added in future versions
+- Fixed simulator framework grid — `minmax(190px)` reduced to `minmax(140px)` so all 8 frameworks fit on one row without NIS2 wrapping to a third line
+
+### New Features
+
+**Multi-Framework Compliance Mapping — all 48 findings mapped to 8 frameworks**
+
+Every finding now carries compliance references across:
+- CIS Microsoft 365 Foundations Benchmark v7.0.0 (E3 L1 / E3 L2 / E5 L1 / E5 L2)
+- NIST Cybersecurity Framework 2.0
+- ISO 27001:2022 Annex A
+- Cyber Essentials v3.3 (UK)
+- NCSC Cyber Assessment Framework v4.0 (UK)
+- SOC 2 Trust Services Criteria CC6/CC7 (US / Global SaaS)
+- Australian Essential Eight (ASD 2024)
+- EU NIS2 Article 21
+
+**Framework Selector**
+- Choose which frameworks are in scope per client engagement
+- Set in Assessment Details — controls all badges, simulator gap counters and reports
+- UK CE-only clients see only CE content — no irrelevant framework noise
+- All/None quick-select buttons
+- Selection saved in session file
+
+**Framework Badges on Finding Cards**
+- Each triggered finding shows compact framework chips
+- Badges respect active framework selection
+- Hover tooltip shows full control ID and title
+- E5-required controls highlighted in amber
+
+**Scan Progress Bar**
+- Live progress bar appears during assessment
+- Shows current module name and step count (e.g. Running Security... 2 of 6)
+- Disappears automatically on completion
+
+**Hidden Backend Window**
+- Python backend now runs silently — no black console window
+- Browser opens automatically on launch
+- Tool closes cleanly via Stop Tool button
+
+**Stop Tool Button**
+- New button in sidebar shuts down backend cleanly
+- No need to find and kill Python in Task Manager
+
+### Improvements
+
+- Heartbeat keeps backend alive while browser is open — auto-shuts down 90s after browser closes
+- Session files now include `activeFrameworks` and correct `toolVersion`
+- Per-module timeouts: Security and Identity extended to 600s (was 300s for all)
+- Version now read dynamically from VERSION file — no more hardcoded version strings
+- First-scan timing notice added above Run Assessment button and in scan log
+
 ## [1.4.0] - 2026-06-05
 
 ### New Features

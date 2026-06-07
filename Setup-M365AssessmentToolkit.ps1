@@ -103,7 +103,9 @@ $CoreFiles = @(
     "package.json",
     "sample-data.json",
     "sample-report.docx",
-    "README.md"
+    "README.md",
+    "update.ps1",
+    "uninstall.ps1"
 )
 
 $CopyErrors = 0

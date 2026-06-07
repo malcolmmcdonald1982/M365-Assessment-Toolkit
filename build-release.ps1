@@ -22,10 +22,13 @@ $Include = @(
     "index.html",
     "generate-report.js",
     "package.json",
+    "sample-data.json",
+    "sample-report.docx",
     "requirements.txt",
     "install.ps1",
     "update.ps1",
     "uninstall.ps1",
+    "Setup-M365AssessmentToolkit.ps1",
     "VERSION",
     "CHANGELOG.md",
     "README.md",
@@ -34,7 +37,8 @@ $Include = @(
     "LICENSE",
     "scripts",
     "remediation",
-    "docs"
+    "Start-Tool.bat"
+    # Note: docs/ folder excluded — internal planning files only, not for end users
 )
 
 # Create release folder if it doesn't exist
@@ -72,3 +76,4 @@ Write-Host "Release zip built successfully:" -ForegroundColor Green
 Write-Host "  $ZipPath" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next step: attach this file to the v$Version release on GitHub." -ForegroundColor Gray
+

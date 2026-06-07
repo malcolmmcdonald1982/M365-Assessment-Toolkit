@@ -17,7 +17,7 @@
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
-  ShadingType, VerticalAlign, PageBreak, LevelFormat
+  ShadingType, VerticalAlign, PageBreak, LevelFormat, ImageRun
 } = require('docx');
 const fs = require('fs');
 
@@ -25,6 +25,28 @@ const fs = require('fs');
 // Helper - get consultant detail with fallback
 function consultant(data, field, fallback) {
   return (data && data[field] && data[field].trim()) ? data[field].trim() : fallback;
+}
+
+// Helper - build logo paragraph from base64 data URL (PNG/JPG/SVG)
+function buildLogoParagraph(dataUrl, opts = {}) {
+  if (!dataUrl || !dataUrl.startsWith('data:')) return null;
+  try {
+    const [header, b64] = dataUrl.split(',');
+    const imgBuffer = Buffer.from(b64, 'base64');
+    const isSvg     = header.includes('svg');
+    const w         = opts.width  || 220;  // pixels
+    const h         = opts.height || 90;
+    const align     = opts.align  || AlignmentType.CENTER;
+    return new Paragraph({
+      alignment: align,
+      spacing: { before: opts.before ?? 0, after: opts.after ?? 240 },
+      children: [new ImageRun({
+        data: imgBuffer,
+        transformation: { width: w, height: h },
+        type: isSvg ? 'svg' : header.includes('png') ? 'png' : 'jpg',
+      })],
+    });
+  } catch { return null; }
 }
 
 const COLOURS = {
@@ -81,6 +103,22 @@ const SEV = {
   medium:   { label: 'MEDIUM',   colour: COLOURS.medium,   bg: COLOURS.mediumBg,   score: 5  },
   low:      { label: 'LOW',      colour: COLOURS.low,      bg: COLOURS.lowBg,      score: 2  },
 };
+
+// Framework labels and known library totals (findings that map to each framework)
+const FW_LABELS = {
+  cis:  'CIS M365 v7.0.0',
+  nist: 'NIST CSF 2.0',
+  iso:  'ISO 27001:2022',
+  ce:   'Cyber Essentials v3.3',
+  soc2: 'SOC 2 CC6/CC7',
+  caf:  'NCSC CAF v4.0',
+  e8:   'Essential Eight',
+  nis2: 'EU NIS2 Art.21',
+};
+// FW_TOTALS: hardcoded fallback only — backend now injects data.fwTotals computed
+// dynamically from FRAMEWORK_MAPPING, so these numbers auto-update when new findings
+// are added (v1.6+). This constant is only used if fwTotals is missing from data.
+const FW_TOTALS = { cis: 42, nist: 48, iso: 48, ce: 46, soc2: 48, caf: 48, e8: 34, nis2: 48 };
 
 const STATUS_COLOUR = {
   good: COLOURS.green,
@@ -151,10 +189,15 @@ const pageBreak = () => new Paragraph({
 
 /** Cover page */
 function buildCoverPage(data) {
-  const dateStr = data.assessDate || new Date().toISOString().split('T')[0];
+  const dateStr     = data.assessDate || new Date().toISOString().split('T')[0];
+  const consultRole = consultant(data, 'consultantRole', '');
+
+  const logoCentered = buildLogoParagraph(data.consultantLogo, { width: 220, height: 90, align: AlignmentType.CENTER, before: 0, after: 320 });
 
   return [
-    spacer(4),
+    spacer(logoCentered ? 2 : 4),
+    // Company logo — centred above title
+    ...(logoCentered ? [logoCentered] : []),
     // Title block
     new Paragraph({
       children: [new TextRun({
@@ -184,12 +227,12 @@ function buildCoverPage(data) {
     }),
     para([run(dateStr, { size: 24, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 80 }),
     para([run(`Assessment conducted by ${consultant(data,'consultantName','[Consultant Name]')}`, { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
-    para([run(`IT Infrastructure Consultant`, { size: 22, colour: COLOURS.slate, italic: true })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
+    ...(consultRole ? [para([run(consultRole, { size: 22, colour: COLOURS.slate, italic: true })], { align: AlignmentType.CENTER, before: 0, after: 60 })] : []),
     para([run(`${consultant(data,'consultantEmail','[Email]')}`, { size: 22, colour: COLOURS.navyLight })], { align: AlignmentType.CENTER, before: 0, after: 0 }),
     spacer(2),
     // Confidentiality notice
     new Paragraph({
-      children: [new TextRun({ text: 'CONFIDENTIAL - For authorised recipients only', font: 'Arial', size: 18, italic: true, color: COLOURS.slate })],
+      children: [new TextRun({ text: 'CONFIDENTIAL — For authorised recipients only', font: 'Arial', size: 18, italic: true, color: COLOURS.slate })],
       alignment: AlignmentType.CENTER,
       border: {
         top: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 6 },
@@ -197,6 +240,13 @@ function buildCoverPage(data) {
       },
       spacing: { before: 120, after: 120 },
     }),
+    spacer(1),
+    // Version footer
+    para([
+      run(`Tool v${data.toolVersion || '—'}`, { size: 16, colour: COLOURS.midGrey }),
+      run(`  ·  Findings library: ${data.findingsLastUpdated || '—'}`, { size: 16, colour: COLOURS.midGrey }),
+      run(`  ·  CIS M365 v7.0  ·  NIST CSF 2.0  ·  ISO 27001:2022  ·  NCSC CAF v4.0`, { size: 16, colour: COLOURS.midGrey }),
+    ], { align: AlignmentType.CENTER, before: 0, after: 0 }),
     pageBreak(),
   ];
 }
@@ -350,7 +400,7 @@ function buildScoreSection(data) {
 
   return [
     heading1('2. Overall Score'),
-    para([run(`The tenant score is calculated from the assessment findings. Each finding reduces the score based on its severity: Critical (-15), High (-10), Medium (-5), Low (-2).`)], { before: 120, after: 200, line: 300 }),
+    para([run(`The score starts at 100 and is reduced by triggered findings: Critical (−8 each, max −32), High (−5 each, max −20), Medium (−3 each, max −12), Low (−1 each, max −4). Penalties are capped per severity band so a single category cannot dominate the score. The minimum possible score is 10. Findings marked Accepted Risk, False Positive or Not Applicable are excluded from the calculation.`)], { before: 120, after: 200, line: 300 }),
     buildScoreBanner(score),
     spacer(1),
     buildFindingsCounts(findings),
@@ -425,10 +475,18 @@ function buildFindingCard(f, index) {
           cell(para([run('What this means', { bold: true, colour: COLOURS.slate, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.lightGrey, borders: allBorders(COLOURS.midGrey, 4) }),
           cell(para([run(f.description, { colour: COLOURS.black, size: 22 })], { before: 80, after: 80, line: 300 }), { width: colW2 }),
         ]}),
+        ...(f.severity_reason ? [new TableRow({ children: [
+          cell(para([run('Why this severity', { bold: true, colour: COLOURS.slate, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.lightGrey, borders: allBorders(COLOURS.midGrey, 4) }),
+          cell(para([run(f.severity_reason, { colour: COLOURS.darkGrey, size: 20, italics: true })], { before: 60, after: 60, line: 300 }), { width: colW2 }),
+        ]})] : []),
         new TableRow({ children: [
           cell(para([run('Recommendation', { bold: true, colour: COLOURS.navyLight, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.offWhite, borders: allBorders(COLOURS.midGrey, 4) }),
           cell(para([run(f.recommendation, { colour: COLOURS.black, size: 22 })], { before: 80, after: 80, line: 300 }), { width: colW2 }),
         ]}),
+        ...(f.effort ? [new TableRow({ children: [
+          cell(para([run('Remediation effort', { bold: true, colour: COLOURS.navyLight, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.offWhite, borders: allBorders(COLOURS.midGrey, 4) }),
+          cell(para([run(`${f.effort} · ~${f.effort_hours || '?'}h estimated`, { colour: COLOURS.darkGrey, size: 20 })], { before: 60, after: 60, line: 300 }), { width: colW2 }),
+        ]})] : []),
       ],
     }),
     spacer(1),
@@ -477,14 +535,7 @@ function buildRecommendationsSection(data) {
     return (order[a.severity] ?? 9) - (order[b.severity] ?? 9);
   });
 
-  const effortMap = {
-    'ID-001': 'Low',  'ID-002': 'Low',  'ID-003': 'Medium', 'ID-004': 'Low', 'ID-005': 'Low',
-    'SEC-001': 'Medium', 'SEC-002': 'Low', 'CA-001': 'Medium', 'CA-002': 'Low',
-    'EXO-001': 'Low', 'EXO-002': 'Low',  'EXO-003': 'Low',
-    'TEAMS-001': 'Low', 'TEAMS-002': 'Low',
-    'SPO-001': 'Low', 'SPO-002': 'Low',
-    'MDM-001': 'Medium', 'MDM-002': 'Medium', 'APP-001': 'Medium', 'MON-001': 'Low', 'SEC-003': 'Low', 'SEC-004': 'Low', 'SEC-005': 'Low',
-  };
+  // effort and effort_hours now come directly from finding data
 
   const headerRow = new TableRow({
     tableHeader: true,
@@ -502,7 +553,8 @@ function buildRecommendationsSection(data) {
 
   const dataRows = sorted.map((f, i) => {
     const sev    = SEV[f.severity] || SEV.low;
-    const effort = effortMap[f.id] || 'Medium';
+    const effort = f.effort || 'Medium';
+    const effortLabel = f.effort_hours ? `${effort} (~${f.effort_hours}h)` : effort;
     const widths = [400, 2200, 1100, 900, 4760];
     const rowBg  = i % 2 === 0 ? COLOURS.white : COLOURS.offWhite;
     return new TableRow({ children: [
@@ -513,7 +565,7 @@ function buildRecommendationsSection(data) {
         alignment: AlignmentType.CENTER,
         spacing: { before: 60, after: 60 },
       }), { width: widths[2], bg: sev.bg }),
-      cell(para([run(effort, { colour: COLOURS.darkGrey, size: 20 })], { align: AlignmentType.CENTER }), { width: widths[3], bg: rowBg }),
+      cell(para([run(effortLabel, { colour: COLOURS.darkGrey, size: 20 })], { align: AlignmentType.CENTER }), { width: widths[3], bg: rowBg }),
       cell(para([run(f.recommendation, { colour: COLOURS.black, size: 20 })], { before: 60, after: 60, line: 300 }), { width: widths[4], bg: rowBg }),
     ]});
   });
@@ -683,6 +735,733 @@ function buildFooter() {
 }
 
 // --- Main builder -------------------------------------------------
+/** Framework compliance summary section */
+function buildFrameworkSection(data) {
+  const findings  = data.findings || [];
+  const active    = data.activeFrameworks || Object.keys(FW_LABELS);
+  if (!active.length) return [];
+
+  // Build rows: one per active framework
+  const colWidths = [2400, 1400, 1400, 1400, 2760];
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      'Framework', 'Checks in library', 'Gaps found', 'Passing', 'Status',
+    ].map((label, i) => new TableCell({
+      children: [para([run(label, { bold: true, colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 80, after: 80 })],
+      shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+      borders: allBorders(COLOURS.navyLight, 4),
+      width: { size: colWidths[i], type: WidthType.DXA },
+      verticalAlign: VerticalAlign.CENTER,
+      margins: { top: 60, bottom: 60, left: 120, right: 120 },
+    })),
+  });
+
+  const dataRows = active.map(fw => {
+    const label    = FW_LABELS[fw] || fw;
+    const total    = (data.fwTotals && data.fwTotals[fw]) || FW_TOTALS[fw] || '—';
+    const gaps     = findings.filter(f => f.frameworks && f.frameworks[fw]).length;
+    const passing  = typeof total === 'number' ? total - gaps : '—';
+    const passPct  = typeof total === 'number' ? Math.round((passing / total) * 100) : null;
+    const statusTxt = passPct === null ? '—'
+      : passPct >= 90 ? 'Good standing'
+      : passPct >= 70 ? 'Needs attention'
+      : 'Significant gaps';
+    const statusCol = passPct === null ? COLOURS.slate
+      : passPct >= 90 ? COLOURS.green
+      : passPct >= 70 ? COLOURS.amber
+      : COLOURS.red;
+    const statusBg  = passPct === null ? COLOURS.lightGrey
+      : passPct >= 90 ? COLOURS.greenBg
+      : passPct >= 70 ? COLOURS.amberBg
+      : COLOURS.redBg;
+
+    const cells = [
+      new TableCell({
+        children: [para([run(label, { bold: true, size: 20 })], { before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[0], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 120, right: 120 },
+      }),
+      new TableCell({
+        children: [para([run(String(total), { size: 20 })], { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[1], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(String(gaps), { bold: gaps > 0, colour: gaps > 0 ? COLOURS.red : COLOURS.green, size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[2], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(passPct !== null ? `${passing} (${passPct}%)` : '—', { size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[3], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+      }),
+      new TableCell({
+        children: [para([run(statusTxt, { bold: true, colour: statusCol, size: 20 })],
+          { align: AlignmentType.CENTER, before: 80, after: 80 })],
+        shading: { fill: statusBg, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: colWidths[4], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 120, right: 120 },
+      }),
+    ];
+    return new TableRow({ children: cells });
+  });
+
+  // Consolidated gap detail — one row per finding, all framework obligations in one column
+  const sevOrder      = { critical: 0, high: 1, medium: 2, low: 3 };
+  const gapColWidths  = [900, 1000, 4560, 2900];
+  const allGapFindings = findings
+    .filter(f => active.some(fw => f.frameworks && f.frameworks[fw]))
+    .sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+
+  const gapDetailSection = allGapFindings.length === 0 ? [] : (() => {
+    const gapHdr = new TableRow({
+      tableHeader: true,
+      children: ['Severity', 'Finding ID', 'Finding & Recommendation', 'Framework Obligations'].map((h, i) =>
+        new TableCell({
+          children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+          shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.navyLight, 4),
+          width: { size: gapColWidths[i], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        })
+      ),
+    });
+
+    const gapRows = allGapFindings.map((f, idx) => {
+      const sev   = SEV[f.severity] || SEV.medium;
+      const rowBg = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+
+      // Each active framework this finding maps to — one paragraph per framework
+      const fwParas = active
+        .filter(fw => f.frameworks && f.frameworks[fw])
+        .map(fw => {
+          const d   = f.frameworks[fw];
+          const ref = d.id ? `${FW_LABELS[fw] || fw}: ${d.id}` : (FW_LABELS[fw] || fw);
+          return para([run(ref, { size: 16, colour: COLOURS.slate })], { before: 20, after: 20, line: 240 });
+        });
+
+      return new TableRow({ children: [
+        new TableCell({
+          children: [para([run(sev.label, { bold: true, colour: sev.colour, size: 16 })], { before: 60, after: 60 })],
+          shading: { fill: sev.bg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[0], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.id, { size: 17, colour: COLOURS.navy, bold: true })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[1], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [
+            para([run(f.title, { bold: true, size: 18 })], { before: 40, after: 20 }),
+            para([run(f.recommendation, { size: 17, colour: COLOURS.darkGrey })], { before: 0, after: 40, line: 260 }),
+          ],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[2], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: fwParas.length ? fwParas : [para([run('—', { size: 16, colour: COLOURS.slate })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: gapColWidths[3], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]});
+    });
+
+    return [
+      heading2('Gap Detail'),
+      para([run('Each triggered finding appears once. The Framework Obligations column lists every selected framework this finding has an obligation under, with the specific control reference. Findings are sorted by severity.')],
+        { before: 80, after: 160, line: 300, colour: COLOURS.darkGrey }),
+      new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: gapColWidths, rows: [gapHdr, ...gapRows] }),
+      spacer(1),
+    ];
+  })();
+
+  return [
+    pageBreak(),
+    heading1('5. Framework Compliance Summary'),
+    para([
+      run(`The table below shows compliance coverage across the frameworks selected for this engagement. ` +
+        `"Gaps found" reflects triggered findings that carry an obligation under each framework. ` +
+        `"Passing" is the number of library checks where no gap was identified. ` +
+        `Remediating the findings in Section 3 will directly improve these figures.`),
+    ], { before: 120, after: 200, line: 300 }),
+    new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: colWidths, rows: [headerRow, ...dataRows] }),
+    spacer(1),
+    para([
+      run('Note: ', { bold: true }),
+      run(`Coverage percentages are based on the known number of checks in this toolkit that map to each framework. ` +
+        `100% passing does not constitute a formal certification or audit.`),
+    ], { before: 0, after: 200, line: 300, colour: COLOURS.slate }),
+    ...gapDetailSection,
+  ];
+}
+
+/** Compliance Annex — per-finding framework obligation detail */
+function buildAssessmentMeta(data) {
+  const toolVer     = data.toolVersion          || 'Unknown';
+  const findingsVer = data.findingsLastUpdated   || 'Unknown';
+  const fwVer       = 'CIS M365 v7.0.0  ·  NIST CSF 2.0  ·  ISO 27001:2022  ·  NCSC CAF v4.0';
+  const modules     = data.modulesRun            || 0;
+  const allMods     = ['Identity & Conditional Access','Defender & Security Centre','Exchange Online','Teams','SharePoint','Intune / Endpoint'];
+  const ranMods     = (data.modules || []).map(m =>
+    m === 'identity'   ? 'Identity & Conditional Access'  :
+    m === 'security'   ? 'Defender & Security Centre'     :
+    m === 'exchange'   ? 'Exchange Online'                :
+    m === 'teams'      ? 'Teams'                          :
+    m === 'sharepoint' ? 'SharePoint'                     :
+    m === 'intune'     ? 'Intune / Endpoint'              : m
+  );
+  const notRun = allMods.filter(m => !ranMods.includes(m));
+
+  const metaRows = [
+    ['Tool version',               toolVer],
+    ['Findings library updated',   findingsVer],
+    ['Framework versions',         fwVer],
+    ['Modules assessed',           ranMods.length > 0 ? ranMods.join(', ') : `${modules} workload(s)`],
+    ['Modules not in scope',       notRun.length > 0 ? notRun.join(', ') : 'None — full assessment'],
+    ['Assessment type',            'Read-only — no changes were made to the tenant'],
+    ['Score methodology',          'Base 100 minus penalties: Critical −8 (max −32), High −5 (max −20), Medium −3 (max −12), Low −1 (max −4). Minimum score: 10.'],
+  ];
+
+  return [
+    pageBreak(),
+    heading1('Assessment Methodology & Scope'),
+    para([run('This section documents the scope, methodology and tool version used for this assessment. It is intended to provide auditors and reviewers with the information needed to evaluate the validity of the findings.')], { before: 80, after: 160, line: 300 }),
+
+    new Table({
+      width: { size: 10360, type: WidthType.DXA },
+      columnWidths: [2400, 7960],
+      rows: [
+        new TableRow({ tableHeader: true, children: [
+          new TableCell({ children: [para([run('Item', { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+          new TableCell({ children: [para([run('Detail', { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 7960, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+        ]}),
+        ...metaRows.map(([label, value], idx) => new TableRow({ children: [
+          new TableCell({ children: [para([run(label, { bold: true, size: 18, colour: COLOURS.navy })], { before: 50, after: 50 })], shading: { fill: idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 80 } }),
+          new TableCell({ children: [para([run(value, { size: 18, colour: COLOURS.darkGrey })], { before: 50, after: 50, line: 270 })], shading: { fill: idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 7960, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 80 } }),
+        ]})),
+      ],
+    }),
+    spacer(1),
+
+    // Scope disclaimer
+    new Table({
+      width: { size: 10360, type: WidthType.DXA },
+      columnWidths: [10360],
+      rows: [new TableRow({ children: [
+        new TableCell({
+          children: [
+            para([run('⚠  Scope Disclaimer', { bold: true, size: 20, colour: COLOURS.amber })], { before: 60, after: 60 }),
+            para([run('This assessment covers the Microsoft 365 workloads listed above. Areas outside scope — including Azure infrastructure, on-premises Active Directory, network perimeter controls, physical security, and third-party SaaS applications — were not assessed and may present additional risks not reflected in this report.')], { before: 0, after: 60, line: 270 }),
+            para([run('Findings represent the configuration state at the time of assessment. The security posture may change as configurations, user behaviour, and the threat landscape evolve. This report does not constitute a formal audit opinion. For regulatory compliance purposes, findings should be reviewed and validated by a qualified assessor.')], { before: 0, after: 60, line: 270 }),
+          ],
+          shading: { fill: COLOURS.amberBg, type: ShadingType.CLEAR },
+          borders: { top: border(COLOURS.amber, 8), bottom: border(COLOURS.amber, 8), left: border(COLOURS.amber, 20), right: noBorder },
+          width: { size: 10360, type: WidthType.DXA },
+          margins: { top: 80, bottom: 80, left: 160, right: 160 },
+        }),
+      ] })],
+    }),
+    spacer(1),
+  ];
+}
+
+function buildRiskExceptions(data) {
+  const annotations = data.annotations || {};
+  const allFindings = data.findings    || [];
+  const exceptions  = allFindings.filter(f => {
+    const s = annotations[f.id]?.status;
+    return s && s !== 'open';
+  });
+
+  if (!exceptions.length) return [];
+
+  const statusLabel = {
+    accepted_risk:  'Accepted Risk',
+    false_positive: 'False Positive',
+    not_applicable: 'Not Applicable',
+  };
+  const statusColour = {
+    accepted_risk:  COLOURS.amber,
+    false_positive: COLOURS.slate,
+    not_applicable: COLOURS.midGrey,
+  };
+
+  const colW = [1200, 3600, 1600, 1800, 2160]; // id, title, status, severity, reason/notes
+
+  const headerRow = new TableRow({ tableHeader: true, children: [
+    ['ID', 'Finding', 'Status', 'Severity', 'Reason / Notes'].map((h, i) =>
+      new TableCell({
+        children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+        shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.navyLight, 4),
+        width: { size: colW[i], type: WidthType.DXA },
+        margins: { top: 40, bottom: 40, left: 100, right: 100 },
+      })
+    ),
+  ]});
+
+  const dataRows = exceptions.map((f, idx) => {
+    const ann    = annotations[f.id] || {};
+    const sev    = SEV[f.severity]   || SEV.low;
+    const rowBg  = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+    const stCol  = statusColour[ann.status] || COLOURS.slate;
+    const reason = [ann.reason, ann.notes].filter(Boolean).join(' — ') || 'No reason recorded.';
+
+    return new TableRow({ children: [
+      new TableCell({ children: [para([run(f.id, { bold: true, size: 18, colour: COLOURS.navy })], { before: 40, after: 40 })],                                              shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: colW[0], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+      new TableCell({ children: [para([run(f.title, { size: 18 })], { before: 40, after: 40, line: 260 })],                                                                  shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: colW[1], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+      new TableCell({ children: [para([run(statusLabel[ann.status] || ann.status, { bold: true, size: 18, colour: stCol })], { before: 40, after: 40 })],                    shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: colW[2], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+      new TableCell({ children: [para([run(f.severity.charAt(0).toUpperCase()+f.severity.slice(1), { bold: true, size: 18, colour: sev.colour })], { before: 40, after: 40 })], shading: { fill: sev.bg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: colW[3], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+      new TableCell({ children: [para([run(reason, { size: 18, italics: !ann.reason })], { before: 40, after: 40, line: 260 })],                                            shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: colW[4], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+    ]});
+  });
+
+  return [
+    pageBreak(),
+    heading1('Risk Exceptions'),
+    para([run(`The following ${exceptions.length} finding${exceptions.length > 1 ? 's have' : ' has'} been reviewed and formally excluded from the security score. Each exception requires periodic review to confirm it remains appropriate.`)], { before: 80, after: 160, line: 300 }),
+    new Table({
+      width: { size: 10360, type: WidthType.DXA },
+      columnWidths: colW,
+      rows: [headerRow, ...dataRows],
+    }),
+    spacer(1),
+    para([run('⚠  Accepted risks do not eliminate the underlying vulnerability. Each exception should be reviewed at least annually or when business circumstances change.', { size: 18, colour: COLOURS.amber, bold: true })], { before: 60, after: 80 }),
+  ];
+}
+
+function buildComplianceAnnex(data) {
+  const findings = data.findings || [];
+  const active   = data.activeFrameworks || Object.keys(FW_LABELS);
+  if (!active.length) return [];
+
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  const triggered = findings
+    .filter(f => active.some(fw => f.frameworks && f.frameworks[fw]))
+    .sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+
+  if (!triggered.length) return [];
+
+  // Column widths: Framework | Control | Requirement | Why it applies | Recommended action
+  const colW = [1560, 1000, 2000, 2000, 2800];
+
+  const fwTableHeader = new TableRow({
+    tableHeader: true,
+    children: ['Framework', 'Control', 'Requirement', 'Why it applies', 'Recommended action']
+      .map((h, i) => new TableCell({
+        children: [para([run(h, { bold: true, colour: COLOURS.white, size: 17 })], { before: 60, after: 60 })],
+        shading: { fill: COLOURS.navyLight, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.navy, 4),
+        width: { size: colW[i], type: WidthType.DXA },
+        margins: { top: 40, bottom: 40, left: 80, right: 80 },
+      })),
+  });
+
+  const sections = [];
+
+  triggered.forEach((f, fi) => {
+    const sev = SEV[f.severity] || SEV.low;
+    const fwRows = active
+      .filter(fw => f.frameworks && f.frameworks[fw])
+      .map(fw => {
+        const d         = f.frameworks[fw];
+        const label     = FW_LABELS[fw] || fw;
+        const controlId = d.id || d.pillar || '—';
+        const req       = d.desc || d.title || '—';
+        const rationale = d.rationale || '—';
+        const action    = d.fw_rem || f.recommendation || '—';
+        const isE5      = d.profile && d.profile.includes('E5');
+
+        return new TableRow({ children: [
+          new TableCell({
+            children: [
+              para([run(label, { bold: true, size: 17, colour: COLOURS.navy })], { before: 40, after: isE5 ? 0 : 40 }),
+              ...(isE5 ? [para([run('E5 licence required', { size: 14, colour: COLOURS.amber, italics: true })], { before: 0, after: 40 })] : []),
+            ],
+            borders: allBorders(COLOURS.midGrey, 4),
+            width: { size: colW[0], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          }),
+          new TableCell({
+            children: [para([run(controlId, { size: 16, colour: COLOURS.slate, bold: true })], { before: 40, after: 40 })],
+            borders: allBorders(COLOURS.midGrey, 4),
+            width: { size: colW[1], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          }),
+          new TableCell({
+            children: [para([run(req, { size: 17 })], { before: 40, after: 40, line: 260 })],
+            borders: allBorders(COLOURS.midGrey, 4),
+            width: { size: colW[2], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          }),
+          new TableCell({
+            children: [para([run(rationale, { size: 17, colour: COLOURS.darkGrey, italics: true })], { before: 40, after: 40, line: 260 })],
+            borders: allBorders(COLOURS.midGrey, 4),
+            width: { size: colW[3], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          }),
+          new TableCell({
+            children: [para([run(action, { size: 17, colour: COLOURS.black })], { before: 40, after: 40, line: 260 })],
+            borders: allBorders(COLOURS.midGrey, 4),
+            width: { size: colW[4], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+          }),
+        ]});
+      });
+
+    if (!fwRows.length) return;
+
+    sections.push(
+      // Finding header bar
+      new Table({
+        width: { size: 9360, type: WidthType.DXA },
+        columnWidths: [1560, 7800],
+        rows: [new TableRow({ children: [
+          new TableCell({
+            children: [
+              para([run(sev.label, { bold: true, colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 40, after: 20 }),
+              para([run(f.id,      { colour: COLOURS.white, size: 16 })],             { align: AlignmentType.CENTER, before: 0,  after: 40 }),
+            ],
+            shading: { fill: sev.colour, type: ShadingType.CLEAR },
+            borders: noBorders,
+            width: { size: 1560, type: WidthType.DXA },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            verticalAlign: VerticalAlign.CENTER,
+          }),
+          new TableCell({
+            children: [para([run(f.title, { bold: true, colour: COLOURS.navy, size: 22 })], { before: 80, after: 80 })],
+            shading: { fill: sev.bg, type: ShadingType.CLEAR },
+            borders: { top: noBorder, bottom: noBorder, left: border(sev.colour, 16), right: noBorder },
+            width: { size: 7800, type: WidthType.DXA },
+            margins: { top: 80, bottom: 80, left: 160, right: 100 },
+          }),
+        ]})],
+      }),
+      // Framework obligations table
+      new Table({
+        width: { size: 9360, type: WidthType.DXA },
+        columnWidths: colW,
+        rows: [fwTableHeader, ...fwRows],
+      }),
+      spacer(fi < triggered.length - 1 ? 2 : 1),
+    );
+  });
+
+  if (!sections.length) return [];
+
+  return [
+    pageBreak(),
+    heading1('6. Compliance Annex — Framework Obligation Detail'),
+    para([
+      run(`This annex provides a per-finding breakdown of every framework obligation triggered during the assessment. ` +
+        `For each finding, each selected framework is listed with its specific control reference, the requirement text, ` +
+        `why the observed configuration fails that requirement, and the recommended action from that framework's perspective. ` +
+        `This table can be used as evidence input for audit, certification or self-assessment submissions.`),
+    ], { before: 120, after: 200, line: 300, colour: COLOURS.darkGrey }),
+    ...sections,
+  ];
+}
+
+/** Executive Summary — board-ready, 4-5 pages, no technical detail */
+async function buildExecReport(data, outputPath) {
+  const annotations   = data.annotations || {};
+  const allFindings   = data.findings    || [];
+  const adjScore      = data.adjustedScore || data.score || 0;
+  const band          = data.scoreBand   || (adjScore >= 90 ? 'Excellent' : adjScore >= 75 ? 'Good' : adjScore >= 60 ? 'Fair' : adjScore >= 40 ? 'Poor' : 'Critical Risk');
+  const bandColour    = adjScore >= 90 ? COLOURS.green : adjScore >= 75 ? COLOURS.green : adjScore >= 60 ? COLOURS.amber : adjScore >= 40 ? COLOURS.orange : COLOURS.red;
+  const bandSub       = adjScore >= 90 ? 'Strong security posture — minimal risk exposure.'
+                      : adjScore >= 75 ? 'Well-managed risk with minor gaps to address.'
+                      : adjScore >= 60 ? 'Notable gaps present — remediation recommended.'
+                      : adjScore >= 40 ? 'Significant vulnerabilities — prioritise remediation.'
+                      :                  'Immediate action required — high exposure to attack.';
+
+  const sevOrder      = { critical: 0, high: 1, medium: 2, low: 3 };
+  const openFindings  = allFindings.filter(f => {
+    const ann = annotations[f.id];
+    return !ann || !ann.status || ann.status === 'open';
+  }).sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+
+  const exceptions    = allFindings.filter(f => {
+    const s = annotations[f.id]?.status;
+    return s && s !== 'open';
+  });
+
+  const sevCounts     = { critical: 0, high: 0, medium: 0, low: 0 };
+  openFindings.forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
+
+  const top5          = openFindings.slice(0, 5);
+  const dateStr       = data.assessDate || new Date().toISOString().split('T')[0];
+  const consultName   = consultant(data, 'consultantName',  'Security Consultant');
+  const consultRole   = consultant(data, 'consultantRole',  '');
+  const consultEmail  = consultant(data, 'consultantEmail', '');
+
+  // Status label map
+  const statusLabel   = { accepted_risk: 'Accepted Risk', false_positive: 'False Positive', not_applicable: 'Not Applicable' };
+
+  const doc = new Document({
+    styles: {
+      default: { document: { run: { font: 'Arial', size: 22, color: COLOURS.black } } },
+      paragraphStyles: [
+        { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 36, bold: true, font: 'Arial', color: COLOURS.navy },
+          paragraph: { spacing: { before: 360, after: 180 }, outlineLevel: 0 } },
+        { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true,
+          run: { size: 28, bold: true, font: 'Arial', color: COLOURS.navyLight },
+          paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 1 } },
+      ],
+    },
+    sections: [{
+      properties: {
+        page: { size: { width: 12240, height: 15840 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } },
+      },
+      headers: { default: buildHeader(data.clientName) },
+      footers: { default: buildFooter(data) },
+      children: [
+
+        // ── Cover ─────────────────────────────────────────────────────────────
+        ...(buildLogoParagraph(data.consultantLogo) ? [spacer(2), buildLogoParagraph(data.consultantLogo, { width: 220, height: 90, align: AlignmentType.CENTER, before: 0, after: 320 })] : [spacer(3)]),
+        new Paragraph({ children: [new TextRun({ text: 'Microsoft 365', font: 'Arial', size: 64, bold: true, color: COLOURS.navy })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 60 } }),
+        new Paragraph({ children: [new TextRun({ text: 'Executive Summary', font: 'Arial', size: 56, bold: true, color: COLOURS.navyLight })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 480 } }),
+        new Paragraph({ children: [new TextRun({ text: '', font: 'Arial', size: 4 })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: COLOURS.navy, space: 1 } }, spacing: { before: 0, after: 400 } }),
+        new Paragraph({ children: [new TextRun({ text: data.clientName || 'Client', font: 'Arial', size: 44, bold: true, color: COLOURS.slate })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 120 } }),
+        new Paragraph({ children: [new TextRun({ text: dateStr, font: 'Arial', size: 26, color: COLOURS.slate })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 80 } }),
+        new Paragraph({ children: [new TextRun({ text: `Prepared by: ${consultName}${consultRole ? ` — ${consultRole}` : ''}`, font: 'Arial', size: 22, color: COLOURS.slate })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 80 } }),
+        new Paragraph({ children: [new TextRun({ text: '⚠ Confidential — Not for distribution', font: 'Arial', size: 18, bold: true, color: COLOURS.red })], alignment: AlignmentType.CENTER, spacing: { before: 200, after: 80 } }),
+        para([
+          run(`Tool v${data.toolVersion || '—'}  ·  Findings: ${data.findingsLastUpdated || '—'}  ·  CIS M365 v7.0  ·  NIST CSF 2.0  ·  ISO 27001:2022  ·  NCSC CAF v4.0`, { size: 16, colour: COLOURS.midGrey }),
+        ], { align: AlignmentType.CENTER, before: 0, after: 0 }),
+        pageBreak(),
+
+        // ── Security Posture Score ─────────────────────────────────────────────
+        heading1('1. Security Posture'),
+        para([run(`This executive summary presents the findings of the Microsoft 365 security assessment conducted on ${dateStr}. The assessment evaluated ${data.modulesRun || 6} workload areas across the M365 tenant and identified ${allFindings.length} security findings requiring attention.`)], { before: 80, after: 160, line: 300 }),
+
+        // Score banner
+        new Table({
+          width: { size: 9360, type: WidthType.DXA },
+          columnWidths: [2400, 6960],
+          rows: [new TableRow({ children: [
+            new TableCell({
+              children: [
+                para([run(String(adjScore), { bold: true, colour: COLOURS.white, size: 96 })], { align: AlignmentType.CENTER, before: 60, after: 0 }),
+                para([run('out of 100', { colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 0, after: 80 }),
+              ],
+              shading: { fill: bandColour, type: ShadingType.CLEAR },
+              borders: noBorders,
+              width: { size: 2400, type: WidthType.DXA },
+              margins: { top: 120, bottom: 120, left: 120, right: 120 },
+              verticalAlign: VerticalAlign.CENTER,
+            }),
+            new TableCell({
+              children: [
+                para([run(band, { bold: true, colour: bandColour, size: 40 })], { before: 80, after: 60 }),
+                para([run(bandSub, { colour: COLOURS.darkGrey, size: 22 })], { before: 0, after: 60, line: 300 }),
+                para([
+                  run('Open findings: ', { bold: true, size: 20 }),
+                  run(String(openFindings.length), { bold: true, colour: openFindings.length > 0 ? COLOURS.red : COLOURS.green, size: 20 }),
+                  ...(exceptions.length > 0 ? [run(`  |  Accepted/excluded: ${exceptions.length}`, { colour: COLOURS.slate, size: 20 })] : []),
+                ], { before: 0, after: 80 }),
+              ],
+              shading: { fill: COLOURS.offWhite, type: ShadingType.CLEAR },
+              borders: { top: noBorder, bottom: noBorder, left: border(bandColour, 20), right: noBorder },
+              width: { size: 6960, type: WidthType.DXA },
+              margins: { top: 80, bottom: 80, left: 200, right: 140 },
+            }),
+          ]})],
+        }),
+        spacer(1),
+
+        // Severity breakdown table
+        ...(Object.values(sevCounts).some(v => v > 0) ? (() => {
+          const sevRows = Object.entries(sevCounts).filter(([,n]) => n > 0).map(([sev, n]) => {
+            const s = SEV[sev] || SEV.low;
+            return new TableRow({ children: [
+              new TableCell({ children: [para([run(sev.charAt(0).toUpperCase() + sev.slice(1), { bold: true, colour: s.colour, size: 20 })], { before: 60, after: 60 })], shading: { fill: s.bg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+              new TableCell({ children: [para([run(String(n), { bold: true, size: 20 })], { align: AlignmentType.CENTER, before: 60, after: 60 })], borders: allBorders(COLOURS.midGrey, 4), width: { size: 6960, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+            ]});
+          });
+          return [
+            new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [2400, 6960],
+              rows: [
+                new TableRow({ tableHeader: true, children: [
+                  new TableCell({ children: [para([run('Severity', { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+                  new TableCell({ children: [para([run('Open Findings', { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 6960, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 120 } }),
+                ]}),
+                ...sevRows,
+              ],
+            }),
+            spacer(1),
+          ];
+        })() : []),
+
+        pageBreak(),
+
+        // ── Key Findings ──────────────────────────────────────────────────────
+        heading1('2. Key Findings'),
+        para([run(openFindings.length === 0
+          ? 'No open findings were identified. The assessed M365 configuration meets all checked security thresholds.'
+          : `The following ${Math.min(top5.length, 5)} finding${top5.length > 1 ? 's' : ''} represent the most significant security gaps identified. Each finding is presented in plain language with the business risk and recommended action.`)],
+          { before: 80, after: 160, line: 300 }),
+
+        ...top5.flatMap((f, i) => {
+          const sev = SEV[f.severity] || SEV.low;
+          const riskStatement = f.severity === 'critical'
+            ? 'This is a critical risk that could result in full tenant compromise or significant data breach if exploited.'
+            : f.severity === 'high'
+            ? 'This is a high-priority risk that materially increases the organisation\'s exposure to cyberattack.'
+            : f.severity === 'medium'
+            ? 'This is a medium risk that should be addressed as part of ongoing security improvement.'
+            : 'This is a low-priority finding that represents a security improvement opportunity.';
+
+          return [
+            new Table({
+              width: { size: 9360, type: WidthType.DXA },
+              columnWidths: [1400, 7960],
+              rows: [new TableRow({ children: [
+                new TableCell({
+                  children: [
+                    para([run(sev.label, { bold: true, colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 40, after: 20 }),
+                    para([run(`${i + 1} of ${top5.length}`, { colour: COLOURS.white, size: 16 })], { align: AlignmentType.CENTER, before: 0, after: 40 }),
+                  ],
+                  shading: { fill: sev.colour, type: ShadingType.CLEAR },
+                  borders: noBorders,
+                  width: { size: 1400, type: WidthType.DXA },
+                  margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                  verticalAlign: VerticalAlign.CENTER,
+                }),
+                new TableCell({
+                  children: [
+                    para([run(f.title, { bold: true, colour: COLOURS.navy, size: 24 })], { before: 60, after: 40 }),
+                    para([run(f.description, { colour: COLOURS.darkGrey, size: 20 })], { before: 0, after: 40, line: 280 }),
+                    para([run('Business risk: ', { bold: true, size: 18 }), run(riskStatement, { colour: COLOURS.darkGrey, size: 18, italics: true })], { before: 0, after: 40, line: 260 }),
+                    para([run('Action: ', { bold: true, size: 18, colour: COLOURS.navyLight }), run(f.recommendation, { colour: COLOURS.black, size: 18 })], { before: 0, after: 60, line: 260 }),
+                  ],
+                  shading: { fill: sev.bg, type: ShadingType.CLEAR },
+                  borders: { top: noBorder, bottom: noBorder, left: border(sev.colour, 16), right: noBorder },
+                  width: { size: 7960, type: WidthType.DXA },
+                  margins: { top: 80, bottom: 80, left: 160, right: 120 },
+                }),
+              ]})],
+            }),
+            spacer(1),
+          ];
+        }),
+
+        ...(openFindings.length > 5 ? [
+          para([run(`Plus ${openFindings.length - 5} further finding${openFindings.length - 5 > 1 ? 's' : ''} of lower severity — see the full Assessment Report for complete detail.`, { colour: COLOURS.slate, size: 20, italics: true })], { before: 0, after: 160 }),
+        ] : []),
+
+        pageBreak(),
+
+        // ── Recommendations ───────────────────────────────────────────────────
+        heading1('3. Recommended Actions'),
+        para([run('The following immediate actions are recommended, in priority order:')], { before: 80, after: 160, line: 300 }),
+        ...openFindings.slice(0, 8).flatMap((f, i) => {
+          const sev = SEV[f.severity] || SEV.low;
+          return [
+            new Table({
+              width: { size: 9360, type: WidthType.DXA },
+              columnWidths: [600, 8760],
+              rows: [new TableRow({ children: [
+                new TableCell({
+                  children: [para([run(String(i + 1), { bold: true, colour: COLOURS.white, size: 28 })], { align: AlignmentType.CENTER, before: 60, after: 60 })],
+                  shading: { fill: sev.colour, type: ShadingType.CLEAR },
+                  borders: noBorders,
+                  width: { size: 600, type: WidthType.DXA },
+                  margins: { top: 80, bottom: 80, left: 60, right: 60 },
+                  verticalAlign: VerticalAlign.CENTER,
+                }),
+                new TableCell({
+                  children: [
+                    para([run(f.title, { bold: true, colour: COLOURS.navy, size: 22 })], { before: 60, after: 30 }),
+                    para([run(f.recommendation, { colour: COLOURS.darkGrey, size: 20 })], { before: 0, after: 60, line: 270 }),
+                  ],
+                  shading: { fill: sev.bg, type: ShadingType.CLEAR },
+                  borders: { top: noBorder, bottom: noBorder, left: border(sev.colour, 12), right: noBorder },
+                  width: { size: 8760, type: WidthType.DXA },
+                  margins: { top: 60, bottom: 60, left: 160, right: 120 },
+                }),
+              ]})],
+            }),
+            spacer(1),
+          ];
+        }),
+
+        // ── Risk Exceptions ───────────────────────────────────────────────────
+        ...(exceptions.length > 0 ? [
+          pageBreak(),
+          heading1('4. Risk Exceptions'),
+          para([run('The following findings have been reviewed and formally accepted or excluded. These have been removed from the security score calculation. Each exception must be reviewed periodically to confirm it remains appropriate.')], { before: 80, after: 160, line: 300 }),
+          new Table({
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [1400, 2200, 2360, 3400],
+            rows: [
+              new TableRow({ tableHeader: true, children:
+                ['Finding', 'Status', 'Severity', 'Reason'].map((h, i) => new TableCell({
+                  children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+                  shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+                  borders: allBorders(COLOURS.navyLight, 4),
+                  width: { size: [1400,2200,2360,3400][i], type: WidthType.DXA },
+                  margins: { top: 40, bottom: 40, left: 100, right: 100 },
+                })),
+              }),
+              ...exceptions.map((f, idx) => {
+                const ann = annotations[f.id] || {};
+                const sev = SEV[f.severity] || SEV.low;
+                const rowBg = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+                return new TableRow({ children: [
+                  new TableCell({ children: [para([run(f.id, { bold: true, size: 18, colour: COLOURS.navy })], { before: 40, after: 40 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 1400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+                  new TableCell({ children: [para([run(statusLabel[ann.status] || ann.status, { size: 18 })], { before: 40, after: 40 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2200, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+                  new TableCell({ children: [para([run(f.severity, { bold: true, colour: sev.colour, size: 18 })], { before: 40, after: 40 })], shading: { fill: sev.bg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2360, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+                  new TableCell({ children: [para([run(ann.reason || 'No reason provided.', { size: 18, italics: !ann.reason })], { before: 40, after: 40, line: 260 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 3400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+                ]});
+              }),
+            ],
+          }),
+          spacer(1),
+        ] : []),
+
+        // ── Next Steps ────────────────────────────────────────────────────────
+        ...(exceptions.length === 0 ? [pageBreak()] : []),
+        heading1(`${exceptions.length > 0 ? '5' : '4'}. Next Steps`),
+        para([run('To improve the security posture of this Microsoft 365 environment, we recommend the following next steps:')], { before: 80, after: 120, line: 300 }),
+        para([run('1.  Review the full Assessment Report with the IT/security team — it contains technical detail, investigation scripts and remediation guidance for every finding.')], { before: 40, after: 40, line: 280 }),
+        para([run('2.  Prioritise Critical and High findings — these carry the greatest risk and should be remediated first.')], { before: 40, after: 40, line: 280 }),
+        para([run('3.  Use the tool\'s built-in remediation scripts for findings with Tier 1 automated fixes — each has a paired rollback script for safety.')], { before: 40, after: 40, line: 280 }),
+        para([run('4.  Schedule a follow-up assessment 90 days after remediation to validate improvement and track score uplift.')], { before: 40, after: 40, line: 280 }),
+        para([run('5.  Review any accepted risk exceptions periodically — business circumstances change, and previously accepted risks may need to be revisited.')], { before: 40, after: 80, line: 280 }),
+        spacer(1),
+        para([
+          run('This report was produced using the M365 Assessment Toolkit. For the full technical report including all findings, compliance framework mapping, and remediation detail, refer to the accompanying Assessment Report.', { colour: COLOURS.slate, size: 18, italics: true }),
+        ], { before: 80, after: 80, line: 280 }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  fs.writeFileSync(outputPath, buffer);
+  console.log(`Executive report written: ${outputPath}`);
+}
+
 async function buildReport(data, outputPath) {
   const doc = new Document({
     numbering: {
@@ -725,6 +1504,10 @@ async function buildReport(data, outputPath) {
         ...buildScoreSection(data),
         ...buildFindingsSection(data),
         ...buildRecommendationsSection(data),
+        ...buildRiskExceptions(data),
+        ...buildAssessmentMeta(data),
+        ...buildFrameworkSection(data),
+        ...buildComplianceAnnex(data),
         ...buildAppendix(data),
       ],
     }],
@@ -741,9 +1524,11 @@ async function buildReport(data, outputPath) {
 // ================================================================
 
 function buildRemCoverPage(data) {
-  const dateStr = data.remediationDate || data.assessDate || new Date().toISOString().split('T')[0];
+  const dateStr     = data.remediationDate || data.assessDate || new Date().toISOString().split('T')[0];
+  const logoCentered = buildLogoParagraph(data.consultantLogo, { width: 220, height: 90, align: AlignmentType.CENTER, before: 0, after: 320 });
+  const consultRole  = consultant(data, 'consultantRole', '');
   return [
-    spacer(4),
+    ...(logoCentered ? [spacer(2), logoCentered] : [spacer(4)]),
     new Paragraph({
       children: [new TextRun({ text: 'Microsoft 365', font: 'Arial', size: 64, bold: true, color: COLOURS.navy })],
       alignment: AlignmentType.CENTER, spacing: { before: 0, after: 60 },
@@ -763,12 +1548,12 @@ function buildRemCoverPage(data) {
     }),
     para([run(`Assessment Date: ${data.assessDate}`, { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
     para([run(`Remediation Date: ${dateStr}`, { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
-    para([run('Prepared by [Consultant Name]', { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
-    para([run('IT Infrastructure Consultant', { size: 22, colour: COLOURS.slate, italic: true })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
-    para([run('[consultant@email.com]', { size: 22, colour: COLOURS.navyLight })], { align: AlignmentType.CENTER, before: 0, after: 0 }),
+    para([run(`Prepared by ${consultant(data, 'consultantName', '[Consultant Name]')}`, { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
+    ...(consultRole ? [para([run(consultRole, { size: 22, colour: COLOURS.slate, italic: true })], { align: AlignmentType.CENTER, before: 0, after: 60 })] : []),
+    para([run(consultant(data, 'consultantEmail', '[consultant@email.com]'), { size: 22, colour: COLOURS.navyLight })], { align: AlignmentType.CENTER, before: 0, after: 0 }),
     spacer(2),
     new Paragraph({
-      children: [new TextRun({ text: 'CONFIDENTIAL - For authorised recipients only', font: 'Arial', size: 18, italic: true, color: COLOURS.slate })],
+      children: [new TextRun({ text: 'CONFIDENTIAL — For authorised recipients only', font: 'Arial', size: 18, italic: true, color: COLOURS.slate })],
       alignment: AlignmentType.CENTER,
       border: {
         top: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 6 },
@@ -776,6 +1561,10 @@ function buildRemCoverPage(data) {
       },
       spacing: { before: 120, after: 120 },
     }),
+    spacer(1),
+    para([
+      run(`Tool v${data.toolVersion || '—'}  ·  Findings: ${data.findingsLastUpdated || '—'}  ·  CIS M365 v7.0  ·  NIST CSF 2.0  ·  ISO 27001:2022  ·  NCSC CAF v4.0`, { size: 16, colour: COLOURS.midGrey }),
+    ], { align: AlignmentType.CENTER, before: 0, after: 0 }),
     pageBreak(),
   ];
 }
@@ -1003,6 +1792,159 @@ function buildRemOpenFindings(data) {
   ];
 }
 
+/** Framework compliance impact section for the remediation report */
+function buildRemFrameworkSection(data) {
+  const findings = data.findings || [];
+  const active   = data.activeFrameworks || Object.keys(FW_LABELS);
+  const remLog   = data.remediationLog  || [];
+  if (!active.length || !findings.length) return [];
+
+  // Determine which findings were net-remediated (remediate succeeds, not rolled back)
+  const remState = {};
+  remLog.forEach(e => {
+    if (!e.findingId || !e.success) return;
+    if (e.action === 'remediate') remState[e.findingId] = 'done';
+    if (e.action === 'rollback')  remState[e.findingId] = 'rolled';
+  });
+  const remediatedIds = Object.entries(remState).filter(([,s]) => s === 'done').map(([id]) => id);
+  if (!remediatedIds.length) return [];
+
+  const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  // Summary table
+  const sumColW = [2800, 1400, 1400, 1400, 2360];
+  const sumHdr  = new TableRow({
+    tableHeader: true,
+    children: ['Framework', 'Total gaps', 'Closed', 'Remaining', 'Movement'].map((h, i) =>
+      new TableCell({
+        children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 80, after: 80 })],
+        shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.navyLight, 4),
+        width: { size: sumColW[i], type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 100, right: 100 },
+      })
+    ),
+  });
+
+  const sumRows = active
+    .map(fw => {
+      const mapped    = findings.filter(f => f.frameworks && f.frameworks[fw]);
+      const closed    = mapped.filter(f => remediatedIds.includes(f.id)).length;
+      const remaining = mapped.length - closed;
+      const moveTxt   = closed > 0 ? `+${closed} closed` : 'No change';
+      const moveCol   = closed > 0 ? COLOURS.green : COLOURS.slate;
+      const moveBg    = closed > 0 ? COLOURS.greenBg : COLOURS.white;
+      return { fw, mapped, closed, remaining, moveTxt, moveCol, moveBg };
+    })
+    .filter(r => r.mapped.length > 0)
+    .map(({ fw, mapped, closed, remaining, moveTxt, moveCol, moveBg }) =>
+      new TableRow({ children: [
+        new TableCell({
+          children: [para([run(FW_LABELS[fw] || fw, { bold: true, size: 20 })], { before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[0], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: [para([run(String(mapped.length), { size: 20 })], { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[1], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(String(closed), { bold: closed > 0, colour: closed > 0 ? COLOURS.green : COLOURS.slate, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          shading: { fill: closed > 0 ? COLOURS.greenBg : COLOURS.white, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[2], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(String(remaining), { bold: remaining > 0, colour: remaining > 0 ? COLOURS.red : COLOURS.green, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[3], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(moveTxt, { bold: closed > 0, colour: moveCol, size: 20 })],
+            { align: AlignmentType.CENTER, before: 60, after: 60 })],
+          shading: { fill: moveBg, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4), width: { size: sumColW[4], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]})
+    );
+
+  if (!sumRows.length) return [];
+
+  // Per-framework: which specific controls were closed
+  const detColW = [900, 1000, 4760, 2700];
+  const closedDetails = active.flatMap(fw => {
+    const closed = findings
+      .filter(f => f.frameworks && f.frameworks[fw] && remediatedIds.includes(f.id))
+      .sort((a, b) => (sevOrder[a.severity] ?? 9) - (sevOrder[b.severity] ?? 9));
+    if (!closed.length) return [];
+
+    const detHdr = new TableRow({
+      tableHeader: true,
+      children: ['Severity', 'Finding ID', 'Finding', 'Control Closed'].map((h, i) =>
+        new TableCell({
+          children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+          shading: { fill: COLOURS.navyLight, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.navyLight, 4), width: { size: detColW[i], type: WidthType.DXA },
+          margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        })
+      ),
+    });
+
+    const detRows = closed.map((f, idx) => {
+      const sev    = SEV[f.severity] || SEV.medium;
+      const fwData = f.frameworks[fw];
+      const ctrl   = fwData ? [fwData.id, fwData.title].filter(Boolean).join(' — ') : '—';
+      const rowBg  = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+      return new TableRow({ children: [
+        new TableCell({
+          children: [para([run(sev.label, { bold: true, colour: sev.colour, size: 16 })], { before: 60, after: 60 })],
+          shading: { fill: sev.bg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[0], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.id, { size: 17, colour: COLOURS.navy, bold: true })], { before: 60, after: 60 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[1], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        }),
+        new TableCell({
+          children: [para([run(f.title, { bold: true, size: 18 })], { before: 40, after: 40 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[2], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+        new TableCell({
+          children: [para([run(ctrl, { size: 17, colour: COLOURS.green })], { before: 60, after: 60, line: 260 })],
+          shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4),
+          width: { size: detColW[3], type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        }),
+      ]});
+    });
+
+    return [
+      heading2(`${FW_LABELS[fw] || fw} — ${closed.length} control${closed.length !== 1 ? 's' : ''} closed`),
+      new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: detColW, rows: [detHdr, ...detRows] }),
+      spacer(1),
+    ];
+  });
+
+  return [
+    pageBreak(),
+    heading1('4. Framework Compliance Impact'),
+    para([run(
+      `The table below shows the direct compliance impact of the remediation work carried out. ` +
+      `Each closed gap represents a finding that was successfully remediated and that carried ` +
+      `an obligation under the listed framework. Where gaps remain, these represent findings ` +
+      `that were not in scope for this remediation engagement.`
+    )], { before: 120, after: 200, line: 300 }),
+    new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: sumColW, rows: [sumHdr, ...sumRows] }),
+    spacer(1),
+    ...closedDetails,
+  ];
+}
+
 async function buildRemediationReport(data, outputPath) {
   const doc = new Document({
     styles: {
@@ -1027,6 +1969,7 @@ async function buildRemediationReport(data, outputPath) {
         ...buildRemExecSummary(data),
         ...buildRemChangesSection(data),
         ...buildRemOpenFindings(data),
+        ...buildRemFrameworkSection(data),
       ],
     }],
   });
@@ -1226,6 +2169,11 @@ if (isRemediation) {
 } else if (isComparison) {
   buildComparisonReport(data, outputFile).catch(err => {
     console.error('Comparison report generation failed:', err);
+    process.exit(1);
+  });
+} else if (reportType === 'executive') {
+  buildExecReport(data, outputFile).catch(err => {
+    console.error('Executive report generation failed:', err);
     process.exit(1);
   });
 } else {

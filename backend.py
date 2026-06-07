@@ -32,39 +32,1367 @@ for d in [SCRIPTS_DIR, OUTPUT_DIR, REPORTS_DIR]:
 
 
 # ─────────────────────────────────────────────────────────────
+#  FRAMEWORK MAPPING
+#  Maps each finding ID to CIS, NIST, ISO, CE, SOC2, CAF, E8, NIS2
+#  active_frameworks in the session config controls which are shown
+# ─────────────────────────────────────────────────────────────
+FRAMEWORK_MAPPING = {
+    "ID-001": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1",
+                 "desc": "Enable multifactor authentication for all users in the Microsoft 365 tenant.",
+                 "rationale": "This finding directly measures MFA coverage — failing it means this control is unmet for affected users."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "Users, services, and hardware are authenticated before being granted access to systems.",
+                 "rationale": "Low MFA coverage means users authenticate with a password alone, failing the second-factor requirement."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Secure authentication controls are implemented for all information systems.",
+                 "rationale": "Single-factor access for a significant portion of users fails the secure authentication control."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "MFA is required for all user accounts accessing cloud services.",
+                 "rationale": "Cyber Essentials requires MFA for all accounts; low MFA coverage is a direct non-compliance."},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement",
+                 "desc": "Logical access to systems is restricted and credentials are protected through multi-factor authentication.",
+                 "rationale": "Without MFA on all accounts, logical access controls and credential protection requirements are not fully satisfied."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to networks and information systems is limited to authenticated and authorised users.",
+                 "rationale": "Password-only authentication for a portion of users fails the CAF requirement for strong authentication."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Multi-factor authentication is used for all privileged access and all remote access to systems.",
+                 "rationale": "Essential Eight Maturity Level 2 requires MFA for all users; this finding directly tests that requirement."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Multi-factor authentication or continuous authentication solutions are used to protect access to systems.",
+                 "rationale": "NIS2 Article 21(2)(k) mandates MFA; low MFA coverage is a direct gap against this requirement."},
+    },
+    "ID-002": {
+        "cis":  {"id": "1.1.3", "title": "Between two and four global admins designated", "profile": "E3 L1",
+                 "desc": "Ensure that between two and four Global Administrators are designated in the tenant.",
+                 "rationale": "More than 4 global admins directly violates the upper bound this control establishes."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions and entitlements are managed incorporating the principle of least privilege.",
+                 "rationale": "Excessive global admin count violates least privilege — the highest role should be tightly restricted."},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights",
+                 "desc": "Access to information and systems is controlled; privileged access rights are restricted and reviewed.",
+                 "rationale": "Excess global admins violate both access control policy and privileged access rights management."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Admin accounts must only be used for admin tasks; the number of admin accounts must be minimised.",
+                 "rationale": "Admin account proliferation beyond operational need violates Cyber Essentials user access control."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Access is authorised and role-based; access reviews ensure assignments remain appropriate.",
+                 "rationale": "Excess admin roles indicate access reviews are not reducing role assignments to appropriate levels."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to networks and information systems is limited to authenticated and authorised users.",
+                 "rationale": "More admins than necessary expands the privilege attack surface, failing least-privilege access control."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Administrative privileges are restricted to those accounts that require them.",
+                 "rationale": "Excessive global admins directly violates the requirement to restrict administrative privileges."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access control policies ensure only authorised users hold privileged roles.",
+                 "rationale": "Excess global admin accounts are an access control failure under NIS2 human resources and access management."},
+    },
+    "ID-003": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1",
+                 "desc": "Privileged role assignments should be activated on demand (just-in-time) rather than permanently assigned.",
+                 "rationale": "Without PIM, all admin role assignments are permanent — directly violating this just-in-time requirement."},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed",
+                 "desc": "Identities are proofed and bound to credentials; access permissions are managed with least privilege.",
+                 "rationale": "Permanent privilege assignments fail least-privilege and identity management requirements."},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control",
+                 "desc": "Privileged access rights are restricted, monitored, and controlled throughout their lifecycle.",
+                 "rationale": "Permanent admin roles without JIT activation violate privileged access rights management."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Admin accounts must only be used for admin tasks; access should be granted for specific tasks only.",
+                 "rationale": "Always-active admin roles violate the Cyber Essentials principle of granting access only when needed."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Access is authorised, role-based, and reviewed; permanent privilege assignments are minimised.",
+                 "rationale": "Permanent role assignments without JIT controls indicate inadequate access lifecycle management."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to networks and information systems is limited to authenticated and authorised users.",
+                 "rationale": "Permanent privilege without JIT activation fails CAF's access control requirements."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Administrative privileges are restricted and requests are validated and logged.",
+                 "rationale": "PIM enforces time-bound admin access; its absence means privileges are permanently and broadly held."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access control policies ensure privileged access is appropriately managed and reviewed.",
+                 "rationale": "Permanent unreviewed privilege assignments fail NIS2 access control obligations."},
+    },
+    "ID-004": {
+        "cis":  {"id": "5.1.6.2", "title": "Guest user access is restricted", "profile": "E3 L1",
+                 "desc": "Guest user access is restricted to specific organisational resources only.",
+                 "rationale": "A large unreviewed guest population indicates guest access restriction controls are not enforced."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions and entitlements are managed incorporating the principle of least privilege.",
+                 "rationale": "Unreviewed guest accounts may hold access beyond what is required, violating least privilege."},
+        "iso":  {"id": "A.5.18", "title": "Access rights",
+                 "desc": "Access rights to information and systems are allocated, reviewed, and revoked appropriately.",
+                 "rationale": "Guest accounts are access rights that must be periodically reviewed and revoked when no longer needed."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Accounts must only be given the access they need; guest accounts require review.",
+                 "rationale": "A high guest count without review violates the CE requirement to limit access to what is needed."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Access is authorised and reviewed; assignments are revoked when no longer appropriate.",
+                 "rationale": "High guest counts indicate access reviews are not identifying and removing unnecessary assignments."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to networks and information systems is limited to authenticated and authorised users.",
+                 "rationale": "Unreviewed guest accounts may represent uncontrolled external access to organisational systems."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access control policies ensure external user access is managed and periodically reviewed.",
+                 "rationale": "A large unreviewed guest population fails NIS2 access control and asset management obligations."},
+    },
+    "ID-005": {
+        "cis":  None,
+        "nist": {"id": "ID.AM-01", "title": "Inventories of hardware managed by the organisation",
+                 "desc": "Inventories of software licences and assets managed by the organisation are maintained.",
+                 "rationale": "Unused licences indicate the software asset inventory is not being accurately maintained or actioned."},
+        "iso":  {"id": "A.5.9", "title": "Inventory of information and other associated assets",
+                 "desc": "An inventory of information assets and associated software licences is maintained and kept current.",
+                 "rationale": "Unassigned licences represent assets not captured or managed in the organisational inventory."},
+        "ce":   None,
+        "soc2": {"id": "CC6.2", "title": "Access reviews and timely revocation",
+                 "desc": "Access authorisation is reviewed and revoked in a timely manner when no longer appropriate.",
+                 "rationale": "Unused licences may indicate orphaned accounts with persistent access that should be revoked."},
+        "caf":  {"id": "A2", "title": "Risk Management",
+                 "desc": "The organisation maintains a current risk assessment and manages identified risks appropriately.",
+                 "rationale": "Uncontrolled licence spend reflects weak asset tracking and risk management practices."},
+        "e8":   None,
+        "nis2": None,
+    },
+    "ID-006": {
+        "cis":  {"id": "5.2.2.6", "title": "Enable Identity Protection user risk policies", "profile": "E5 L1",
+                 "desc": "Enable Identity Protection user risk policies to automatically respond to detected compromised accounts.",
+                 "rationale": "Risky users that are not reviewed or remediated show this automated response requirement is unmet."},
+        "nist": {"id": "DE.AE-02, ID.RA-01", "title": "Adverse events analysed / vulnerabilities identified",
+                 "desc": "Potentially adverse events are analysed; vulnerabilities in assets are identified and recorded.",
+                 "rationale": "Unreviewed risky users are unanalysed adverse events that have not been investigated or resolved."},
+        "iso":  {"id": "A.8.16, A.5.25", "title": "Monitoring activities / Assessment of security events",
+                 "desc": "Security events are monitored, assessed and responded to in a timely manner.",
+                 "rationale": "Risky users that are not actioned represent security events that have been detected but not assessed."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Compromised or risky accounts must be remediated promptly to maintain access control integrity.",
+                 "rationale": "Active accounts flagged as compromised violate the CE requirement to maintain controlled user access."},
+        "soc2": {"id": "CC7.2, CC7.3", "title": "Anomaly detection and security event triage",
+                 "desc": "Anomalies are identified, assessed, and responded to; security incidents are contained.",
+                 "rationale": "Risky users are anomalies requiring detection and triage — leaving them unreviewed fails both controls."},
+        "caf":  {"id": "C1, C2", "title": "Security Monitoring / Proactive Security Event Discovery",
+                 "desc": "Security monitoring detects potential incidents; proactive discovery identifies threats before impact.",
+                 "rationale": "Unreviewed risky users indicate monitoring has detected events but proactive discovery is not acting on them."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Administrative privileges are restricted and requests are validated and logged.",
+                 "rationale": "Compromised accounts — particularly admins — that remain active violate the principle of privilege restriction."},
+        "nis2": {"id": "NIS2-b", "title": "Incident handling",
+                 "desc": "Incident handling policies ensure cyber incidents are detected, reported, and responded to.",
+                 "rationale": "Risky users represent potential account compromises that require incident handling procedures to be applied."},
+    },
+    "ID-007": {
+        "cis":  {"id": "1.1.2", "title": "Two emergency access accounts have been defined", "profile": "E3 L1",
+                 "desc": "Create at least two emergency access (break-glass) accounts excluded from all Conditional Access policies.",
+                 "rationale": "Absence of emergency access accounts is a direct non-compliance with this CIS control requirement."},
+        "nist": {"id": "PR.AA-01, PR.AA-05", "title": "Identities and credentials managed / access permissions managed",
+                 "desc": "Identities and credentials for authorised users are managed throughout their lifecycle.",
+                 "rationale": "Emergency credentials are a required part of identity lifecycle management for continuity of access."},
+        "iso":  {"id": "A.5.17, A.5.15", "title": "Authentication information / Access control",
+                 "desc": "Authentication information and access rights are managed with appropriate controls for continuity.",
+                 "rationale": "Break-glass accounts require specific authentication and access controls to be effective."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Resilient user access control requires emergency access provision for administration continuity.",
+                 "rationale": "Without break-glass accounts, a CA misconfiguration could result in total loss of admin access."},
+        "soc2": {"id": "CC6.1, CC6.2", "title": "Logical access restrictions and access reviews",
+                 "desc": "Logical access is restricted and authorised; emergency access accounts are managed and monitored.",
+                 "rationale": "Continuity of logical access requires defined emergency access accounts for resilience."},
+        "caf":  {"id": "B2, A2", "title": "Identity and Access Control / Risk Management",
+                 "desc": "Access control and risk management require emergency access provision to manage continuity risk.",
+                 "rationale": "Absence of break-glass accounts is an unmitigated access continuity risk."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Administrative privilege procedures include defined emergency access mechanisms.",
+                 "rationale": "Defined and monitored break-glass accounts are part of responsible admin privilege management."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access control policies include provisions for emergency access to maintain service continuity.",
+                 "rationale": "Emergency access account management is an access control and resilience obligation under NIS2."},
+    },
+    "SEC-001": {
+        "cis":  None,
+        "nist": {"id": "ID.RA-01", "title": "Vulnerabilities in assets are identified, validated, and recorded",
+                 "desc": "Vulnerabilities in assets are identified, validated, and recorded.",
+                 "rationale": "Secure Score aggregates vulnerability and risk findings — a low score indicates they are not being identified and addressed."},
+        "iso":  {"id": "A.5.35", "title": "Independent review of information security",
+                 "desc": "Information security controls are independently reviewed to verify they are properly implemented.",
+                 "rationale": "A low Secure Score indicates significant controls are absent and should trigger independent security review."},
+        "ce":   None,
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Tools and processes are in place to detect and respond to threats and vulnerabilities.",
+                 "rationale": "A low Secure Score directly indicates that many detection and monitoring controls are not in place."},
+        "caf":  {"id": "A2", "title": "Risk Management",
+                 "desc": "The organisation maintains a current risk assessment and manages identified risks to an acceptable level.",
+                 "rationale": "A Secure Score below 50% directly indicates risk management controls are insufficient."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Risk analysis and security policies are implemented and kept current.",
+                 "rationale": "A low Secure Score reflects widespread gaps in the risk-based security policy implementation required by NIS2."},
+    },
+    "SEC-002": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1",
+                 "desc": "Enable multifactor authentication for all users in the Microsoft 365 tenant.",
+                 "rationale": "Without Security Defaults or CA policies, there is no mechanism enforcing MFA for all users as required."},
+        "nist": {"id": "PR.AA-03, PR.AA-05", "title": "Users authenticated / access permissions managed",
+                 "desc": "Users are authenticated and access permissions are managed with appropriate controls.",
+                 "rationale": "No baseline enforcement mechanism means authentication and access permissions are effectively uncontrolled."},
+        "iso":  {"id": "A.8.5, A.5.15", "title": "Secure Authentication / Access control",
+                 "desc": "Secure authentication controls and access policies are implemented across all systems.",
+                 "rationale": "Absence of both Security Defaults and CA policies means secure authentication requirements are unmet."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "MFA enforcement is required for all accounts accessing cloud services.",
+                 "rationale": "No MFA enforcement mechanism violates Cyber Essentials user access control requirements."},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection",
+                 "desc": "Logical access is restricted and boundary controls protect the environment from unauthorised access.",
+                 "rationale": "Without Security Defaults or CA, neither logical access controls nor boundary protection are enforced."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to networks and information systems is limited to authenticated and authorised users.",
+                 "rationale": "No baseline identity control mechanism fails the CAF requirement for enforced strong authentication."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Multi-factor authentication is used for all privileged access and all remote access to systems.",
+                 "rationale": "No MFA enforcement mechanism means Essential Eight MFA requirements cannot be met."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Multi-factor authentication or continuous authentication solutions are used to protect access.",
+                 "rationale": "Without an enforcement mechanism, NIS2's MFA mandate cannot be demonstrated as being met."},
+    },
+    "SEC-003": {
+        "cis":  {"id": "5.2.3.1", "title": "Microsoft Authenticator configured to protect against MFA fatigue", "profile": "E3 L1",
+                 "desc": "Microsoft Authenticator is configured with number matching and additional context to prevent MFA fatigue attacks.",
+                 "rationale": "MFA fatigue protection is not enabled, leaving push-notification MFA vulnerable to approval fatigue attacks."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "Users are authenticated with appropriate strength; authentication methods resist social engineering.",
+                 "rationale": "Push-notification MFA without number matching can be bypassed via fatigue attacks, weakening authentication assurance."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Secure authentication controls are implemented and resistant to bypass techniques.",
+                 "rationale": "MFA vulnerable to fatigue attacks does not meet secure authentication control requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "MFA methods must be resistant to social engineering and approval fatigue attacks.",
+                 "rationale": "Fatigue-susceptible MFA undermines the user access control protections Cyber Essentials requires."},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement",
+                 "desc": "Logical access controls include MFA enforcement with methods resistant to social engineering.",
+                 "rationale": "Push MFA without fatigue protection weakens credential protection, undermining CC6.5."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Authentication mechanisms are resistant to known attack techniques including social engineering.",
+                 "rationale": "MFA fatigue is a known attack vector; not mitigating it fails the CAF's access control requirements."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Multi-factor authentication methods are phishing-resistant and resilient to approval fatigue.",
+                 "rationale": "ASD Essential Eight requires phishing-resistant MFA; number matching significantly reduces fatigue risk."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Multi-factor authentication solutions are effective and resistant to social engineering bypass.",
+                 "rationale": "NIS2 requires effective MFA; methods susceptible to fatigue attacks undermine that effectiveness."},
+    },
+    "SEC-004": {
+        "cis":  {"id": "5.2.3.5", "title": "Weak authentication methods are disabled", "profile": "E3 L1",
+                 "desc": "Weak authentication methods (SMS, voice call, email OTP) are disabled in favour of stronger alternatives.",
+                 "rationale": "Enabled weak MFA methods can be exploited via SIM swapping or phishing, directly violating this control."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "Authentication methods provide sufficient assurance of user identity to protect sensitive systems.",
+                 "rationale": "Interceptable authentication methods (SMS/voice) cannot provide the assurance NIST authentication requires."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Authentication controls are implemented using methods that provide adequate security assurance.",
+                 "rationale": "SMS and voice OTP are not considered secure authentication — they fail the ISO secure auth standard."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "MFA methods must provide genuine security; interceptable methods do not meet CE requirements.",
+                 "rationale": "Cyber Essentials expects robust MFA; SIM-swappable methods provide insufficient protection."},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement",
+                 "desc": "Authentication credentials are protected using methods that resist interception and social engineering.",
+                 "rationale": "Weak MFA methods that can be intercepted fail the credential protection requirements of CC6.5."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Authentication mechanisms provide strong identity assurance and resist common attack techniques.",
+                 "rationale": "Weak authentication methods (SMS/voice) are known to be interceptable, failing CAF B2's assurance requirements."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Multi-factor authentication methods are phishing-resistant; weak methods like SMS are disallowed at higher maturity levels.",
+                 "rationale": "E8 Maturity Level 3 requires phishing-resistant MFA; SMS and voice fail this requirement."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Multi-factor authentication solutions provide effective security and resist known bypass methods.",
+                 "rationale": "Interceptable MFA methods undermine the effectiveness that NIS2's MFA mandate requires."},
+    },
+    "SEC-005": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1",
+                 "desc": "Users are blocked from granting OAuth application consent to access company data without administrator approval.",
+                 "rationale": "Unrestricted user consent directly violates this CIS requirement for admin-controlled OAuth access."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions are managed and applications receive only the permissions they require.",
+                 "rationale": "User-granted app permissions bypass centralised access management, violating least privilege control."},
+        "iso":  {"id": "A.5.15, A.8.26", "title": "Access control / Application security requirements",
+                 "desc": "Application access to data is controlled and applications are required to meet security standards.",
+                 "rationale": "Unrestricted user consent bypasses access control and application security requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Applications must only be granted the access they need; admin approval is required for data access.",
+                 "rationale": "User-initiated consent can grant apps broad data access — violating CE least-privilege access control."},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection",
+                 "desc": "Application access to data is role-based and boundary controls prevent unauthorised data flows.",
+                 "rationale": "Unrestricted consent bypasses role-based access controls and allows uncontrolled external data access."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application access to sensitive data is controlled and requires explicit authorisation.",
+                 "rationale": "User-initiated OAuth consent grants data access without the authorisation controls CAF B2 requires."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access control policies govern how applications are granted access to organisational data.",
+                 "rationale": "Uncontrolled OAuth consent is an access control failure under NIS2 asset management obligations."},
+    },
+    "SEC-006": {
+        "cis":  None,
+        "nist": {"id": "DE.CM-01", "title": "Networks and network services are monitored",
+                 "desc": "Networks and services are monitored to detect potentially adverse events.",
+                 "rationale": "Without Sentinel, M365 service events are not correlated or centrally monitored for threats."},
+        "iso":  {"id": "A.8.15, A.8.16", "title": "Logging / Monitoring activities",
+                 "desc": "Security logs are generated and monitoring activities detect and respond to security events.",
+                 "rationale": "No SIEM connection means logs are not being actively monitored across M365 services."},
+        "ce":   None,
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Tools and processes detect and respond to threats across the environment.",
+                 "rationale": "Absence of Sentinel means security incidents across M365 are not detected and correlated in real time."},
+        "caf":  {"id": "C1", "title": "Security Monitoring",
+                 "desc": "Security monitoring is in place to detect potential security incidents affecting essential services.",
+                 "rationale": "Without a connected SIEM, the security monitoring required by CAF C1 is absent for M365 services."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling",
+                 "desc": "Incident handling policies require detection capability to identify and respond to cyber incidents.",
+                 "rationale": "Without Sentinel, M365 threat events cannot be detected or correlated for effective incident handling."},
+    },
+    "CA-001": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1",
+                 "desc": "Enable multifactor authentication for all users in the Microsoft 365 tenant.",
+                 "rationale": "Conditional Access is the primary enforcement mechanism for MFA — zero policies means MFA cannot be enforced."},
+        "nist": {"id": "PR.AA-03, PR.AA-05", "title": "Users authenticated / access permissions managed",
+                 "desc": "Users are authenticated and access permissions are managed with contextual controls.",
+                 "rationale": "Without any CA policies, authentication and access permission management are effectively absent."},
+        "iso":  {"id": "A.5.15, A.8.5", "title": "Access control / Secure Authentication",
+                 "desc": "Access control and secure authentication policies are implemented and enforced.",
+                 "rationale": "No CA policies means access control and secure authentication requirements cannot be enforced."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "CA policies are the enforcement mechanism for MFA and device compliance in cloud environments.",
+                 "rationale": "Zero CA policies means none of the user access controls required by Cyber Essentials are enforced."},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection",
+                 "desc": "Logical access is restricted and boundary controls protect the environment.",
+                 "rationale": "Without CA policies, neither logical access restriction nor boundary protection can be enforced."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to systems is enforced through identity and access controls.",
+                 "rationale": "No CA policies means there is no mechanism for enforced identity and access control in M365."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Multi-factor authentication is enforced for all users accessing systems and services.",
+                 "rationale": "CA is required to enforce MFA at scale; zero policies means E8-7 MFA requirements cannot be met."},
+        "nis2": {"id": "NIS2-j, NIS2-k", "title": "Access control / Multi-factor authentication",
+                 "desc": "Access control and MFA policies are implemented to protect access to systems.",
+                 "rationale": "No CA policies means both NIS2 access control and MFA enforcement requirements are unmet."},
+    },
+    "CA-002": {
+        "cis":  {"id": "5.2.2.3", "title": "CA policy to block legacy authentication", "profile": "E3 L1",
+                 "desc": "Enable a Conditional Access policy to block all legacy authentication protocols.",
+                 "rationale": "This finding directly tests for the CA policy this control requires; its absence is direct non-compliance."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "Authentication methods used meet security requirements; insecure legacy protocols are not permitted.",
+                 "rationale": "Legacy authentication protocols bypass MFA, meaning users are not authenticated with required assurance."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Secure authentication controls exclude insecure legacy protocols that bypass modern controls.",
+                 "rationale": "Legacy authentication protocols cannot meet ISO secure authentication requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Legacy authentication protocols that bypass MFA must be blocked.",
+                 "rationale": "Unblocked legacy auth enables MFA bypass, directly violating Cyber Essentials user access controls."},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection",
+                 "desc": "Logical access controls include blocking insecure authentication methods.",
+                 "rationale": "Legacy auth bypasses logical access controls, enabling MFA circumvention at the boundary."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Authentication mechanisms that undermine access controls are blocked.",
+                 "rationale": "Unblocked legacy auth undermines identity and access control — a CAF B2 failure."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Legacy authentication protocols that enable MFA bypass are blocked.",
+                 "rationale": "Legacy auth protocols directly enable MFA bypass — blocking them is essential for E8-7 compliance."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Protocols that circumvent multi-factor authentication are blocked.",
+                 "rationale": "Unblocked legacy auth allows MFA to be circumvented, violating NIS2 Article 21(2)(k)."},
+    },
+    "CA-003": {
+        "cis":  {"id": "5.2.2.2", "title": "MFA enabled for all users", "profile": "E3 L1",
+                 "desc": "A Conditional Access policy must enforce MFA for all users across all cloud apps.",
+                 "rationale": "Having CA policies does not satisfy this control unless at least one explicitly requires MFA for all users."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "All users are required to authenticate with a second factor before accessing systems.",
+                 "rationale": "Without a policy enforcing MFA for all users, authentication assurance requirements cannot be met."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Secure authentication is enforced as a policy requirement, not left optional.",
+                 "rationale": "Secure authentication for all users requires an enforced policy — optional MFA enrollment is insufficient."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "MFA must be policy-enforced for all accounts accessing cloud services.",
+                 "rationale": "CE requires MFA enforcement; a policy gap that leaves users without an MFA requirement is non-compliant."},
+        "soc2": {"id": "CC6.1, CC6.5", "title": "Logical access and MFA enforcement",
+                 "desc": "MFA is enforced for all user accounts as a logical access control.",
+                 "rationale": "MFA must be enforced for all accounts to satisfy CC6.1 logical access and CC6.5 credential protection."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Strong authentication is enforced for all users, not merely made available.",
+                 "rationale": "CAF B2 requires enforced strong authentication — available-but-not-required MFA does not satisfy this."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "MFA is enforced for all users through an active policy, not left to user discretion.",
+                 "rationale": "E8-7 requires MFA enforcement; a gap where no CA policy targets all users fails this requirement."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "MFA is actively enforced for all users accessing systems.",
+                 "rationale": "NIS2 requires active MFA use; a CA policy gap that doesn't enforce MFA for all users is non-compliant."},
+    },
+    "EXO-001": {
+        "cis":  {"id": "6.2.1", "title": "All forms of mail forwarding are blocked and/or disabled", "profile": "E3 L1",
+                 "desc": "All forms of automatic mail forwarding to external domains are blocked at the organisational level.",
+                 "rationale": "Auto-forwarding allowed to external recipients is a direct violation of this CIS control."},
+        "nist": {"id": "PR.DS-02", "title": "Data-in-transit is protected",
+                 "desc": "The confidentiality and integrity of data in transit is protected from unauthorised access.",
+                 "rationale": "Unblocked auto-forwarding silently exfiltrates email data to external parties in transit."},
+        "iso":  {"id": "A.5.14", "title": "Information transfer",
+                 "desc": "Rules and controls govern the transfer of information to external parties.",
+                 "rationale": "Uncontrolled external mail forwarding violates information transfer controls under ISO A.5.14."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Email routing and forwarding rules are securely configured to prevent unauthorised data transfer.",
+                 "rationale": "Unblocked auto-forwarding is a misconfiguration that allows silent data exfiltration via email."},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data",
+                 "desc": "Transmission of information is restricted to authorised parties and methods.",
+                 "rationale": "Uncontrolled auto-forwarding transmits potentially sensitive data to external parties without restriction."},
+        "caf":  {"id": "B3", "title": "Data Security",
+                 "desc": "Data is protected against unauthorised transfer or exfiltration.",
+                 "rationale": "External mail forwarding is a data exfiltration vector that violates CAF data security requirements."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access to and transfer of data assets is controlled and monitored.",
+                 "rationale": "Uncontrolled data exfiltration via email forwarding is an asset management and access control failure."},
+    },
+    "EXO-002": {
+        "cis":  {"id": "6.1.2", "title": "Mailbox audit actions are configured", "profile": "E3 L1",
+                 "desc": "Mailbox audit logging is configured to capture all relevant mailbox actions.",
+                 "rationale": "Disabled mailbox auditing for a proportion of mailboxes is a direct gap against this control."},
+        "nist": {"id": "PR.PS-04", "title": "Logs of events are created",
+                 "desc": "Log records of events are created and managed to support security monitoring and investigation.",
+                 "rationale": "Mailboxes without audit logging fail to produce the event records this control requires."},
+        "iso":  {"id": "A.8.15", "title": "Logging",
+                 "desc": "Logs that record security-relevant activities are generated, protected, and retained.",
+                 "rationale": "Mailbox audit logs are security-relevant logs required under the ISO logging control."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Audit logging is enabled as part of the secure configuration baseline.",
+                 "rationale": "Mailbox audit logging is a secure configuration baseline requirement for Exchange Online."},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Security monitoring relies on comprehensive audit log coverage from all key systems.",
+                 "rationale": "Mailboxes without auditing create blind spots that prevent effective security monitoring."},
+        "caf":  {"id": "C1", "title": "Security Monitoring",
+                 "desc": "Security monitoring requires audit log data from all key systems including email.",
+                 "rationale": "Missing mailbox audit logs undermine security monitoring capability across the email platform."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling",
+                 "desc": "Audit logs are essential evidence for incident detection, investigation, and response.",
+                 "rationale": "Mailboxes without audit logs cannot support forensic investigation during an incident."},
+    },
+    "EXO-003": {
+        "cis":  {"id": "2.1.7", "title": "An anti-phishing policy has been created", "profile": "E3 L1",
+                 "desc": "An anti-phishing policy is configured with mailbox intelligence and impersonation protection.",
+                 "rationale": "Disabled mailbox intelligence in the anti-phishing policy is a direct gap in this CIS control."},
+        "nist": {"id": "PR.DS-02", "title": "Data-in-transit is protected",
+                 "desc": "Email security controls protect against phishing content delivered in transit.",
+                 "rationale": "Anti-phishing intelligence protects email-in-transit from targeted social engineering attacks."},
+        "iso":  {"id": "A.8.7", "title": "Protection against malware",
+                 "desc": "Technical controls protect against malware including phishing-delivered threats.",
+                 "rationale": "Anti-phishing policy is part of technical malware and social engineering protection requirements."},
+        "ce":   {"pillar": "MP", "title": "Malware Protection",
+                 "desc": "Technical controls detect and prevent malware and phishing content delivered via email.",
+                 "rationale": "A misconfigured anti-phishing policy is a malware protection gap under Cyber Essentials."},
+        "soc2": {"id": "CC6.8", "title": "Change management controls",
+                 "desc": "Email security policies are configured and maintained to detect and block threats.",
+                 "rationale": "An under-configured anti-phishing policy represents a security control gap."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Email systems are protected through configured anti-phishing and anti-malware controls.",
+                 "rationale": "Disabled phishing intelligence weakens the system security controls required by CAF B4."},
+        "e8":   {"id": "E8-4", "title": "User Application Hardening",
+                 "desc": "User-facing applications including email are hardened against exploitation.",
+                 "rationale": "Anti-phishing configuration is part of email application hardening under Essential Eight."},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Email security policies address phishing risk as part of the information security policy.",
+                 "rationale": "Phishing risk must be addressed in security policies — a misconfigured protection is a policy gap."},
+    },
+    "EXO-004": {
+        "cis":  {"id": "2.1.10", "title": "DMARC records published for all Exchange Online domains", "profile": "E3 L1",
+                 "desc": "DMARC records are published for all Exchange Online accepted domains.",
+                 "rationale": "Missing DMARC is a direct non-compliance with this CIS email authentication control."},
+        "nist": {"id": "PR.PS-01, PR.DS-02", "title": "Configuration management / Data-in-transit protected",
+                 "desc": "Email domain configuration controls are applied and email in transit is protected from spoofing.",
+                 "rationale": "DMARC is a configuration control that protects the email domain from spoofing in transit."},
+        "iso":  {"id": "A.8.20, A.8.24", "title": "Network security / Use of cryptography",
+                 "desc": "Network communications are secured and cryptographic controls are applied where appropriate.",
+                 "rationale": "DMARC uses cryptographic authentication (DKIM) to secure email domain integrity."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Email authentication records (SPF, DKIM, DMARC) are a secure configuration requirement.",
+                 "rationale": "DMARC is a required email security configuration under Cyber Essentials Secure Configuration."},
+        "soc2": {"id": "CC6.8", "title": "Change management controls",
+                 "desc": "Domain configuration changes are controlled; authentication records protect the domain identity.",
+                 "rationale": "Missing DMARC allows domain spoofing — an unauthorised representation of the organisation's identity."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Email domain authentication is configured to protect against spoofing attacks.",
+                 "rationale": "DMARC is a system security control for the email infrastructure required by CAF B4."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption",
+                 "desc": "Cryptographic controls including email authentication are implemented and maintained.",
+                 "rationale": "DMARC relies on cryptographic email signing (DKIM) — its absence is a cryptography control gap."},
+    },
+    "EXO-005": {
+        "cis":  {"id": "2.1.8 / 2.1.9", "title": "SPF records published / DKIM enabled for all domains", "profile": "E3 L1",
+                 "desc": "SPF records are published and DKIM signing is enabled for all Exchange Online accepted domains.",
+                 "rationale": "Missing SPF or DKIM is a direct gap in this CIS email authentication requirement."},
+        "nist": {"id": "PR.PS-01, PR.DS-02", "title": "Configuration management / Data-in-transit protected",
+                 "desc": "Email domain authentication records are configured and maintained as part of system configuration.",
+                 "rationale": "SPF and DKIM are configuration controls that protect the integrity of email in transit."},
+        "iso":  {"id": "A.8.20, A.8.24", "title": "Network security / Use of cryptography",
+                 "desc": "Network communications are secured through authentication and cryptographic controls.",
+                 "rationale": "DKIM uses cryptographic signing to authenticate email — its absence is a cryptography control gap."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Email authentication records including SPF and DKIM are published as part of secure configuration.",
+                 "rationale": "SPF and DKIM are baseline email security configuration requirements under Cyber Essentials."},
+        "soc2": {"id": "CC6.8", "title": "Change management controls",
+                 "desc": "Email authentication records protect the organisation's domain from spoofing.",
+                 "rationale": "Missing SPF or DKIM enables domain spoofing — a gap in protecting the organisation's identity."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Email authentication controls including SPF and DKIM are configured for all domains.",
+                 "rationale": "Missing email authentication is a system security gap in the email infrastructure."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption",
+                 "desc": "Cryptographic controls including email signing (DKIM) are implemented and maintained.",
+                 "rationale": "DKIM uses cryptographic signing — its absence is a gap in the cryptographic controls NIS2 requires."},
+    },
+    "EXO-006": {
+        "cis":  {"id": "2.1.6 / 2.1.7", "title": "Anti-spam / Anti-phishing policies (ZAP governed by these)", "profile": "E3 L1",
+                 "desc": "Anti-spam and anti-phishing policies include Zero-Hour Auto Purge for malware, phishing, and spam.",
+                 "rationale": "ZAP configuration sits within the anti-spam and anti-phishing policies this control requires."},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied",
+                 "desc": "Configuration management practices are applied to threat policies including ZAP settings.",
+                 "rationale": "Disabled ZAP represents a misconfiguration in threat policy settings that should be managed."},
+        "iso":  {"id": "A.8.7", "title": "Protection against malware",
+                 "desc": "Technical controls protect against malware including retroactive removal of post-delivery threats.",
+                 "rationale": "ZAP provides retroactive malware and phishing protection — its absence is a malware protection gap."},
+        "ce":   {"pillar": "MP", "title": "Malware Protection",
+                 "desc": "Technical controls detect and remove malicious email content, including retroactively after delivery.",
+                 "rationale": "ZAP is a technical malware protection control — disabled ZAP is a CE malware protection gap."},
+        "soc2": {"id": "CC6.8", "title": "Change management controls",
+                 "desc": "Threat policies are configured and maintained to reduce dwell time of malicious content.",
+                 "rationale": "Disabled ZAP allows malicious emails to remain in mailboxes after identification — a configuration gap."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Email threat controls including retroactive purge capabilities are configured and active.",
+                 "rationale": "Disabled ZAP is a system security configuration gap in the email threat management capability."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Email security policies address retroactive threat removal as part of comprehensive risk management.",
+                 "rationale": "Without ZAP, identified threats persist in mailboxes — a gap in the email security risk policy."},
+    },
+    "TEAMS-001": {
+        "cis":  {"id": "8.2.2", "title": "Communication with unmanaged Teams users is disabled", "profile": "E3 L1",
+                 "desc": "Communication with unmanaged Teams users from external tenants without domain restriction is disabled.",
+                 "rationale": "Unrestricted external federation means communication with any external Teams tenant is permitted."},
+        "nist": {"id": "PR.AA-05, PR.IR-01", "title": "Access permissions managed / Networks protected",
+                 "desc": "Access permissions are managed and networks are protected from unauthorised communication.",
+                 "rationale": "Unrestricted external Teams access violates access permission management and network protection."},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction",
+                 "desc": "Access to information systems is controlled and information access is restricted appropriately.",
+                 "rationale": "Unrestricted Teams federation bypasses access control and information restriction requirements."},
+        "ce":   {"pillar": "FW", "title": "Firewalls",
+                 "desc": "Network communications to and from external parties are controlled through firewall and access rules.",
+                 "rationale": "Unrestricted external Teams communication bypasses the network access controls CE firewalls require."},
+        "soc2": {"id": "CC6.6, CC6.7", "title": "Boundary protection and data access restrictions",
+                 "desc": "Boundary controls restrict communications with external parties to authorised channels.",
+                 "rationale": "Unrestricted external federation violates boundary protection and data transmission restrictions."},
+        "caf":  {"id": "B2, B3", "title": "Identity and Access Control / Data Security",
+                 "desc": "External communications are controlled to protect both identity and data security.",
+                 "rationale": "Unrestricted Teams federation is an access control and data security failure."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "External access channels are controlled to prevent privilege escalation paths.",
+                 "rationale": "Unrestricted external federation can enable uncontrolled access escalation paths."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External access to systems and communication channels is controlled and restricted.",
+                 "rationale": "Unrestricted external communication access violates NIS2 access control requirements."},
+    },
+    "TEAMS-002": {
+        "cis":  {"id": "8.2.3", "title": "External Teams users cannot initiate conversations", "profile": "E3 L1",
+                 "desc": "External Teams users (including consumer accounts) cannot initiate conversations with internal users.",
+                 "rationale": "Enabled consumer access allows external Teams users to initiate contact, violating this control."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions ensure external parties can only communicate through controlled channels.",
+                 "rationale": "Consumer account communications bypass organisational access permission management."},
+        "iso":  {"id": "A.5.15, A.5.18", "title": "Access control / Access rights",
+                 "desc": "Access rights for external parties are defined and controlled.",
+                 "rationale": "Uncontrolled consumer account access violates access control and access rights management."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "External parties must only be granted the access they need; consumer federation must be controlled.",
+                 "rationale": "Consumer account federation grants uncontrolled external access, violating CE user access control."},
+        "soc2": {"id": "CC6.3, CC6.7", "title": "Role-based access and data access restrictions",
+                 "desc": "Communications with external parties are restricted to authorised methods and roles.",
+                 "rationale": "Consumer access bypasses role-based controls and data transmission restrictions."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "External access to communication systems is controlled and restricted to authorised parties.",
+                 "rationale": "Consumer federation is uncontrolled external access, failing CAF identity and access control."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Unmanaged external access pathways are restricted to prevent uncontrolled privilege escalation.",
+                 "rationale": "Unmanaged consumer account access represents an uncontrolled external access pathway."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External user access is managed and controlled through defined access policies.",
+                 "rationale": "Uncontrolled consumer account access fails NIS2 access control and asset management requirements."},
+    },
+    "TEAMS-003": {
+        "cis":  {"id": "8.5.1", "title": "Anonymous users cannot join a meeting", "profile": "E3 L1",
+                 "desc": "Anonymous users are prevented from joining Teams meetings without authentication.",
+                 "rationale": "Anonymous meeting join being enabled is a direct violation of this CIS control requirement."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "All participants in meetings and system interactions are authenticated before being granted access.",
+                 "rationale": "Anonymous join means meeting participants are not authenticated, violating this requirement."},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction",
+                 "desc": "Access to meetings and shared information is controlled and restricted to authorised users.",
+                 "rationale": "Unauthenticated meeting access violates access control and information restriction controls."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Meetings must require authentication; anonymous participants bypass user access controls.",
+                 "rationale": "Anonymous participants bypass identity verification, violating CE user access control requirements."},
+        "soc2": {"id": "CC6.6, CC6.7", "title": "Boundary protection and data access restrictions",
+                 "desc": "Boundary controls require authentication before access is granted to meeting content.",
+                 "rationale": "Anonymous participants cross the boundary without authentication, failing these controls."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Access to meetings and collaborative sessions is limited to authenticated and authorised users.",
+                 "rationale": "Unauthenticated meeting access is an identity and access control failure under CAF B2."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Access to systems and sessions requires authentication; anonymous access is not permitted.",
+                 "rationale": "Anonymous access completely bypasses authentication requirements, undermining E8-7 controls."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access to collaborative systems is controlled and requires user identity verification.",
+                 "rationale": "Anonymous meeting access is an access control failure under NIS2 requirements."},
+    },
+    "TEAMS-004": {
+        "cis":  {"id": "8.4.1", "title": "App permission policies are configured", "profile": "E3 L1",
+                 "desc": "Teams app permission policies are configured to restrict which third-party apps users may install.",
+                 "rationale": "Unrestricted third-party app access means app permission policies are not configured as required."},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied",
+                 "desc": "Configuration management practices govern which applications are permitted in the environment.",
+                 "rationale": "Unrestricted third-party apps represent a configuration management failure for Teams."},
+        "iso":  {"id": "A.5.23, A.8.9", "title": "Cloud services / Configuration management",
+                 "desc": "Cloud service applications are managed and configuration policies restrict unauthorised apps.",
+                 "rationale": "Unrestricted third-party Teams apps violate cloud service and configuration management controls."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Applications are restricted to approved software; unrestricted app stores are not permitted.",
+                 "rationale": "Unrestricted Teams app access is a secure configuration failure under Cyber Essentials."},
+        "soc2": {"id": "CC6.8", "title": "Change management controls",
+                 "desc": "Applications introduced into the environment are authorised and reviewed.",
+                 "rationale": "Unrestricted third-party apps introduce unreviewed changes to the system environment."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Only approved applications are permitted to operate within the system environment.",
+                 "rationale": "Unrestricted third-party app access is a system security gap under CAF B4."},
+        "e8":   {"id": "E8-1", "title": "Application Control",
+                 "desc": "Only approved applications are permitted to execute and access data in the environment.",
+                 "rationale": "Unrestricted Teams apps violate Essential Eight application control requirements."},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Risk policies govern which third-party applications are permitted access to systems and data.",
+                 "rationale": "Unrestricted third-party app access is a risk not addressed by the security policy."},
+    },
+    "SPO-001": {
+        "cis":  {"id": "7.2.6", "title": "SharePoint external sharing is restricted", "profile": "E3 L1",
+                 "desc": "SharePoint external sharing is restricted to authenticated external users only; anonymous links are not permitted.",
+                 "rationale": "SharePoint set to 'Anyone' allows unauthenticated link sharing, directly violating this CIS control."},
+        "nist": {"id": "PR.AA-05, PR.DS-01", "title": "Access permissions managed / Data-at-rest protected",
+                 "desc": "Access permissions are managed and data at rest is protected from unauthorised access.",
+                 "rationale": "Anonymous sharing allows unauthenticated data access, violating both access management and data protection."},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction",
+                 "desc": "Access to information systems is controlled and information access is appropriately restricted.",
+                 "rationale": "Anonymous links bypass access control and information restriction requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "External access to data requires authentication; anonymous sharing links are not permitted.",
+                 "rationale": "Anyone links grant data access without identity verification, violating CE user access control."},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data",
+                 "desc": "Access to sensitive data is restricted and transmission to external parties requires authorisation.",
+                 "rationale": "Anonymous SharePoint links allow unrestricted data access, failing CC6.7 restrictions."},
+        "caf":  {"id": "B2, B3", "title": "Identity and Access Control / Data Security",
+                 "desc": "External access to data requires authentication and data is protected from unauthorised sharing.",
+                 "rationale": "Anonymous sharing violates both access control and data security requirements under CAF."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access to data assets is controlled and external sharing is managed appropriately.",
+                 "rationale": "Unrestricted anonymous sharing is an access control and asset management failure under NIS2."},
+    },
+    "SPO-002": {
+        "cis":  {"id": "7.2.1", "title": "Modern authentication for SharePoint applications is required", "profile": "E3 L1",
+                 "desc": "Modern authentication is required for all SharePoint Online applications; legacy auth is disabled.",
+                 "rationale": "Enabled legacy authentication in SharePoint directly violates this CIS modern auth requirement."},
+        "nist": {"id": "PR.AA-03", "title": "Users, services, and hardware are authenticated",
+                 "desc": "Authentication to systems meets security requirements; legacy protocols are not permitted.",
+                 "rationale": "Legacy authentication does not meet the authentication assurance requirements of this control."},
+        "iso":  {"id": "A.8.5", "title": "Secure Authentication",
+                 "desc": "Secure authentication is enforced; legacy authentication protocols that bypass controls are disabled.",
+                 "rationale": "Legacy authentication protocols do not meet ISO secure authentication requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Modern authentication must be enforced; legacy protocols that bypass MFA are disabled.",
+                 "rationale": "Legacy SharePoint auth bypasses modern access controls including MFA."},
+        "soc2": {"id": "CC6.1, CC6.6", "title": "Logical access and boundary protection",
+                 "desc": "Logical access controls include enforced modern authentication for all services.",
+                 "rationale": "Legacy auth enables logical access control bypass and boundary protection failures."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Authentication to systems is enforced using modern, secure protocols.",
+                 "rationale": "Legacy auth undermines identity and access control for SharePoint."},
+        "e8":   {"id": "E8-7", "title": "Multi-Factor Authentication",
+                 "desc": "Modern authentication is required; legacy protocols that enable MFA bypass are blocked.",
+                 "rationale": "Legacy auth in SharePoint enables MFA bypass, directly undermining E8-7 requirements."},
+        "nis2": {"id": "NIS2-k", "title": "Multi-factor authentication",
+                 "desc": "Legacy authentication protocols that circumvent MFA are disabled.",
+                 "rationale": "Legacy auth allows MFA circumvention, violating NIS2 Article 21(2)(k) requirements."},
+    },
+    "SPO-003": {
+        "cis":  {"id": "7.2.4", "title": "OneDrive content sharing is restricted", "profile": "E3 L1",
+                 "desc": "OneDrive content sharing is restricted; anonymous (Anyone) links are disabled.",
+                 "rationale": "OneDrive set to 'Anyone' directly violates this CIS control requiring restricted sharing."},
+        "nist": {"id": "PR.DS-01", "title": "Data-at-rest is protected",
+                 "desc": "Data at rest in cloud storage is protected from unauthorised access including unauthenticated links.",
+                 "rationale": "Anonymous OneDrive links expose files at rest to anyone with the URL, with no authentication."},
+        "iso":  {"id": "A.5.15, A.8.3", "title": "Access control / Information access restriction",
+                 "desc": "Access to information is controlled; anonymous access to stored files is not permitted.",
+                 "rationale": "Anonymous OneDrive links bypass access control and information restriction requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "External access to files requires authentication; anonymous sharing links are not permitted.",
+                 "rationale": "Anyone links grant file access without identity verification, violating CE access control."},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data",
+                 "desc": "Access to sensitive data in cloud storage is restricted and requires authorisation.",
+                 "rationale": "Anonymous file links allow unrestricted data access, failing CC6.7 data access restrictions."},
+        "caf":  {"id": "B3", "title": "Data Security",
+                 "desc": "Data in cloud storage is protected from unauthorised external access.",
+                 "rationale": "Anonymous OneDrive sharing violates data security requirements under CAF B3."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Access to data assets in cloud storage is controlled and managed.",
+                 "rationale": "Unrestricted anonymous file sharing is an access control and asset management failure."},
+    },
+    "SPO-004": {
+        "cis":  {"id": "7.2.9", "title": "Guest access to site or OneDrive expires automatically", "profile": "E3 L1",
+                 "desc": "Guest access to SharePoint sites and OneDrive expires automatically after a configured period.",
+                 "rationale": "No automatic guest expiry means guest access persists indefinitely, violating this CIS control."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions are managed throughout their lifecycle; access is revoked when no longer needed.",
+                 "rationale": "Non-expiring guest access violates the access permission lifecycle management this control requires."},
+        "iso":  {"id": "A.5.18", "title": "Access rights",
+                 "desc": "Access rights are reviewed and revoked when no longer required; temporary access expires automatically.",
+                 "rationale": "Guest access without expiry violates the requirement to revoke access rights when no longer needed."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Temporary access grants expire automatically; accounts are not left with perpetual access.",
+                 "rationale": "Non-expiring guest access violates the CE principle of granting only the access required."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Access is reviewed and revoked when no longer appropriate; guest access expires automatically.",
+                 "rationale": "Guest access without expiry bypasses access lifecycle controls required by CC6.2 and CC6.3."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "External user access is time-limited and revoked when no longer required.",
+                 "rationale": "Non-expiring guest accounts fail CAF identity and access control lifecycle requirements."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External user access is managed with defined lifetimes and appropriate review processes.",
+                 "rationale": "Perpetual guest access without expiry is an access control and asset management failure."},
+    },
+    "APP-001": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1",
+                 "desc": "Users are blocked from granting OAuth application consent to company data without administrator approval.",
+                 "rationale": "High-privilege OAuth apps with broad permissions indicate user or admin consent was granted without restriction."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Applications receive only the permissions they require; least privilege is enforced for service accounts.",
+                 "rationale": "High-privilege app permissions violate least privilege for service identities and application access."},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights",
+                 "desc": "Applications with access to organisational data are controlled and granted only necessary permissions.",
+                 "rationale": "Apps with high-privilege permissions violate access control and privileged access rights management."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Applications must only be granted the access they need; admin approval is required for sensitive permissions.",
+                 "rationale": "Over-permissioned apps have broader access than required, violating CE least-privilege access control."},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection",
+                 "desc": "Application access to data is role-based and boundary controls restrict unauthorised data flows.",
+                 "rationale": "High-privilege OAuth apps bypass role-based access and boundary protection requirements."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application access to organisational data requires explicit authorisation and is minimised.",
+                 "rationale": "Over-permissioned app registrations are an identity and access control failure under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Applications with administrative Graph permissions represent non-interactive administrative access.",
+                 "rationale": "Apps with admin-level Graph permissions are a form of unrestricted administrative privilege."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Application access to organisational data is controlled as part of access and asset management.",
+                 "rationale": "Over-permissioned apps are an access control and asset management failure under NIS2."},
+    },
+    "MON-001": {
+        "cis":  {"id": "3.1.1", "title": "Microsoft 365 audit log search is enabled", "profile": "E3 L1",
+                 "desc": "Microsoft 365 unified audit log search is enabled to capture activity across all M365 services.",
+                 "rationale": "No active Defender alert policies indicate monitoring configuration is not meeting this control."},
+        "nist": {"id": "DE.CM-01", "title": "Networks and network services are monitored",
+                 "desc": "Networks and services are monitored to detect potentially adverse events.",
+                 "rationale": "Without active Defender alert policies, M365 service events are not being monitored for threats."},
+        "iso":  {"id": "A.8.16", "title": "Monitoring activities",
+                 "desc": "Monitoring activities detect unusual or unauthorised activities and security events.",
+                 "rationale": "No active alert policies means security events are not being monitored or flagged."},
+        "ce":   {"pillar": "MP", "title": "Malware Protection",
+                 "desc": "Activity monitoring is a detection control that identifies malware and suspicious activity.",
+                 "rationale": "Without alert policies, malware detections and suspicious events are not surfaced to administrators."},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Detection tools and processes are in place and active to identify security threats.",
+                 "rationale": "No active alert policies means the detection and monitoring required by CC7.1 is absent."},
+        "caf":  {"id": "C1", "title": "Security Monitoring",
+                 "desc": "Security monitoring is in place to detect potential security incidents in real time.",
+                 "rationale": "Without Defender alert policies, real-time security monitoring of M365 is not functioning."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling",
+                 "desc": "Incident detection requires active monitoring and alerting to identify security incidents.",
+                 "rationale": "No alert policies means security incidents cannot be detected, undermining incident handling capability."},
+    },
+    "MDM-001": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1",
+                 "desc": "Devices that do not have a compliance policy assigned are automatically marked non-compliant.",
+                 "rationale": "Low device compliance percentage indicates that compliance policies are not being met across the device estate."},
+        "nist": {"id": "PR.PS-01, PR.AA-05", "title": "Configuration management / access permissions managed",
+                 "desc": "Configuration management practices are applied and access is managed based on device compliance state.",
+                 "rationale": "Non-compliant devices indicate configuration management failures; CA can use compliance state for access control."},
+        "iso":  {"id": "A.8.1, A.8.9", "title": "User endpoint devices / Configuration management",
+                 "desc": "User endpoint devices are managed and configuration controls are applied and verified.",
+                 "rationale": "Non-compliant devices fail endpoint device and configuration management controls."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Managed devices must meet secure configuration standards; non-compliant devices are identified.",
+                 "rationale": "Non-compliant devices indicate secure configuration requirements are not being met."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions",
+                 "desc": "Non-compliant devices can be restricted from accessing systems through Conditional Access.",
+                 "rationale": "Low device compliance indicates logical access restrictions on non-compliant devices are insufficient."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Endpoint devices meet security configuration standards as verified by compliance policies.",
+                 "rationale": "Low compliance percentage indicates system security requirements are not being met on endpoints."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Security policies govern the security configuration required for devices accessing systems.",
+                 "rationale": "Non-compliant devices indicate security policy requirements are not being enforced."},
+    },
+    "MDM-002": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1",
+                 "desc": "Devices that do not have a compliance policy assigned are automatically marked non-compliant.",
+                 "rationale": "Without compliance policies, no device can be evaluated — the control mechanism is entirely absent."},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied",
+                 "desc": "Configuration management practices including device compliance policies are established and applied.",
+                 "rationale": "Absence of compliance policies is a fundamental configuration management gap."},
+        "iso":  {"id": "A.8.1, A.8.9", "title": "User endpoint devices / Configuration management",
+                 "desc": "Endpoint device management and configuration controls are established and enforced.",
+                 "rationale": "No compliance policies means endpoint device and configuration management controls are absent."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Compliance policies are the mechanism for enforcing secure device configuration at scale.",
+                 "rationale": "Without compliance policies, secure device configuration cannot be verified or enforced."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions",
+                 "desc": "Device compliance policies enable logical access restrictions based on device security state.",
+                 "rationale": "Without compliance policies, device-based logical access restrictions cannot be applied."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "System security requires device compliance policies to verify endpoint security configuration.",
+                 "rationale": "No compliance policies means system security cannot be verified or enforced on endpoints."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Security policies include device compliance requirements for accessing organisational systems.",
+                 "rationale": "Absence of device compliance policies is a gap in the information security policy framework."},
+    },
+    "MDM-003": {
+        "cis":  None,
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied",
+                 "desc": "Configuration management practices govern the deployment of software updates to managed devices.",
+                 "rationale": "No Windows Update rings means patch deployment is uncontrolled — a configuration management gap."},
+        "iso":  {"id": "A.8.8", "title": "Management of technical vulnerabilities",
+                 "desc": "Technical vulnerabilities are managed through timely and systematic patch deployment.",
+                 "rationale": "Without update rings, Windows patches are deployed inconsistently, leaving known vulnerabilities unpatched."},
+        "ce":   {"pillar": "PM", "title": "Patch Management",
+                 "desc": "All software including operating systems must be kept up to date with security patches.",
+                 "rationale": "No update rings means there is no controlled mechanism to ensure Cyber Essentials patch management compliance."},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Patch management monitoring ensures devices are current and vulnerabilities are tracked.",
+                 "rationale": "Unmanaged patching increases exploitable vulnerabilities that should be detected and remediated."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Systems are kept up to date through controlled patch management processes.",
+                 "rationale": "No update rings is a system security gap in the Windows patch management process."},
+        "e8":   {"id": "E8-2, E8-6", "title": "Patch Applications / Patch Operating Systems",
+                 "desc": "Applications and operating systems are patched within defined timeframes based on risk.",
+                 "rationale": "Windows Update rings are the Intune mechanism for Essential Eight-compliant OS patch management."},
+        "nis2": {"id": "NIS2-f", "title": "Vulnerability handling and disclosure",
+                 "desc": "Vulnerability handling requires systematic patch deployment within defined timeframes.",
+                 "rationale": "No update rings means there is no systematic mechanism for vulnerability handling via OS patching."},
+    },
+    "MDM-004": {
+        "cis":  {"id": "5.1.4.6", "title": "Users are restricted from recovering BitLocker keys (related)", "profile": "E3 L1",
+                 "desc": "BitLocker encryption is required by compliance policy and key management is centralised.",
+                 "rationale": "BitLocker not enforced by Intune means device encryption is absent or unmanaged."},
+        "nist": {"id": "PR.DS-01", "title": "Data-at-rest is protected",
+                 "desc": "Data at rest on devices is protected through encryption controls.",
+                 "rationale": "Devices without BitLocker expose all data at rest if the device is lost or stolen."},
+        "iso":  {"id": "A.8.24", "title": "Use of cryptography",
+                 "desc": "Cryptographic controls including full-disk encryption are applied to protect data on devices.",
+                 "rationale": "BitLocker is the cryptographic control for data-at-rest protection on Windows devices."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Managed devices must have disk encryption enabled as part of secure configuration.",
+                 "rationale": "BitLocker is a secure configuration requirement for Windows devices under Cyber Essentials."},
+        "soc2": {"id": "CC6.7", "title": "Restrictions on access to sensitive data",
+                 "desc": "Data is protected on devices through encryption to prevent unauthorised physical access.",
+                 "rationale": "Unencrypted devices expose data to anyone with physical access, failing CC6.7."},
+        "caf":  {"id": "B3", "title": "Data Security",
+                 "desc": "Data on endpoint devices is protected by encryption against physical access risks.",
+                 "rationale": "BitLocker is a data security control for protecting information on endpoints."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-i", "title": "Cryptography and encryption",
+                 "desc": "Cryptographic controls including device encryption are implemented to protect data.",
+                 "rationale": "BitLocker uses encryption to protect data at rest — its absence is a cryptography control gap."},
+    },
+    "MDM-005": {
+        "cis":  {"id": "4.1", "title": "Devices without a compliance policy are marked not compliant", "profile": "E3 L1",
+                 "desc": "Compliance policies covering all device platforms including iOS and Android are configured.",
+                 "rationale": "No mobile compliance policy means iOS and Android devices have no security baseline requirement."},
+        "nist": {"id": "PR.PS-01", "title": "Configuration management practices are applied",
+                 "desc": "Configuration management practices extend to all device platforms including mobile.",
+                 "rationale": "No mobile compliance policy is a configuration management gap for the mobile device population."},
+        "iso":  {"id": "A.8.1", "title": "User endpoint devices",
+                 "desc": "All user endpoint devices including mobile are managed with appropriate controls.",
+                 "rationale": "Mobile devices are user endpoints that require explicit management controls under ISO A.8.1."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "All devices including mobile must be securely configured to meet compliance requirements.",
+                 "rationale": "Mobile devices without compliance policies cannot be verified as meeting secure configuration standards."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions",
+                 "desc": "Mobile devices accessing M365 must meet compliance requirements to be granted logical access.",
+                 "rationale": "Without mobile compliance policies, non-compliant mobile devices can access M365 without restriction."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "All device types including mobile are covered by security configuration requirements.",
+                 "rationale": "No mobile compliance policy is a system security gap for the mobile device population."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Security policies address all device types used to access organisational systems.",
+                 "rationale": "No mobile compliance policy is a gap in the information system security policy framework."},
+    },
+    "MDM-006": {
+        "cis":  None,
+        "nist": {"id": "DE.CM-09", "title": "Computing hardware and software are monitored",
+                 "desc": "Computing hardware and software are monitored to detect potentially adverse events.",
+                 "rationale": "Without MDE integration, device-level threat signals from Defender are not visible to Intune or CA."},
+        "iso":  {"id": "A.8.7, A.8.16", "title": "Protection against malware / Monitoring activities",
+                 "desc": "Malware protection and monitoring activities are integrated across endpoint and identity platforms.",
+                 "rationale": "MDE integration provides endpoint malware detection signals to Intune's monitoring and compliance framework."},
+        "ce":   {"pillar": "MP", "title": "Malware Protection",
+                 "desc": "Malware protection covers all managed device types and detection feeds into compliance controls.",
+                 "rationale": "Without MDE integration, mobile threat defence signals are not incorporated into device compliance."},
+        "soc2": {"id": "CC7.1", "title": "Detection and monitoring",
+                 "desc": "Endpoint threat detection signals are integrated with access control and monitoring systems.",
+                 "rationale": "Without MDE integration, device threat signals are siloed and not feeding detection and monitoring systems."},
+        "caf":  {"id": "C1", "title": "Security Monitoring",
+                 "desc": "Security monitoring integrates endpoint threat intelligence to detect potential incidents.",
+                 "rationale": "MDE-Intune integration enables security monitoring using real-time device risk signals."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-b", "title": "Incident handling",
+                 "desc": "Endpoint threat signals are integrated with incident detection and response processes.",
+                 "rationale": "Without MDE integration, compromised device signals cannot trigger automated incident response."},
+    },
+    "ENTRA-001": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1",
+                 "desc": "Users are blocked from granting OAuth application consent to company data without administrator approval.",
+                 "rationale": "High-privilege app registrations indicate consent was granted for critical Graph permissions without restriction."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Applications receive only the permissions they require; admin-level permissions are tightly controlled.",
+                 "rationale": "App registrations with critical Graph permissions violate least privilege for service identities."},
+        "iso":  {"id": "A.5.15, A.8.2", "title": "Access control / Privileged access rights",
+                 "desc": "Applications with privileged access to organisational data are controlled and minimised.",
+                 "rationale": "High-privilege app registrations violate privileged access rights and access control requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Applications must only be granted the minimum permissions they need for their function.",
+                 "rationale": "App registrations with critical permissions have far more access than the least-privilege CE standard requires."},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection",
+                 "desc": "Application permissions are role-based and boundary controls restrict over-privileged data access.",
+                 "rationale": "High-privilege app permissions bypass role-based access controls and boundary protection."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application access to sensitive systems is explicitly authorised and minimised.",
+                 "rationale": "Over-privileged app registrations are an identity and access control failure under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Applications with administrative-level permissions are treated as privileged access and restricted.",
+                 "rationale": "App registrations with admin Graph permissions represent unrestricted administrative privilege."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Application access to organisational data is managed as part of access and asset management policy.",
+                 "rationale": "Over-permissioned app registrations are an access control and asset management failure."},
+    },
+    "ENTRA-002": {
+        "cis":  {"id": "5.1.5.4", "title": "App password lifetime does not exceed 180 days", "profile": "E3 L1",
+                 "desc": "App registration client secret lifetimes do not exceed 180 days and are actively managed.",
+                 "rationale": "Expired credentials on app registrations indicate lifecycle management has failed entirely."},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed",
+                 "desc": "Identities and credentials are managed throughout their lifecycle; expired credentials are removed.",
+                 "rationale": "Expired credentials should be removed as part of identity and credential lifecycle management."},
+        "iso":  {"id": "A.5.17", "title": "Authentication information",
+                 "desc": "Authentication information including credentials has defined lifetimes and is actively managed.",
+                 "rationale": "Expired credentials violate authentication information management — they should be removed immediately."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Application credentials must be actively managed; expired credentials indicate unmanaged access.",
+                 "rationale": "Expired credentials on active apps represent an unmanaged access control gap."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management",
+                 "desc": "Credentials are managed throughout their lifecycle; expired credentials are identified and removed.",
+                 "rationale": "Expired credentials represent an unmanaged logical access risk under CC6.1."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application credentials are actively managed; expired credentials are identified and removed.",
+                 "rationale": "Unmanaged expired credentials are an identity and access control failure."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Credential lifecycle management is an access control and asset management obligation.",
+                 "rationale": "Expired app credentials indicate asset management and access control obligations are not being met."},
+    },
+    "ENTRA-003": {
+        "cis":  {"id": "5.1.5.4", "title": "App password lifetime does not exceed 180 days", "profile": "E3 L1",
+                 "desc": "App registration credentials are managed proactively; credentials expiring within 30 days require immediate action.",
+                 "rationale": "Credentials expiring within 30 days require urgent rotation to avoid service failure and security gaps."},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed",
+                 "desc": "Credentials are proactively managed; imminent expiry is identified and actioned before lapsing.",
+                 "rationale": "Near-term credential expiry requires proactive management action to maintain identity integrity."},
+        "iso":  {"id": "A.5.17", "title": "Authentication information",
+                 "desc": "Authentication credentials are managed with sufficient lead time to prevent unplanned expiry.",
+                 "rationale": "Imminent credential expiry indicates authentication information is not being managed proactively."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Application credentials must be renewed before expiry to maintain access control integrity.",
+                 "rationale": "Near-expiry credentials require immediate action to avoid access control failures."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management",
+                 "desc": "Credential management includes proactive renewal before expiry to maintain logical access controls.",
+                 "rationale": "Imminent credential expiry requires immediate credential management action under CC6.1."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Credential expiry is managed proactively to prevent unplanned access control failures.",
+                 "rationale": "Credentials expiring within 30 days represent an imminent identity and access control risk."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Credential lifecycle management requires proactive renewal before expiry.",
+                 "rationale": "Near-expiry credentials indicate access control and asset management obligations are not being met proactively."},
+    },
+    "ENTRA-004": {
+        "cis":  {"id": "5.1.5.4 / 5.1.5.6", "title": "App password and certificate lifetime ≤180 days", "profile": "E3 L1",
+                 "desc": "App password and certificate lifetimes do not exceed 180 days; rotation is planned in advance.",
+                 "rationale": "Credentials expiring within 90 days require planned rotation to avoid last-minute risks."},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed",
+                 "desc": "Credential lifecycle is managed with forward planning; rotation is scheduled before expiry.",
+                 "rationale": "Credentials expiring in 31–90 days require planned management action within the next month."},
+        "iso":  {"id": "A.5.17", "title": "Authentication information",
+                 "desc": "Authentication information is managed with planned renewal cycles to prevent lapses.",
+                 "rationale": "Credentials expiring in 90 days require forward planning to maintain authentication information integrity."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Planned credential renewal is required to maintain access control integrity.",
+                 "rationale": "Credentials expiring within 90 days require planned action to maintain CE access control compliance."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management",
+                 "desc": "Credential lifecycle management includes advance planning for renewal before expiry.",
+                 "rationale": "Credential expiry within 90 days requires scheduling renewal to maintain logical access controls."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Credential rotation is planned in advance of expiry to maintain access control continuity.",
+                 "rationale": "Credentials expiring in 90 days require scheduled rotation as an identity management obligation."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Credential lifecycle planning is an access control and asset management requirement.",
+                 "rationale": "Credentials expiring within 90 days require planned renewal under NIS2 access management obligations."},
+    },
+    "ENTRA-005": {
+        "cis":  {"id": "5.1.5.4 / 5.1.5.6", "title": "App password and certificate lifetime enforcement", "profile": "E3 L1",
+                 "desc": "App password and certificate lifetimes are time-limited and do not exceed 180 days.",
+                 "rationale": "Never-expiring credentials directly violate the CIS maximum lifetime requirement of 180 days."},
+        "nist": {"id": "PR.AA-01", "title": "Identities and credentials for authorised users are managed",
+                 "desc": "Credentials have defined lifetimes and are rotated regularly as part of identity lifecycle management.",
+                 "rationale": "Non-expiring credentials violate credential lifecycle management — they persist indefinitely without rotation."},
+        "iso":  {"id": "A.5.17", "title": "Authentication information",
+                 "desc": "Authentication information has defined and enforced expiry periods.",
+                 "rationale": "Credentials without expiry violate ISO A.5.17 — authentication information must have defined lifetimes."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Application credentials must have defined expiry; non-expiring credentials are not permitted.",
+                 "rationale": "Never-expiring credentials violate the access control principle of periodic review and rotation."},
+        "soc2": {"id": "CC6.1", "title": "Logical access restrictions and credential management",
+                 "desc": "Credentials are time-limited and rotated regularly; non-expiring credentials are not permitted.",
+                 "rationale": "Non-expiring credentials bypass the credential lifecycle controls required by CC6.1."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application credentials are time-limited and subject to regular rotation.",
+                 "rationale": "Never-expiring credentials are an identity and access control failure under CAF B2."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Credential management requires defined expiry and rotation as part of access control policy.",
+                 "rationale": "Non-expiring credentials violate credential management obligations under NIS2."},
+    },
+    "ENTRA-006": {
+        "cis":  None,
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Access permissions including app registration ownership are managed with accountability.",
+                 "rationale": "Unowned apps have no accountable owner to manage permissions, violating access management requirements."},
+        "iso":  {"id": "A.5.18, A.5.15", "title": "Access rights / Access control",
+                 "desc": "Access rights including application permissions have defined owners responsible for review.",
+                 "rationale": "Unowned apps cannot be subject to the access rights reviews ISO A.5.18 requires."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Application access to company data must have an accountable owner for review and management.",
+                 "rationale": "Unowned apps cannot be reviewed for least-privilege access, violating CE user access control."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Application access is reviewed and role-based; unowned apps cannot be subject to access reviews.",
+                 "rationale": "Unowned apps cannot be subject to the access reviews CC6.2 and CC6.3 require."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application identity and access is managed with accountability and regular review.",
+                 "rationale": "Unowned apps represent an accountability gap in identity and access control."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Ownership accountability for application assets is required under access and asset management policy.",
+                 "rationale": "Unowned app registrations violate ownership accountability requirements under NIS2."},
+    },
+    "ENTRA-007": {
+        "cis":  {"id": "5.1.2.2", "title": "Users cannot register applications", "profile": "E3 L1",
+                 "desc": "Only administrators can register applications; multi-tenant app configuration requires explicit review.",
+                 "rationale": "Multi-tenant apps without review expand the attack surface beyond organisational boundaries."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Application access permissions including multi-tenant configuration are explicitly managed.",
+                 "rationale": "Unintended multi-tenant access expands permissions beyond organisational boundaries, violating least privilege."},
+        "iso":  {"id": "A.5.23", "title": "Information security for use of cloud services",
+                 "desc": "Cloud service application configuration is managed and multi-tenant access is explicitly controlled.",
+                 "rationale": "Multi-tenant app registrations without review violate cloud service information security requirements."},
+        "ce":   {"pillar": "SC", "title": "Secure Configuration",
+                 "desc": "Application registration and multi-tenant configuration is reviewed and controlled.",
+                 "rationale": "Unreviewed multi-tenant app configuration is a secure configuration failure."},
+        "soc2": {"id": "CC6.6, CC6.8", "title": "Boundary protection and change management",
+                 "desc": "Multi-tenant applications extend the system boundary and require explicit change management review.",
+                 "rationale": "Multi-tenant apps extend the boundary beyond the organisation — requiring boundary protection controls."},
+        "caf":  {"id": "B4", "title": "System Security",
+                 "desc": "Application configuration including multi-tenant access is explicitly reviewed and controlled.",
+                 "rationale": "Multi-tenant configuration without review is a system security risk under CAF B4."},
+        "e8":   {"id": "E8-1", "title": "Application Control",
+                 "desc": "Application configuration is controlled; multi-tenant apps require explicit approval.",
+                 "rationale": "Multi-tenant apps without explicit approval violate application control requirements."},
+        "nis2": {"id": "NIS2-a", "title": "Risk analysis and information system security policies",
+                 "desc": "Risk policies govern multi-tenant application configuration and external access grants.",
+                 "rationale": "Unreviewed multi-tenant app configuration is a risk not addressed by the security policy."},
+    },
+    "ENTRA-008": {
+        "cis":  {"id": "5.1.5.1", "title": "User consent to apps accessing company data is not allowed", "profile": "E3 L1",
+                 "desc": "Application authentication flows are configured securely; implicit grant flow is disabled.",
+                 "rationale": "Implicit grant flow returns tokens in browser redirects, creating token exposure risks."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions managed, least privilege enforced",
+                 "desc": "Application authentication flows are configured to minimise token exposure and access risk.",
+                 "rationale": "Implicit flow exposes tokens in URLs and browser history, violating secure permission management."},
+        "iso":  {"id": "A.5.15, A.8.26", "title": "Access control / Application security requirements",
+                 "desc": "Application security requirements include secure authentication flows that minimise token exposure.",
+                 "rationale": "Implicit grant flow is an insecure application design pattern that violates application security requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Application authentication must use secure flows; token-exposing patterns are not permitted.",
+                 "rationale": "Implicit flow exposes access tokens in browsers, creating a user access control vulnerability."},
+        "soc2": {"id": "CC6.3, CC6.6", "title": "Role-based access and boundary protection",
+                 "desc": "Application authentication flows protect tokens at the boundary and prevent uncontrolled exposure.",
+                 "rationale": "Implicit flow allows token leakage at the boundary, failing CC6.3 and CC6.6 requirements."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Application authentication flows are configured securely to prevent identity and token compromise.",
+                 "rationale": "Token leakage via implicit flow is an identity and access control risk under CAF B2."},
+        "e8":   None,
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Application authentication configuration is managed as part of access control policy.",
+                 "rationale": "Implicit grant flow token exposure is an access control vulnerability under NIS2."},
+    },
+    "ENTRA-009": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1",
+                 "desc": "Privileged role assignments are time-bound; service principals with admin roles require JIT controls.",
+                 "rationale": "Service principals with permanent admin directory roles violate just-in-time privilege requirements."},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed",
+                 "desc": "Service principal identities are managed; their permissions are minimised and validated.",
+                 "rationale": "Service principals with high-privilege roles represent unvalidated persistent admin access."},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control",
+                 "desc": "Privileged access rights including those held by service principals are restricted and controlled.",
+                 "rationale": "Service principals with admin roles violate privileged access rights and access control requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Service principals with administrative roles must have their access explicitly authorised and minimised.",
+                 "rationale": "Privileged service principals represent unrestricted admin access without user interaction."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Service principal role assignments are reviewed; admin-level assignments are explicitly authorised.",
+                 "rationale": "Service principal admin role assignments require explicit access reviews under CC6.2 and CC6.3."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Service principal access to systems is managed and privileged access is minimised.",
+                 "rationale": "Privileged service principals are an identity and access control risk under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Service principals with administrative privileges are identified, reviewed, and minimised.",
+                 "rationale": "Service principals with admin directory roles are a form of unrestricted administrative privilege."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Service principal privilege management is an access control and asset management obligation.",
+                 "rationale": "Privileged service principals are an access control failure under NIS2 requirements."},
+    },
+    "ENTRA-010": {
+        "cis":  {"id": "5.3.1", "title": "Privileged role assignments activated not permanently assigned", "profile": "E5 L1",
+                 "desc": "Privileged role assignments are time-bound; managed identities with admin roles require explicit authorisation.",
+                 "rationale": "Managed identities with permanent admin directory roles violate just-in-time privilege requirements."},
+        "nist": {"id": "PR.AA-02, PR.AA-05", "title": "Identities proofed / access permissions managed",
+                 "desc": "Managed identity permissions are validated and minimised; admin-level access requires justification.",
+                 "rationale": "Managed identities with high-privilege roles represent unvalidated persistent admin access."},
+        "iso":  {"id": "A.8.2, A.5.15", "title": "Privileged access rights / Access control",
+                 "desc": "Privileged access rights held by managed identities are restricted, monitored, and controlled.",
+                 "rationale": "Managed identities with admin roles violate privileged access rights and access control requirements."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Managed identities with administrative roles require explicit authorisation and are minimised.",
+                 "rationale": "Managed identity admin roles represent unrestricted privileged access without user interaction."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Managed identity role assignments are reviewed; admin-level assignments require explicit authorisation.",
+                 "rationale": "Managed identity admin role assignments require access reviews under CC6.2 and CC6.3."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Managed identity access to systems is controlled and privileged access is minimised.",
+                 "rationale": "Managed identities with admin roles are an identity and access control risk under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Managed identities with administrative privileges are identified, reviewed, and minimised.",
+                 "rationale": "Managed identities with admin directory roles represent unrestricted administrative privileges."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "Managed identity privilege is managed as part of access control and asset management policy.",
+                 "rationale": "Managed identities with admin roles are an access control failure under NIS2 requirements."},
+    },
+}
+
+# ─────────────────────────────────────────────────────────────
+#  FRAMEWORK CONTROL REMEDIATION GUIDANCE
+#  Keyed by '{framework}:{control_id}' — injected into enriched
+#  findings as fw_rem so the UI and Word report can show
+#  framework-specific "how to fix this" guidance.
+# ─────────────────────────────────────────────────────────────
+FW_CONTROL_REM = {
+    # ── CIS Microsoft 365 Foundations Benchmark v7.0 ──────────
+    "cis:5.2.2.2": "Deploy a Conditional Access policy (Entra ID > Conditional Access > New policy) targeting All users, All cloud apps, requiring MFA as the grant control. Exclude break-glass accounts only. This directly satisfies CIS M365 Benchmark recommendation 5.2.2.2.",
+    "cis:1.1.3": "Reduce Global Administrators to between 2 and 4 accounts. Reassign day-to-day admin tasks to least-privilege roles such as User Administrator or Security Administrator. Audit current assignments via Entra ID > Roles and administrators > Global Administrator.",
+    "cis:5.3.1": "Enable Entra Privileged Identity Management (PIM) and convert permanent Global Administrator and other privileged role assignments to Eligible (just-in-time). Configure activation to require approval and business justification. Navigate to Entra ID > Identity Governance > Privileged Identity Management.",
+    "cis:5.1.6.2": "Run an Entra ID access review targeting all guest accounts (Entra ID > Identity Governance > Access reviews). Remove guests who no longer require access. Configure a recurring quarterly review policy to maintain ongoing compliance.",
+    "cis:5.2.2.6": "Enable Entra ID Identity Protection risk policies: set User Risk policy to require password reset for High risk users, and Sign-in Risk policy to require MFA for Medium and above. Navigate to Entra ID > Protection > Identity Protection > User risk policy.",
+    "cis:1.1.2": "Create two break-glass accounts with strong random passwords, no MFA requirement, and explicit exclusion from all Conditional Access policies. Store credentials securely offline. Create a Log Analytics alert for any sign-in activity on these accounts.",
+    "cis:5.2.2.3": "Create a CA policy: Users = All users, Cloud apps = All cloud apps, Conditions > Client apps = Legacy authentication clients (Exchange ActiveSync, Other clients), Grant = Block access. Enable in Report-only mode first, validate no legitimate dependencies, then enforce.",
+    "cis:6.2.1": "Block external auto-forwarding at the organisation level: Set-HostedOutboundSpamFilterPolicy -AutoForwardingMode Off. Alternatively, create a transport rule (New-TransportRule) to reject messages where the sender is internal and the ForwardingSmtpAddress is set to an external domain.",
+    "cis:6.1.2": "Enable mailbox auditing globally: Set-OrganizationConfig -AuditDisabled $false. Verify with Get-OrganizationConfig | Select-Object AuditDisabled. Modern M365 tenants should have this enabled by default — confirm it has not been disabled.",
+    "cis:2.1.7": "Edit the default anti-phishing policy in Microsoft 365 Defender > Email & Collaboration > Policies & Rules > Threat policies > Anti-phishing. Enable: Mailbox intelligence, Mailbox intelligence-based impersonation protection, Spoof intelligence. Consider a custom policy with stricter settings for executive accounts.",
+    "cis:2.1.10": "Publish a DMARC TXT record at _dmarc.[yourdomain.com] starting with p=none for initial monitoring. Progress to p=quarantine then p=reject once SPF and DKIM are verified passing. Use a DMARC reporting service to monitor aggregate and forensic reports.",
+    "cis:2.1.8 / 2.1.9": "SPF: publish v=spf1 include:spf.protection.outlook.com -all as a TXT record for each domain. DKIM: enable in Exchange Admin Centre > Email authentication > DKIM > Enable for each domain. Both must be passing before enabling DMARC enforcement.",
+    "cis:2.1.6 / 2.1.7": "Enable Zero-Hour Auto Purge in Microsoft 365 Defender > Email & Collaboration > Policies: in Anti-malware default policy enable ZAP; in Anti-spam default inbound policy enable both Phishing ZAP and Spam ZAP.",
+    "cis:8.2.2": "In Teams Admin Centre > Users > External access: either disable external access entirely or configure an allow list of specific trusted domains. Remove the 'Allow all external domains' setting.",
+    "cis:8.2.3": "In Teams Admin Centre > Users > External access: disable 'Allow users in my org to communicate with Teams users whose accounts aren't managed by an organisation' (Teams consumer access).",
+    "cis:8.5.1": "In Teams Admin Centre > Meetings > Meeting policies > Global > Participants & guests: set 'Anonymous users can join a meeting' to Off. Apply the policy to all users and validate no custom policies override this setting.",
+    "cis:8.4.1": "In Teams Admin Centre > Teams apps > Permission policies > Global: change third-party apps from 'Allow all apps' to 'Block all apps', then create a custom policy or allowlist for approved apps. Implement a formal app approval process.",
+    "cis:7.2.6": "In SharePoint Admin Centre > Policies > Sharing: set the SharePoint external sharing level to 'New and existing guests' (ExternalUserSharingOnly) at minimum, or 'Only people in your organisation' to disable external sharing entirely.",
+    "cis:7.2.1": "In SharePoint Admin Centre > Access control > Apps that don't use modern authentication: select 'Block access'. This disables legacy authentication protocols (BasicAuth) for SharePoint Online.",
+    "cis:7.2.4": "In SharePoint Admin Centre > Policies > Sharing: set the OneDrive sharing level to 'New and existing guests' or more restrictive. Note: this is a separate setting from the SharePoint site sharing level and must be configured independently.",
+    "cis:7.2.9": "In SharePoint Admin Centre > Policies > Sharing > More external sharing settings: enable 'Guest access to a site or OneDrive will expire automatically after this many days' and set to 30–90 days. Also configure link expiry for anyone (anonymous) links.",
+    "cis:5.1.5.1": "In Entra ID > Enterprise applications > Consent and permissions > User consent settings: set to 'Do not allow user consent'. Enable the admin consent workflow (Entra ID > Enterprise applications > Consent and permissions > Admin consent settings) so users can request access to apps.",
+    "cis:3.1.1": "Verify the M365 audit log is enabled in the Microsoft Purview compliance portal > Audit. If disabled, enable it: Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $True (requires Exchange Administrator). Confirm Defender for Office 365 alert policies are active.",
+    "cis:4.1": "In Intune > Devices > Compliance policies: enable 'Mark devices with no compliance policy assigned as Not compliant' in Compliance policy settings. Create platform-specific policies (Windows, iOS, Android, macOS) and pair with a CA policy blocking non-compliant device access.",
+    "cis:5.1.4.6": "In Intune > Endpoint security > Disk encryption: create a BitLocker policy requiring TPM-backed encryption for Windows devices. Add device encryption as a compliance policy condition. Pair with a CA policy blocking non-compliant device access to M365.",
+    "cis:5.1.5.4": "In Entra ID > App registrations > [App] > Certificates & secrets: add a new client secret with a maximum 180-day lifetime. Remove all non-expiring and already-expired credentials. Implement a recurring calendar reminder or automated alert for credential expiry.",
+    "cis:5.1.5.4 / 5.1.5.6": "Rotate credentials before expiry: Entra ID > App registrations > [App] > Certificates & secrets. Create the replacement credential first, update the dependent application's configuration to use it, verify, then delete the old credential. Do not delete before updating the app.",
+    "cis:5.1.2.2": "Review multi-tenant app registrations in Entra ID > App registrations > [App] > Authentication. Change 'Supported account types' to 'Accounts in this organizational directory only' where multi-tenant access is not intentional. For legitimate multi-tenant apps, complete Microsoft Publisher Verification.",
+    # ── NIST Cybersecurity Framework 2.0 ──────────────────────
+    "nist:PR.AA-01": "Implement a credential lifecycle management process: define issuance, review, rotation, and revocation procedures. Apply to both user and application credentials. Reference NIST SP 800-63 for identity assurance requirements. Document as part of your CSF Implementation Tier.",
+    "nist:PR.AA-02": "Implement identity proofing appropriate to the risk level. For admin access, require phishing-resistant credentials (FIDO2 security keys or certificate-based auth). Reference NIST SP 800-63A for identity assurance levels. Document proofing procedures.",
+    "nist:PR.AA-03": "Deploy MFA via Conditional Access for all user access to M365. Align with NIST SP 800-63B Authenticator Assurance Level 2 (AAL2) at minimum. Document MFA enforcement as a mitigating control in your NIST CSF implementation profile.",
+    "nist:PR.AA-05": "Implement role-based access control with documented role definitions. Conduct quarterly access reviews and remove permissions beyond role requirements. Document access control decisions and reviews as part of your NIST CSF implementation evidence.",
+    "nist:PR.DS-01": "Apply encryption-at-rest controls: enable BitLocker on endpoints, apply M365 sensitivity labels to classified data, enable SharePoint at-rest encryption (on by default). Reference NIST SP 800-111 for storage encryption guidance.",
+    "nist:PR.DS-02": "Apply TLS/encryption-in-transit for all data flows. Block insecure protocols (legacy auth, BasicAuth). Enable DKIM/DMARC/SPF for email authentication. Reference NIST SP 800-52 Rev 2 for TLS implementation guidance.",
+    "nist:PR.PS-01": "Document a configuration management baseline for M365 services, aligned to CIS Benchmarks. Enforce baseline configurations via Intune configuration profiles. Review configurations quarterly and after significant changes.",
+    "nist:PR.PS-04": "Enable and retain security logs for all key M365 services. Configure log retention: 90 days minimum (180 days recommended for security investigation). Ingest into Microsoft Sentinel or equivalent SIEM. Reference NIST SP 800-92 for log management guidance.",
+    "nist:PR.IR-01": "Apply network boundary controls: configure SharePoint and Teams external access restrictions. Implement CA policies requiring compliant devices or trusted network locations. Reference NIST SP 800-41 for boundary protection guidance.",
+    "nist:DE.AE-02": "Establish an event analysis process: connect M365 audit logs to Microsoft Sentinel. Configure detection analytics rules for key threat scenarios (mass file download, impossible travel, suspicious inbox rules). Review alerts on a defined schedule.",
+    "nist:DE.CM-01": "Enable security monitoring across all M365 services: connect Microsoft Defender for Office 365 and Microsoft Sentinel. Configure alert policies for high-severity events. Establish a defined alert review cadence (daily recommended).",
+    "nist:DE.CM-09": "Deploy Defender for Endpoint across all managed devices. Integrate with Intune via the MDE connector. Monitor device health signals and risk scores via Intune and the Defender portal. Alert on device risk changes.",
+    "nist:ID.AM-01": "Maintain an accurate asset inventory: use Entra ID for identities and app registrations, Intune for managed devices, and Microsoft 365 admin centre for licence assignments. Review monthly and after offboarding events.",
+    "nist:ID.RA-01": "Implement vulnerability management for M365 configurations: review Microsoft Secure Score monthly, subscribe to Microsoft Security Response Centre advisories, track identified gaps through to remediation. Document in a vulnerability register.",
+    # ── ISO 27001:2022 Annex A ─────────────────────────────────
+    "iso:A.5.9": "Maintain a current software asset register including M365 licences, app registrations, and connected applications. Review quarterly. Include in your ISMS asset inventory and reference in your Statement of Applicability (SoA) against A.5.9.",
+    "iso:A.5.14": "Define and implement an information transfer policy. Block unauthorised email auto-forwarding. Apply data classification and transfer controls appropriate to each classification level. Document transfer controls in your SoA against A.5.14.",
+    "iso:A.5.15": "Document an access control policy defining access principles (least privilege, need-to-know). Implement RBAC and CA policies. Conduct annual access reviews (quarterly for privileged accounts). Include CA policies as A.5.15 mitigating controls in your SoA.",
+    "iso:A.5.17": "Define an authentication information management procedure covering creation, use, rotation, and revocation of credentials (user passwords and application secrets). Enforce expiry and complexity. Reference in your SoA against A.5.17.",
+    "iso:A.5.18": "Conduct formal access rights reviews at defined intervals (minimum annually, quarterly for privileged access). Document review outcomes. Remove access rights promptly on role change or departure. Record evidence for ISO audit.",
+    "iso:A.5.23": "Define a cloud service security policy covering M365. Document security responsibilities, SLA requirements, and monitoring arrangements. Include in your SoA against A.5.23. Review annually or after significant service changes.",
+    "iso:A.5.25": "Establish a security event assessment procedure: define criteria for classifying events, escalation thresholds, and response timelines. Document how M365 Defender alerts are triaged and escalated. Include in your incident management procedure.",
+    "iso:A.5.35": "Conduct periodic independent reviews of M365 security controls (at least annually). Use this assessment output as documented review evidence. Record findings and corrective actions for ISO audit. Include review scope and frequency in your SoA.",
+    "iso:A.8.1": "Document an endpoint device management policy covering all device types including mobile. Apply Intune compliance and configuration policies for each platform. Include device management as an A.8.1 control in your SoA.",
+    "iso:A.8.2": "Document a privileged access management procedure. Implement Entra PIM for just-in-time privilege. Conduct quarterly privileged account reviews. Include PIM configuration as an A.8.2 mitigating control in your SoA.",
+    "iso:A.8.3": "Define information access restriction controls: implement SharePoint sensitivity labels, site-level access permissions, and sharing restrictions. Document access restriction measures in your SoA against A.8.3.",
+    "iso:A.8.5": "Document an authentication policy requiring MFA for all users accessing information systems. Implement MFA enforcement via Conditional Access. Record the CA policy configuration as an A.8.5 mitigating control in your SoA.",
+    "iso:A.8.7": "Implement anti-malware controls at the email gateway, endpoint, and cloud layers. Configure Defender for Office 365 threat policies and Defender for Endpoint. Document the multi-layer protection in your SoA against A.8.7.",
+    "iso:A.8.8": "Establish a patch management procedure with defined timeframes (critical: 48 hours, high: 14 days, medium: 30 days). Use Intune Update Rings for OS patching. Document the procedure and evidence of compliance in your SoA against A.8.8.",
+    "iso:A.8.9": "Document a configuration management process. Apply and enforce secure configurations via Intune profiles. Baseline against CIS M365 Benchmarks. Reference configuration policies in your SoA against A.8.9.",
+    "iso:A.8.15": "Enable comprehensive logging for all M365 services. Retain logs for a minimum of 12 months. Define a log review procedure. Include logging controls in your SoA against A.8.15 and provide log samples as ISO audit evidence.",
+    "iso:A.8.16": "Establish a monitoring procedure for M365 activity. Review security alerts daily. Integrate with Microsoft Sentinel or equivalent SIEM. Include monitoring controls in your SoA against A.8.16.",
+    "iso:A.8.20": "Document a network security policy including M365 access boundaries. Apply SharePoint, Teams, and Exchange external access controls as network boundary controls. Reference in your SoA against A.8.20.",
+    "iso:A.8.24": "Define a cryptography policy: mandate TLS for data in transit, BitLocker for device storage, DKIM for email signing, and sensitivity label encryption for classified data. Document and reference in your SoA against A.8.24.",
+    "iso:A.8.26": "Define application security requirements for all apps connecting to M365. Assess and document OAuth app permissions. Include app security requirements in your secure development/procurement policy and SoA against A.8.26.",
+    # ── Cyber Essentials v3.3 ──────────────────────────────────
+    "ce:UAC": "Ensure MFA is enabled for all user accounts accessing cloud services. Remove admin rights from accounts that don't require them. Separate admin accounts from day-to-day user accounts. Certify compliance via the Cyber Essentials self-assessment questionnaire or Cyber Essentials Plus technical audit.",
+    "ce:SC": "Configure M365 services following the Cyber Essentials Secure Configuration requirement: disable unnecessary services, apply CIS Benchmark Level 1 settings, remove default or unnecessary accounts. Certify configurations during the Cyber Essentials assessment.",
+    "ce:MP": "Ensure Defender for Office 365 is enabled with anti-malware, anti-phishing (with intelligence), and ZAP configured. Enable Defender for Endpoint on all managed devices. Malware protection must cover all boundary firewalls and internet-connected devices.",
+    "ce:FW": "Configure SharePoint and Teams external access controls to restrict inbound communications to approved domains, or disable external access where not required. Treat M365 external access restrictions as boundary firewall controls for the purposes of Cyber Essentials.",
+    "ce:PM": "Apply the Cyber Essentials patch management requirement: all software must be updated with vendor-supported patches within 14 days of release (critical/high vulnerabilities) or removed if patches are unavailable. Enforce via Intune Update Rings for OS and app patching.",
+    # ── SOC 2 Trust Services Criteria ─────────────────────────
+    "soc2:CC6.1": "Implement logical access controls: enforce MFA via CA policy, apply device compliance as an access condition, document access restriction mechanisms. Evidence for audit: CA policy screenshots, sign-in log exports, and Intune compliance reports.",
+    "soc2:CC6.2": "Document and implement access authorisation procedures. Conduct periodic access reviews with documented approval records. Evidence for audit: access review records, approval tickets, and Entra ID role assignment reports.",
+    "soc2:CC6.3": "Implement role-based access control with documented role definitions. Remove access beyond role requirements at role changes. Evidence for audit: RBAC policy, Entra ID group membership reports, and access review records.",
+    "soc2:CC6.5": "Protect user credentials using MFA. Disable weak authentication methods (SMS, voice, email OTP where possible). Evidence for audit: authentication method policy settings and MFA registration reports.",
+    "soc2:CC6.6": "Apply network boundary controls: configure CA policies requiring compliant devices or named locations. Restrict external access to M365 services. Evidence for audit: CA policy configuration, conditional access named locations.",
+    "soc2:CC6.7": "Apply data transfer restrictions: block auto-forwarding, restrict external sharing, apply sensitivity labels. Evidence for audit: transport rules, SharePoint sharing policy settings, DLP policy reports.",
+    "soc2:CC6.8": "Apply change management controls: restrict app consent, review OAuth permissions, document approved configuration changes. Evidence for audit: change log, app permission audit report, consent policy settings.",
+    "soc2:CC7.1": "Implement security monitoring: configure Defender alert policies, integrate Microsoft Sentinel, establish a defined alert review procedure. Evidence for audit: alert policy configuration, SIEM integration records, and alert review log.",
+    "soc2:CC7.2": "Enable anomaly detection: configure Entra ID Identity Protection risk policies, review risky users and sign-ins weekly. Evidence for audit: Identity Protection policy settings, risk event reports.",
+    "soc2:CC7.3": "Document and test incident response procedures. Define escalation paths for Defender alerts. Review and close incidents within defined SLAs. Evidence for audit: incident response plan, incident tickets, test records.",
+    # ── NCSC Cyber Assessment Framework v4.0 ──────────────────
+    "caf:A2": "Conduct a documented M365 risk assessment identifying key threats, vulnerabilities, and controls. Review annually and after significant changes. Record risk treatment decisions in a risk register. Provide the risk register as CAF assessment evidence.",
+    "caf:B2": "Implement enforced MFA via CA policies, PIM for privileged access, and RBAC for all users. Conduct quarterly access reviews. Document controls and provide CA policy exports, PIM configurations, and access review records as CAF B2 evidence.",
+    "caf:B3": "Classify organisational data in M365 using sensitivity labels. Apply label-based access controls and sharing restrictions to high-value data. Monitor data access via Microsoft Defender. Document data security controls as CAF B3 evidence.",
+    "caf:B4": "Harden M365 configurations against CIS Benchmark. Apply Intune compliance and configuration policies. Patch operating systems within 14 days. Enable Defender for Endpoint. Provide configuration audit reports and patch compliance data as CAF B4 evidence.",
+    "caf:C1": "Enable Microsoft Sentinel and connect the Microsoft 365 Defender data connector. Configure analytics rules for high-priority scenarios (impossible travel, mass file download, suspicious inbox rules). Establish a defined alert review and escalation process. Provide SIEM configuration and alert logs as CAF C1 evidence.",
+    "caf:C2": "Implement proactive security discovery: track Microsoft Secure Score monthly, review Entra ID Protection risk reports weekly, conduct periodic configuration audits against CIS Benchmark. Document findings and remediation as CAF C2 evidence.",
+    # ── Australian Essential Eight (ASD 2024) ─────────────────
+    "e8:E8-1": "Configure Teams app permission policies to permit only approved applications (allow-list). Maintain a formal approved app register. Route all new app requests through a defined approval process before allowlisting.",
+    "e8:E8-2": "Configure Intune Update Rings for application patching. Set critical patch deployment to within 48 hours and other security patches to within two weeks. Monitor compliance via Intune patch compliance reports.",
+    "e8:E8-4": "Enable Microsoft Defender for Office 365: configure Safe Links and Safe Attachments. Apply Intune configuration profiles to disable macros from internet-sourced files. Configure Office protected view settings to prevent auto-execution of untrusted content.",
+    "e8:E8-5": "Remove unnecessary admin role assignments. Implement Entra PIM for just-in-time privilege. Restrict admin account use to admin tasks only. Audit privileged access monthly and remove unused assignments. Implement dedicated admin accounts separate from user accounts.",
+    "e8:E8-6": "Configure Intune Update Rings for Windows OS patching. Apply critical OS patches within 48 hours and other security patches within two weeks. Monitor via Intune patch compliance reports. Automate reporting to identify non-compliant devices.",
+    "e8:E8-7": "Enforce MFA for all users via Conditional Access. Implement phishing-resistant methods: Microsoft Authenticator with number matching and additional context (Maturity Level 2), or FIDO2 security keys (Maturity Level 3). Disable SMS/voice MFA for highest maturity.",
+    # ── EU NIS2 Article 21 ────────────────────────────────────
+    "nis2:NIS2-a": "Develop and maintain an information security risk management policy for M365, aligned to Article 21(2)(a). Document the risk assessment methodology, risk register, and treatment decisions. Review annually and submit to the relevant NIS2 competent authority if required.",
+    "nis2:NIS2-b": "Establish an incident detection and response procedure for M365 security events, meeting NIS2 notification timelines: initial notification within 24 hours, detailed report within 72 hours, final report within one month. Test annually. Designate a responsible contact for authority reporting.",
+    "nis2:NIS2-f": "Implement a vulnerability management procedure meeting Article 21(2)(f): subscribe to Microsoft Security Response Centre advisories, apply patches within defined timeframes, and maintain a vulnerability register. Disclose significant vulnerabilities to the competent authority as required.",
+    "nis2:NIS2-i": "Define a cryptography and encryption policy aligned to Article 21(2)(i): mandate TLS for data in transit, BitLocker/device encryption for data at rest, DKIM for email signing. Document the policy and provide evidence for competent authority review.",
+    "nis2:NIS2-j": "Implement and document access control policies covering all user types (employees, contractors, guests, service accounts), satisfying Article 21(2)(j). Enforce MFA, PIM for privileged access, and quarterly access reviews. Maintain evidence for competent authority review.",
+    "nis2:NIS2-k": "Deploy MFA enforcement via Conditional Access for all users, satisfying Article 21(2)(k). Implement phishing-resistant methods where possible. Document MFA coverage, any approved exclusions, and the rationale for those exclusions. Maintain evidence for competent authority review.",
+}
+
+def _inject_fw_rem(fw_map):
+    """Inject fw_rem (framework-specific remediation) into each framework entry."""
+    if not fw_map:
+        return fw_map
+    result = {}
+    for fw_key, fw_entry in fw_map.items():
+        if fw_entry is None:
+            result[fw_key] = None
+            continue
+        entry = dict(fw_entry)
+        # Look up remediation by framework + control ID (or pillar for CE)
+        control_id = entry.get("id") or entry.get("pillar", "")
+        rem_key = f"{fw_key}:{control_id}"
+        rem = FW_CONTROL_REM.get(rem_key)
+        if rem:
+            entry["fw_rem"] = rem
+        result[fw_key] = entry
+    return result
+
+
+# ─────────────────────────────────────────────────────────────
 #  FINDINGS LIBRARY
 # ─────────────────────────────────────────────────────────────
 def build_findings_library():
-    return [
+    findings = [
         # Identity
         {"id":"ID-001","title":"Low MFA Coverage","module":"identity","metric":"mfa_percentage","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 95,
          "description":"Fewer than 95% of licensed users have MFA registered. This significantly increases account compromise risk.",
          "recommendation":"Enable MFA for all users via Conditional Access. Consider enabling Security Defaults if no CA policies exist.",
+         "severity_reason":"Critical because credential-only access at scale is the single highest-exploited attack vector — even a 5% gap exposes hundreds of accounts to password spray and phishing.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 16},
 
         {"id":"ID-002","title":"Excessive Global Administrators","module":"identity","metric":"global_admin_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 3,
          "description":"More than 3 Global Administrators detected. Global Admin is the highest-privilege role and should be minimised.",
          "recommendation":"Reduce Global Admins to 2–3 break-glass accounts. Use least-privilege roles for day-to-day admin tasks.",
+         "severity_reason":"High because each additional permanent Global Admin multiplies the blast radius of a single compromised account, but the risk requires active targeting of an admin account to materialise.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 5},
 
         {"id":"ID-003","title":"No Privileged Identity Management","module":"identity","metric":"pim_enabled","severity":"high",
          "threshold": lambda v: v is False,
          "description":"PIM is not in use. Permanent role assignments expand the attack surface unnecessarily.",
          "recommendation":"Enable Entra PIM and convert permanent admin role assignments to eligible (just-in-time) assignments.",
+         "severity_reason":"High because permanent admin roles grant standing privileges that attackers can exploit immediately after credential compromise, removing the time-window defence of just-in-time access.",
+         "effort":"Medium","effort_hours":8,
          "secure_score_impact": 10},
 
         {"id":"ID-004","title":"High Guest User Count","module":"identity","metric":"guest_user_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 50,
          "description":"A large number of guest accounts exist in the tenant. Unreviewed guests represent a data exposure risk.",
          "recommendation":"Implement an access review policy for guest accounts. Remove guests who no longer require access.",
+         "severity_reason":"Medium because unreviewed guests are a latent risk, not an active gap — the exposure depends on what data those guests can reach and whether their accounts remain active.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 3},
 
         {"id":"ID-005","title":"Unused Licences","module":"identity","metric":"unassigned_licence_percentage","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 20,
          "description":"More than 20% of purchased licences are unassigned, representing unnecessary cost.",
          "recommendation":"Audit unassigned licences and remove from the subscription where no longer required.",
+         "severity_reason":"Medium for financial and governance risk — unassigned licences carry no direct security impact but indicate poor access lifecycle management and unnecessary spend.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 0},
 
         # Security & CA
@@ -72,30 +1400,40 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v < 50,
          "description":"Microsoft Secure Score is below 50%, indicating significant security controls are missing.",
          "recommendation":"Review the Secure Score dashboard in Defender portal. Prioritise high-impact, low-effort recommendations first.",
+         "severity_reason":"High because a sub-50% Secure Score indicates a broad range of baseline controls are absent across multiple attack surfaces — it is a symptom of systemic under-configuration.",
+         "effort":"High","effort_hours":40,
          "secure_score_impact": 0},
 
         {"id":"SEC-002","title":"Security Defaults Disabled — No CA Policies","module":"security","metric":"security_defaults_enabled","severity":"critical",
          "threshold": lambda v, m: v is False and m.get("ca_enabled_policy_count", 0) == 0,
          "description":"Security Defaults are disabled and no compensating Conditional Access policies may be in place.",
          "recommendation":"Either re-enable Security Defaults or implement an equivalent baseline CA policy set covering MFA and legacy auth blocking.",
+         "severity_reason":"Critical because with neither Security Defaults nor Conditional Access, the tenant has zero enforced authentication controls — any credential gives full access.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 12},
 
         {"id":"CA-001","title":"No Conditional Access Policies Enabled","module":"security","metric":"ca_enabled_policy_count","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No enabled Conditional Access policies found. Access to M365 is not context-aware.",
          "recommendation":"Deploy baseline CA policies: MFA for all users, MFA for admins, block legacy auth, require compliant devices.",
+         "severity_reason":"Critical because Conditional Access is the primary enforcement layer for M365 access — its complete absence means all users authenticate with no context-aware checks whatsoever.",
+         "effort":"Medium","effort_hours":8,
          "secure_score_impact": 15},
 
         {"id":"CA-002","title":"Legacy Authentication Not Blocked","module":"security","metric":"legacy_auth_blocked","severity":"critical",
          "threshold": lambda v: v is False,
          "description":"Legacy authentication protocols are not blocked. These bypass MFA and are heavily exploited.",
          "recommendation":"Create a CA policy to block all legacy authentication. Audit dependencies before enforcing.",
+         "severity_reason":"Critical because legacy protocols bypass MFA entirely, providing attackers a direct path to credential-only authentication regardless of how many CA policies are in place.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 10},
 
         {"id":"CA-003","title":"No CA Policy Enforcing MFA for All Users","module":"security","metric":"mfa_all_users_ca_policy","severity":"critical",
          "threshold": lambda v: v is False,
          "description":"There is no Conditional Access policy that enforces multi-factor authentication for all users. Even with CA policies in place, if none of them target all users with an MFA requirement, entire user populations can authenticate with just a password. Credential stuffing, phishing and password spray attacks succeed instantly against accounts with no MFA enforcement.",
          "recommendation":"Create a CA policy targeting all users (excluding break-glass accounts), all cloud apps, and requiring MFA as the grant control. This is the single most impactful CA control you can deploy. Test with a pilot group first, then broaden to all users.",
+         "severity_reason":"Critical because without a policy explicitly requiring MFA for all users, any unprotected account is a viable attack path — one uncovered user is enough for a successful credential compromise.",
+         "effort":"Low","effort_hours":3,
          "secure_score_impact": 10},
 
         # Exchange
@@ -103,18 +1441,24 @@ def build_findings_library():
          "threshold": lambda v: v is False,
          "description":"Automatic email forwarding to external recipients is not blocked. This is a common data exfiltration vector.",
          "recommendation":"Set AutoForwardingMode to 'Automatic' block in the outbound spam filter policy, or create a transport rule to block external auto-forwarding.",
+         "severity_reason":"High because silent external forwarding is a confirmed BEC indicator — once configured by an attacker, email intelligence leaks indefinitely with no user awareness.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         {"id":"EXO-002","title":"Mailbox Auditing Disabled","module":"exchange","metric":"mailbox_audit_enabled_percentage","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 90,
          "description":"Mailbox auditing is not enabled for all mailboxes. Audit logs are essential for forensic investigation.",
          "recommendation":"Enable mailbox auditing organisation-wide using Set-OrganizationConfig -AuditDisabled $false.",
+         "severity_reason":"High because without mailbox audit logs, forensic investigation of email-based incidents is impossible — you cannot determine what was read, deleted, or forwarded after a compromise.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         {"id":"EXO-003","title":"Anti-Phishing Intelligence Disabled","module":"exchange","metric":"antiphish_intelligence_enabled","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Mailbox intelligence in anti-phishing policies is not enabled, reducing protection against targeted attacks.",
          "recommendation":"Enable mailbox intelligence and impersonation protection in the anti-phishing policy.",
+         "severity_reason":"Medium because mailbox intelligence adds targeted-attack protection, but the baseline anti-phishing policy still operates — the gap is meaningful but not a complete absence of email filtering.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         # Teams
@@ -122,24 +1466,32 @@ def build_findings_library():
          "threshold": lambda v: v is False,
          "description":"Teams external access (federation) is not restricted. Users can communicate with any external Teams tenant.",
          "recommendation":"Restrict Teams external access to approved domains only, or disable it if not required.",
+         "severity_reason":"Medium because unrestricted federation expands the social engineering surface, but requires an active attacker with a Teams tenant — it is not a passive vulnerability.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 3},
 
         {"id":"TEAMS-002","title":"Teams Consumer Access Enabled","module":"teams","metric":"teams_consumer_access_blocked","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Users can communicate with Teams personal/consumer accounts, increasing data leakage risk.",
          "recommendation":"Disable Teams consumer access unless there is a specific business requirement.",
+         "severity_reason":"Medium because personal Teams accounts have weaker identity assurance, but exploitation requires user-initiated contact — the risk is behavioural rather than a direct technical exposure.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 3},
 
         {"id":"TEAMS-003","title":"Anonymous Users Can Join Meetings","module":"teams","metric":"teams_anon_meeting_join_enabled","severity":"medium",
          "threshold": lambda v: v is True,
          "description":"The global Teams meeting policy allows anonymous users to join meetings without authentication. Anyone with a meeting link can join as a guest with no identity verification. This enables uninvited participants to join internal calls, access shared content, and potentially record sensitive discussions.",
          "recommendation":"In the Teams Admin Centre, go to Meetings > Meeting policies > Global > Participants & guests. Set 'Anonymous users can join a meeting' to Off. Create an exception policy for specific users or groups with a legitimate need.",
+         "severity_reason":"Medium because meeting infiltration requires possession of a valid meeting link — the risk is meaningful for sensitive discussions but does not expose underlying tenant data or enable further access.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 3},
 
         {"id":"TEAMS-004","title":"Third-Party Teams Apps Unrestricted","module":"teams","metric":"teams_third_party_apps_allowed","severity":"medium",
          "threshold": lambda v: v is True,
          "description":"The global Teams app permission policy allows all third-party apps from the Teams store without restriction. Users can install apps that have permissions to read messages, files, and meeting content. Malicious or compromised third-party apps are a growing attack surface in Teams environments.",
          "recommendation":"In Teams Admin Centre, go to Teams apps > Permission policies > Global. Change third-party apps from Allow all to either Block all or allow specific approved apps only. Review and approve a whitelist of business-critical third-party apps.",
+         "severity_reason":"Medium because broad app permissions create ongoing data access risk, but exploitation depends on app behaviour and requires a user to install the app — not an immediate passive attack path.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 2},
 
         # SharePoint
@@ -147,24 +1499,32 @@ def build_findings_library():
          "threshold": lambda v: v == "ExternalUserAndGuestSharing",
          "description":"SharePoint/OneDrive external sharing is set to Anyone, allowing unauthenticated link sharing.",
          "recommendation":"Restrict sharing to 'New and existing guests' (ExternalUserSharingOnly) at minimum. Review per site collection.",
+         "severity_reason":"Critical because Anyone links expose data to the entire internet with no authentication — a single forwarded link makes the content accessible to anyone, with no audit trail or access control.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 8},
 
         {"id":"SPO-002","title":"Legacy Authentication Enabled in SharePoint","module":"sharepoint","metric":"spo_legacy_auth","severity":"high",
          "threshold": lambda v: v is True,
          "description":"Legacy authentication protocols are enabled in SharePoint, bypassing modern auth controls.",
          "recommendation":"Disable LegacyAuthProtocolsEnabled in SharePoint tenant settings.",
+         "severity_reason":"High because legacy auth in SharePoint bypasses modern CA controls, providing a SharePoint-specific authentication bypass path even if legacy auth is blocked elsewhere.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         {"id":"SPO-003","title":"OneDrive External Sharing Unrestricted","module":"sharepoint","metric":"onedrive_sharing_level","severity":"high",
          "threshold": lambda v: v == "ExternalUserAndGuestSharing",
          "description":"OneDrive for Business external sharing is set to Anyone, allowing users to create unauthenticated sharing links. SharePoint and OneDrive have separate sharing settings — a tenant can restrict SharePoint while leaving OneDrive open. Files shared via anonymous links are accessible to anyone with the URL, with no authentication or audit trail.",
          "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing and set the OneDrive sharing level to 'New and existing guests' or more restrictive. This setting is separate from the SharePoint sharing level.",
+         "severity_reason":"High because OneDrive sharing is a separate setting — a restricted SharePoint policy does not protect it, leaving personal file storage fully open for anonymous link sharing.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         {"id":"SPO-004","title":"Guest Access Expiry Not Configured","module":"sharepoint","metric":"guest_access_expiry_configured","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"External user (guest) access expiry is not configured. Shared links and guest accounts granted to contractors, partners, or clients do not automatically expire. Former employees of partner organisations, ex-contractors, and deprecated service accounts retain access indefinitely unless manually removed.",
          "recommendation":"In SharePoint Admin Centre, go to Policies > Sharing > More external sharing settings. Enable 'Guest access to a site or OneDrive will expire automatically after this many days' and set a value appropriate for your business (30–90 days is typical). Also enable link expiry for anonymous sharing links.",
+         "severity_reason":"Medium because indefinite guest access is a governance gap that accumulates over time — each departing contractor retains data access until manually removed, which rarely happens in practice.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 3},
 
         # Over-Permissioned Apps
@@ -172,6 +1532,8 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more third-party OAuth applications have been granted high-privilege permissions across the tenant. These apps have persistent access to data even after users log out, and are a common persistence mechanism used by attackers following account compromise.",
          "recommendation":"Review all OAuth app permissions in Entra ID under Enterprise Applications. Remove or restrict apps that have unnecessary Graph permissions such as Mail.ReadWrite, Files.ReadWrite.All, or Directory.ReadWrite.All. Enable admin consent workflow to prevent users granting app permissions without approval.",
+         "severity_reason":"High because applications with tenant-wide permissions create persistent access that survives password resets — a compromised app credential grants attacker-level data access across the entire organisation.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 5},
 
         # Alerting and Monitoring
@@ -179,36 +1541,48 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Microsoft Defender alert policies are active. Without alerting, security incidents such as mass file downloads, impossible travel sign-ins, or malware detections will not be flagged to administrators in real time.",
          "recommendation":"Enable Microsoft Defender for Office 365 and configure alert policies for high-severity events including suspicious inbox rules, mass file deletion, impossible travel, and malware detected. Ensure alerts are routed to a monitored mailbox or SIEM.",
+         "severity_reason":"High because without alerting, security incidents remain invisible to administrators — all other controls become less effective when breaches go undetected for days or weeks.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 5},
 
         {"id":"SEC-003","title":"MFA Fatigue Protection Not Enabled","module":"security","metric":"mfa_number_matching_enabled","severity":"high",
          "threshold": lambda v: v is False,
          "description":"Microsoft Authenticator number matching and additional context (sign-in location and app name) are not enabled. Without these, users are vulnerable to MFA fatigue attacks where an attacker repeatedly sends push notifications until the user approves one.",
          "recommendation":"Enable number matching and additional context in the Authenticator app settings under Entra ID Authentication Methods. This ensures users see the number displayed on screen before approving, making accidental approvals impossible.",
+         "severity_reason":"High because number matching blocks the most common MFA bypass technique in current threat campaigns — a free, single-toggle fix that removes a well-documented, actively exploited attack path.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
 
         {"id":"SEC-004","title":"Weak MFA Methods Enabled","module":"security","metric":"weak_auth_methods_enabled","severity":"medium",
          "threshold": lambda v: v is True,
          "description":"One or more weak authentication methods (SMS text, voice call, or email OTP) are enabled in the tenant. These methods can be intercepted via SIM swapping, call forwarding, or phishing, and are significantly less secure than the Microsoft Authenticator app or FIDO2 keys.",
          "recommendation":"Disable SMS, voice call, and email OTP authentication methods in Entra ID under Authentication Methods policies. Migrate users to Microsoft Authenticator app with number matching, or FIDO2 security keys for highest assurance.",
+         "severity_reason":"Medium because SMS and voice MFA still provide meaningful friction compared to no MFA — the elevated risk requires a targeted SIM-swap or SS7 attack, not a mass credential spray.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 8},
 
         {"id":"SEC-005","title":"Users Can Consent to Apps Without Admin Approval","module":"security","metric":"user_consent_unrestricted","severity":"high",
          "threshold": lambda v: v is True,
          "description":"Users are permitted to grant OAuth application permissions to access company data without administrator approval. This allows malicious or over-permissioned apps to gain access to email, files, and other sensitive data simply by convincing a user to click Accept.",
          "recommendation":"Restrict user consent to apps in Entra ID under Enterprise Applications > Consent and Permissions. Set to admin consent required, and enable the admin consent workflow so users can request access through an approved process.",
+         "severity_reason":"High because unrestricted user consent is the primary delivery mechanism for OAuth phishing — a single user clicking Accept grants an attacker persistent data access that survives password resets.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 5},
         # Intune
         {"id":"MDM-001","title":"Low Device Compliance","module":"intune","metric":"intune_compliance_percentage","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v < 80,
          "description":"Fewer than 80% of managed devices are compliant. Non-compliant devices may lack encryption or current patches.",
          "recommendation":"Review non-compliant devices in Intune portal. Identify common failures and remediate. Consider blocking non-compliant device access to M365.",
+         "severity_reason":"High because non-compliant devices accessing M365 may lack encryption, patches, or antivirus — they are potential entry points that cannot be trusted with corporate data.",
+         "effort":"Medium","effort_hours":8,
          "secure_score_impact": 5},
 
         {"id":"MDM-002","title":"No Compliance Policies Configured","module":"intune","metric":"intune_compliance_policy_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Intune device compliance policies are in place. Devices cannot be evaluated for compliance.",
          "recommendation":"Create compliance policies for each device platform (Windows, iOS, Android) covering OS version, encryption, and antivirus requirements.",
+         "severity_reason":"High because without any compliance policies, device trust is undefined — CA policies requiring compliant devices cannot function, making device-based access controls entirely inoperable.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 8},
 
         # New v1.2 findings
@@ -216,36 +1590,48 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more users are flagged as high or medium risk by Entra ID Identity Protection and have not been remediated or dismissed. Risky users indicate potential compromised accounts.",
          "recommendation":"Review risky users in Entra ID > Protection > Risky users. Require password reset or MFA re-registration for at-risk accounts. Investigate the risk events behind each flagged user.",
+         "severity_reason":"High because unreviewed risky users are flagged by Identity Protection as likely compromised — ignoring them means accepting an active threat within the tenant.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 5},
 
         {"id":"ID-007","title":"No Emergency Access Account Detected","module":"identity","metric":"emergency_access_exists","severity":"high",
          "threshold": lambda v: v is False,
          "description":"No break-glass (emergency access) account was detected. Without an emergency access account, a misconfigured Conditional Access policy or MFA outage could lock administrators out of the tenant.",
          "recommendation":"Create at least two emergency access accounts. Exclude them from all CA policies. Store credentials securely offline. Monitor for any sign-in activity on these accounts as an indicator of compromise.",
+         "severity_reason":"High because a misconfigured CA policy without a break-glass account can result in a complete, irreversible admin lockout — recovery requires engaging Microsoft Support, which takes days.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"SEC-006","title":"No Microsoft Sentinel Connected","module":"security","metric":"sentinel_connected","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Microsoft Sentinel does not appear to be connected or generating security alerts. Without a SIEM, threats across M365 services may not be correlated or retained for investigation.",
          "recommendation":"Deploy Microsoft Sentinel and connect the Microsoft 365 Defender data connector. Configure analytics rules for high-priority scenarios and set up a regular alert review process.",
+         "severity_reason":"Medium because without a SIEM, threat correlation and long-term log retention are absent — but in-product Defender alerting partially compensates and Sentinel requires significant investment to deploy.",
+         "effort":"High","effort_hours":16,
          "secure_score_impact": 3},
 
         {"id":"EXO-004","title":"DMARC Not Configured","module":"exchange","metric":"dmarc_configured","severity":"high",
          "threshold": lambda v: v is False,
          "description":"DMARC is not configured on the primary domain. Without DMARC, attackers can spoof your domain in phishing emails, impersonating your organisation to external recipients.",
          "recommendation":"Publish a DMARC TXT record at _dmarc.yourdomain.com. Start with p=none for monitoring, then progress to p=quarantine and p=reject once SPF and DKIM are confirmed working.",
+         "severity_reason":"High because without DMARC, your domain can be spoofed in external phishing campaigns — attackers can impersonate your organisation to clients and partners with no technical barrier.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 5},
 
         {"id":"EXO-005","title":"SPF or DKIM Not Configured","module":"exchange","metric":"spf_dkim_configured","severity":"high",
          "threshold": lambda v: v is False,
          "description":"SPF or DKIM email authentication is not fully configured on the primary domain. Without both controls, outbound emails may be rejected by recipients and the domain can be spoofed.",
          "recommendation":"Ensure an SPF TXT record exists for your domain. Enable DKIM signing in Exchange Online Admin > Email authentication. Both must pass before DMARC enforcement is safe to enable.",
+         "severity_reason":"High because SPF and DKIM are prerequisites for DMARC and email deliverability — their absence means outbound mail authenticity cannot be verified, and domain spoofing has no cryptographic barrier.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 5},
 
         {"id":"EXO-006","title":"Zero-Hour Auto Purge (ZAP) Not Fully Enabled","module":"exchange","metric":"zap_fully_enabled","severity":"high",
          "threshold": lambda v: v is False,
          "description":"Zero-Hour Auto Purge (ZAP) is not fully enabled for malware, phishing, or spam. ZAP retroactively removes emails already delivered to mailboxes when they are later identified as malicious. Without ZAP, emails that bypass initial filters remain in user mailboxes permanently — giving attackers a lasting foothold for credential theft, business email compromise, and malware delivery.",
          "recommendation":"In the Microsoft 365 Defender portal, go to Email & Collaboration > Policies & Rules > Threat policies. Under Anti-malware, edit the default policy and ensure ZAP is enabled. Under Anti-spam, edit the default inbound policy and ensure both Phishing ZAP and Spam ZAP are enabled.",
+         "severity_reason":"High because ZAP is the last line of defence against emails that evade initial filtering — without it, delivered malicious emails remain in mailboxes permanently as persistent attack vectors.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 4,
          "tags": ["email", "defender", "zap", "malware", "phishing"]},
 
@@ -253,24 +1639,32 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v == 0,
          "description":"No Windows Update for Business rings are configured in Intune. Without update rings, Windows devices may receive patches inconsistently or too late, leaving known vulnerabilities unpatched.",
          "recommendation":"Create at least one Windows Update ring in Intune targeting Windows devices. Consider a Pilot ring and a Production ring with a deferral period to catch problematic updates before broad rollout.",
+         "severity_reason":"Medium because inconsistent patching creates exploitable vulnerabilities over time, but M365 cloud services are not directly affected — endpoint risk compounds when combined with weak CA controls.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"MDM-004","title":"BitLocker Not Enforced","module":"intune","metric":"bitlocker_enforced","severity":"high",
          "threshold": lambda v: v is False,
          "description":"BitLocker disk encryption does not appear to be required by Intune compliance or configuration policies. Devices without encryption expose all data if lost or stolen.",
          "recommendation":"Create an Intune device configuration profile enabling BitLocker on Windows devices. Add a compliance policy condition requiring device encryption, and block non-compliant devices from accessing M365.",
+         "severity_reason":"High because an unencrypted device that is lost or stolen exposes all locally cached M365 data — email, files, and authentication tokens — with no access barrier whatsoever.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 8},
 
         {"id":"MDM-005","title":"No Mobile Device Compliance Policy","module":"intune","metric":"mobile_compliance_policy_exists","severity":"high",
          "threshold": lambda v: v is False,
          "description":"No Intune compliance policy exists for iOS or Android devices. Mobile devices connecting to Microsoft 365 — including Exchange, Teams and SharePoint — are doing so with no compliance requirement. Compromised, jailbroken, or unmanaged personal devices can access the same data as fully managed corporate endpoints.",
          "recommendation":"Create Intune compliance policies for iOS and Android covering minimum OS version, screen lock, device encryption, and jailbreak/root detection. Pair with a Conditional Access policy requiring compliant devices for mobile access to M365.",
+         "severity_reason":"High because mobile devices are the most common unmanaged endpoint accessing M365 — without a compliance policy, jailbroken or compromised phones access the same data as corporate laptops.",
+         "effort":"Low","effort_hours":3,
          "secure_score_impact": 5},
 
         {"id":"MDM-006","title":"Defender for Endpoint Not Integrated with Intune","module":"intune","metric":"defender_mde_integration_enabled","severity":"medium",
          "threshold": lambda v: v is False,
          "description":"Microsoft Defender for Endpoint is not integrated with Intune via a Mobile Threat Defence connector. Without this integration, device risk signals from Defender — such as active malware, suspicious activity, or network attacks — are not available to Conditional Access. A compromised device can continue to access M365 resources even while Defender has flagged it.",
          "recommendation":"In Intune, go to Endpoint security > Microsoft Defender for Endpoint and enable the connector. Set up device risk score conditions in your compliance policies. This routes Defender's real-time risk signals into CA so compromised devices are automatically blocked.",
+         "severity_reason":"Medium because without Defender risk signals in CA, a compromised device stays authorised to access M365 until manually blocked — removing a key automated response capability.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 4},
 
         # Entra ID Deep Findings
@@ -278,62 +1672,86 @@ def build_findings_library():
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have been granted Critical or High risk Microsoft Graph application permissions. An attacker who compromises the application's credentials gains persistent, tenant-wide access that survives user password resets and MFA changes. These permissions are a common target for OAuth consent phishing and credential theft attacks.",
          "recommendation":"Review all app registrations under Entra ID > App registrations. Remove or reduce permissions that are broader than required. Rotate credentials on any high-privilege app immediately. Enable admin consent workflow to prevent future over-privileged consent grants.",
+         "severity_reason":"Critical because app-level permissions are broader than user permissions and bypass all user-based controls — credential compromise grants silent, persistent tenant-wide access that survives MFA resets.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 5},
 
         {"id":"ENTRA-002","title":"Expired App Registration Credentials","module":"identity","metric":"expired_cred_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have credentials (client secrets or certificates) that have already expired. Expired credentials on high-privilege apps suggest the app may be unmanaged or abandoned — a common persistence mechanism left behind by former staff or attackers.",
          "recommendation":"Go to Entra ID > App registrations and review all apps with expired credentials. Remove expired credentials immediately. If the app is no longer needed, delete the registration entirely. If still in use, rotate credentials and implement a credential rotation process.",
+         "severity_reason":"High because expired credentials on high-privilege apps indicate abandoned, unmanaged applications — prime targets for attackers using leaked historical secrets found in code repositories.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"ENTRA-003","title":"App Registration Credentials Expiring Within 30 Days","module":"identity","metric":"expiring_cred_30d_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have credentials expiring within 30 days. If not renewed, dependent services will fail to authenticate, potentially causing outages. Rushed credential rotation under time pressure increases the risk of errors.",
          "recommendation":"Review and rotate expiring credentials immediately in Entra ID > App registrations > Certificates & secrets. Implement automated credential rotation or calendar reminders to avoid last-minute renewals.",
+         "severity_reason":"High because the 30-day window forces urgent action — rushed credential rotation under time pressure increases error risk and may cause service outages if not handled carefully.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"ENTRA-004","title":"App Registration Credentials Expiring Within 90 Days","module":"identity","metric":"expiring_cred_90d_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have credentials expiring within 31–90 days. Plan credential rotation now to avoid service disruption and rushed changes.",
          "recommendation":"Schedule credential rotation for affected app registrations within the next 30 days. Review Entra ID > App registrations > Certificates & secrets and create replacement credentials before the current ones expire.",
+         "severity_reason":"Medium because 31–90 days provides adequate planning time for rotation — the risk is future disruption, not current exposure, if actioned promptly.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 2},
 
         {"id":"ENTRA-005","title":"App Registration Credentials Set to Never Expire","module":"identity","metric":"never_expire_cred_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have credentials with no expiry date configured. Non-expiring credentials remain valid indefinitely, meaning a leaked secret provides persistent access with no natural rotation forcing function.",
          "recommendation":"Replace never-expiring credentials with time-limited ones. Set expiry to 6–12 months and implement a rotation process. Go to Entra ID > App registrations > Certificates & secrets, add a new credential with an expiry, and remove the non-expiring one.",
+         "severity_reason":"Medium because non-expiring credentials are a long-term governance risk — a leaked secret remains valid indefinitely, but this is a policy gap rather than a confirmed active exposure.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"ENTRA-006","title":"Unowned App Registrations","module":"identity","metric":"unowned_app_reg_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have no owner assigned. Without an owner, there is no accountable person to review permissions, rotate credentials, or respond if the app is compromised. Unowned apps are frequently abandoned and left with stale high-privilege permissions.",
          "recommendation":"Assign an owner to every app registration in Entra ID > App registrations > [App] > Owners. Where no owner can be identified, review whether the app is still in use and delete it if not.",
+         "severity_reason":"Medium because unowned apps lack an accountable reviewer, causing credential and permission hygiene to decay over time — the direct risk depends on what permissions those apps hold.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 2},
 
         {"id":"ENTRA-007","title":"Multi-Tenant App Registrations","module":"identity","metric":"multitenant_app_reg_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations are configured as multi-tenant, meaning users from any external Entra ID tenant can sign in or consent to the app. If this is not intentional, it expands the attack surface beyond your organisation.",
          "recommendation":"Review multi-tenant app registrations in Entra ID > App registrations. If multi-tenant access is not required, change Supported account types to 'Accounts in this organizational directory only'. For legitimate multi-tenant apps, ensure publisher verification is complete.",
+         "severity_reason":"Medium because multi-tenant configuration is frequently left in place unintentionally — opening consent to external tenants without vetting, but requiring an attacker from an external tenant to exploit.",
+         "effort":"Low","effort_hours":1,
          "secure_score_impact": 2},
 
         {"id":"ENTRA-008","title":"Implicit Grant Flow Enabled on App Registrations","module":"identity","metric":"implicit_grant_app_count","severity":"medium",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more app registrations have implicit grant flow enabled (ID token or access token issuance). Implicit flow returns tokens in browser redirect URLs, making them susceptible to leakage via browser history, referrer headers, and cross-site scripting attacks. Microsoft recommends disabling implicit flow for all applications.",
          "recommendation":"Go to Entra ID > App registrations > [App] > Authentication and uncheck both 'ID tokens' and 'Access tokens' under Implicit grant and hybrid flows. Migrate to the Authorization Code flow with PKCE for public clients.",
+         "severity_reason":"Medium because implicit flow is a deprecated security pattern that exposes tokens via redirect URLs — the risk materialises primarily if an XSS vulnerability exists in the application itself.",
+         "effort":"Low","effort_hours":2,
          "secure_score_impact": 3},
 
         {"id":"ENTRA-009","title":"Service Principals with High-Privilege Directory Roles","module":"identity","metric":"priv_service_principal_count","severity":"critical",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more service principals (enterprise applications) have been assigned high-privilege Entra ID directory roles such as Global Administrator or Application Administrator. A service principal with admin roles is a non-interactive backdoor — an attacker who obtains its credentials gains admin-level access without triggering user sign-in alerts or MFA prompts.",
          "recommendation":"Go to Entra ID > Roles and administrators and review all high-privilege role assignments. Remove service principals from privileged roles unless there is a documented, audited business requirement. Use least-privilege roles (e.g., Application.ReadWrite.OwnedBy) where possible.",
+         "severity_reason":"Critical because a service principal with Global Admin equivalent is a non-interactive admin backdoor — credential compromise grants full tenant control with no MFA, no CA policy, and no user-based detection.",
+         "effort":"Medium","effort_hours":4,
          "secure_score_impact": 5},
 
         {"id":"ENTRA-010","title":"Managed Identities with High-Privilege Directory Roles","module":"identity","metric":"priv_managed_identity_count","severity":"high",
          "threshold": lambda v: isinstance(v,(int,float)) and v > 0,
          "description":"One or more managed identities have been assigned high-privilege Entra ID directory roles. Managed identities granted admin roles can be exploited by any workload running under that identity — a compromised Azure VM or Function App with a privileged managed identity can take administrative actions across the tenant.",
          "recommendation":"Go to Entra ID > Roles and administrators and review managed identity role assignments. Remove high-privilege roles from managed identities and assign only the minimum permissions required for each workload.",
+         "severity_reason":"High because any compromised Azure workload running under a privileged managed identity inherits admin-level tenant access — the attack surface extends beyond M365 into Azure compute and services.",
+         "effort":"Medium","effort_hours":3,
          "secure_score_impact": 3},
     ]
+    # Apply framework mappings to all findings
+    for f in findings:
+        f["frameworks"] = _inject_fw_rem(FRAMEWORK_MAPPING.get(f["id"], {}))
+    return findings
 
 FINDINGS_LIBRARY = build_findings_library()
 
@@ -464,7 +1882,18 @@ def build_ps_args(module, auth):
     return args
 
 
-def run_script(script_name, ps_args):
+# Per-module timeouts (seconds) — Security and Identity need more time for CA/Graph enumeration
+MODULE_TIMEOUTS = {
+    "security":   600,   # CA policy enumeration + Defender checks can be slow
+    "identity":   600,   # Entra ID deep checks — large tenants need extra time
+    "exchange":   300,
+    "teams":      300,
+    "sharepoint": 300,
+    "intune":     300,
+}
+DEFAULT_TIMEOUT = 300
+
+def run_script(script_name, ps_args, module=None):
     """
     Execute a PowerShell script and return parsed JSON output.
     App Registration: runs silently, captures stdout directly.
@@ -473,6 +1902,8 @@ def run_script(script_name, ps_args):
     script_path = os.path.join(SCRIPTS_DIR, script_name)
     if not os.path.exists(script_path):
         return None, f"Script not found: {script_name}"
+
+    timeout = MODULE_TIMEOUTS.get(module, DEFAULT_TIMEOUT) if module else DEFAULT_TIMEOUT
 
     # Do NOT use -NonInteractive - it blocks login popups for interactive auth
     cmd = [
@@ -485,7 +1916,7 @@ def run_script(script_name, ps_args):
             cmd,
             capture_output=True,
             text=True,
-            timeout=300
+            timeout=timeout
         )
 
         stdout = result.stdout.strip()
@@ -511,7 +1942,7 @@ def run_script(script_name, ps_args):
         return data, None
 
     except subprocess.TimeoutExpired:
-        return None, "Script timed out after 300 seconds"
+        return None, f"Script timed out after {timeout} seconds"
     except json.JSONDecodeError as e:
         stderr = result.stderr.strip() if result else ""
         return None, f"Invalid JSON from script: {e}. stderr: {stderr[:300]}"
@@ -541,7 +1972,8 @@ def evaluate_findings(all_metrics):
                     "metric": metric, "severity": f["severity"],
                     "description": f["description"], "recommendation": f["recommendation"],
                     "observed_value": value,
-                    "secure_score_impact": f.get("secure_score_impact", 0)
+                    "secure_score_impact": f.get("secure_score_impact", 0),
+                    "frameworks": f.get("frameworks", {})
                 })
         except Exception:
             pass
@@ -711,7 +2143,10 @@ def save_session(session_data):
 #  ROUTES
 # ─────────────────────────────────────────────────────────────
 
-CURRENT_VERSION = "1.3.0"
+# Read version from VERSION file — never hardcode so updates always reflect correctly
+_ver_file = os.path.join(BASE_DIR, "VERSION")
+CURRENT_VERSION       = open(_ver_file).read().strip() if os.path.exists(_ver_file) else "1.4.0"
+FINDINGS_LAST_UPDATED = "2026-06-07"   # Update whenever FINDINGS list is modified
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
 RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
 
@@ -730,7 +2165,10 @@ def check_update():
               headers={"User-Agent": "M365-Assessment-Toolkit"})
         with urllib.request.urlopen(req, timeout=5) as r:
             latest = r.read().decode().strip()
-        update_available = latest != CURRENT_VERSION
+        def _ver(v):
+            try: return tuple(int(x) for x in v.strip().split("."))
+            except: return (0,)
+        update_available = _ver(latest) > _ver(CURRENT_VERSION)
         return jsonify({
             "current":          CURRENT_VERSION,
             "latest":           latest,
@@ -767,11 +2205,67 @@ def apply_update():
         return jsonify({"success": False, "error": str(e)})
 
 
+ALL_FRAMEWORKS = ["cis", "nist", "iso", "caf"]  # CE, SOC2, E8, NIS2 removed — no stable reference links
+
+# ── Scan progress tracker ────────────────────────────────────
+import threading
+_scan_progress = {"status": "idle", "module": "", "step": 0, "total": 0, "label": ""}
+_scan_lock     = threading.Lock()
+
+def _set_progress(status, module="", step=0, total=0, label=""):
+    with _scan_lock:
+        _scan_progress.update({"status": status, "module": module,
+                                "step": step, "total": total, "label": label})
+
+@app.route("/progress", methods=["GET"])
+def get_progress():
+    with _scan_lock:
+        return jsonify(dict(_scan_progress))
+
+# ── Heartbeat / shutdown ─────────────────────────────────────
+import time as _time
+_last_heartbeat = _time.time()
+_shutdown_enabled = False
+
+@app.route("/heartbeat", methods=["POST"])
+def heartbeat():
+    global _last_heartbeat
+    _last_heartbeat = _time.time()
+    return jsonify({"ok": True})
+
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    """Clean shutdown triggered by Stop button or heartbeat timeout."""
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func:
+        func()
+    else:
+        import os, signal
+        os.kill(os.getpid(), signal.SIGTERM)
+    return jsonify({"ok": True})
+
+def _heartbeat_watchdog():
+    """Auto-shutdown if no heartbeat received for 90 seconds."""
+    import time
+    time.sleep(30)  # grace period on startup
+    while True:
+        time.sleep(15)
+        if _shutdown_enabled and (_time.time() - _last_heartbeat) > 90:
+            print("[INFO] No heartbeat for 90s — shutting down.", flush=True)
+            import os, signal
+            os.kill(os.getpid(), signal.SIGTERM)
+
+_wd = threading.Thread(target=_heartbeat_watchdog, daemon=True)
+_wd.start()
+
 @app.route("/run", methods=["POST"])
 def run_assessment():
+    global _shutdown_enabled
+    _shutdown_enabled = True          # enable watchdog once a real session starts
     body          = request.get_json()
     client_name   = body.get("orgName", body.get("clientName", "Unknown"))
     modules       = body.get("modules", [])
+    active_frameworks = body.get("activeFrameworks", ALL_FRAMEWORKS)
     auth          = {k: body.get(k,"") for k in
                      ["authMethod","tenantId","clientId","clientSecret","certThumbprint","spAdminUrl","environment"]}
 
@@ -785,7 +2279,10 @@ def run_assessment():
     L(f"Assessment started — {client_name}")
     L(f"Auth method: {auth['authMethod']}")
 
-    for module in modules:
+    total_modules = len(modules)
+    _set_progress("running", step=0, total=total_modules, label="Starting...")
+
+    for idx, module in enumerate(modules, 1):
         script = MODULE_SCRIPTS.get(module)
         if not script:
             L(f"Unknown module: {module}", "warn"); continue
@@ -801,9 +2298,12 @@ def run_assessment():
         if is_interactive_only and auth["authMethod"] == "appreg":
             L(f"{module}: App Reg not supported for this workload — using interactive login", "warn")
 
+        module_label = module.replace("sharepoint","SharePoint").replace("exchange","Exchange").replace("identity","Identity").replace("security","Security").replace("teams","Teams").replace("intune","Intune")
+        _set_progress("running", module=module, step=idx, total=total_modules,
+                      label=f"Running {module_label}... ({idx} of {total_modules})")
         L(f"Running: {script} [{effective_auth}]")
         ps_args = build_ps_args(module, auth)
-        metrics, error = run_script(script, ps_args)
+        metrics, error = run_script(script, ps_args, module=module)
 
         if error:
             L(f"{module} failed: {error}", "error")
@@ -812,6 +2312,8 @@ def run_assessment():
             L(f"{module} complete — {len(metrics)} metrics collected", "success")
         else:
             L(f"{module} returned no data", "warn")
+
+    _set_progress("complete", step=total_modules, total=total_modules, label="Complete")
 
     # Derive composite metrics from raw values
     if any(k in all_metrics for k in ("zap_malware_enabled", "zap_phish_enabled", "zap_spam_enabled")):
@@ -857,7 +2359,9 @@ def run_assessment():
         "modulesRun": len(modules),
         "log": log,
         "savedAt": datetime.datetime.now().isoformat(),
-        "toolVersion": "1.2.0",
+        "toolVersion": CURRENT_VERSION,
+        "findingsLastUpdated": FINDINGS_LAST_UPDATED,
+        "activeFrameworks": active_frameworks,
         "remediationLog": rem_log,
     }
 
@@ -897,6 +2401,16 @@ def download_report():
     if not os.path.exists(generator):
         return jsonify({"error": "generate-report.js not found. Place it in the same folder as backend.py."}), 500
 
+    # Compute framework totals dynamically from FRAMEWORK_MAPPING so
+    # generate-report.js never uses stale hardcoded numbers.
+    fw_totals = {}
+    for fw_id in body.get("activeFrameworks", ALL_FRAMEWORKS):
+        fw_totals[fw_id] = sum(
+            1 for mapping in FRAMEWORK_MAPPING.values()
+            if mapping.get(fw_id)
+        )
+    body["fwTotals"] = fw_totals
+
     # Write assessment data to a temp JSON file for the Node script
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(body, f, ensure_ascii=False)
@@ -928,6 +2442,53 @@ def download_report():
 
 
 
+
+
+@app.route("/generate-exec-report", methods=["POST"])
+def generate_exec_report():
+    """
+    Generate a board-ready Executive Summary .docx report.
+    Calls generate-report.js with reportType='executive'.
+    """
+    body        = request.get_json()
+    client_name = body.get("orgName", body.get("clientName", "Organisation"))
+    assess_date = body.get("assessDate", str(datetime.date.today()))
+
+    safe_name   = client_name.replace(" ", "_").replace("/", "-")
+    filename    = f"M365_ExecSummary_{safe_name}_{assess_date.replace('-', '')}.docx"
+    report_path = os.path.join(REPORTS_DIR, filename)
+    json_path   = os.path.join(REPORTS_DIR, f"_tmp_exec_{safe_name}.json")
+    generator   = os.path.join(BASE_DIR, "generate-report.js")
+
+    if not os.path.exists(generator):
+        return jsonify({"error": "generate-report.js not found. Place it in the same folder as backend.py."}), 500
+
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(body, f, ensure_ascii=False)
+
+    try:
+        result = subprocess.run(
+            ["node", generator, json_path, report_path, "executive"],
+            capture_output=True, text=True, timeout=60
+        )
+        if result.returncode != 0:
+            error_detail = result.stderr.strip() or result.stdout.strip()
+            return jsonify({"error": f"Exec report generator failed: {error_detail}"}), 500
+    except FileNotFoundError:
+        return jsonify({"error": "Node.js not found. Install from https://nodejs.org"}), 500
+    finally:
+        if os.path.exists(json_path):
+            os.remove(json_path)
+
+    if not os.path.exists(report_path):
+        return jsonify({"error": "Exec report file was not created."}), 500
+
+    return send_file(
+        report_path,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        as_attachment=True,
+        download_name=filename
+    )
 
 
 @app.route("/download-remediation", methods=["POST"])
@@ -1476,6 +3037,11 @@ def load_session(filename):
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        # Upgrade legacy sessions — inject framework data into findings that predate v1.5
+        for finding in data.get("findings", []):
+            if not finding.get("frameworks"):
+                finding["frameworks"] = _inject_fw_rem(FRAMEWORK_MAPPING.get(finding.get("id", ""), {}))
+
         client_name = data.get("clientName", "")
         safe        = client_name.replace(" ", "_").replace("/", "-")
 
@@ -1532,6 +3098,39 @@ def load_session(filename):
 
         data["remediationState"] = remediation_state
         return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/sessions/<filename>", methods=["PATCH"])
+def patch_session(filename):
+    """
+    Merge finding annotations (status, reason, notes) into a saved session
+    without overwriting the full session. Accepts:
+      { "annotations": { "CA-003": { "status": "accepted_risk", "reason": "...", "notes": "..." } } }
+    """
+    if not filename.startswith("Session_") or not filename.endswith(".json"):
+        return jsonify({"error": "Invalid session file"}), 400
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "Session not found"}), 404
+    try:
+        payload = request.get_json(force=True) or {}
+        with open(filepath, "r", encoding="utf-8") as f:
+            session_data = json.load(f)
+        # Merge annotations
+        if "annotations" in payload:
+            existing = session_data.get("annotations", {})
+            existing.update(payload["annotations"])
+            session_data["annotations"] = existing
+        # Merge any other top-level keys explicitly passed
+        for key in ("adjustedScore",):
+            if key in payload:
+                session_data[key] = payload[key]
+        session_data["annotatedAt"] = datetime.datetime.now().isoformat()
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(session_data, f, indent=2)
+        return jsonify({"ok": True, "filename": filename})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1684,22 +3283,36 @@ def compare_assessments():
             if s in counts: counts[s] += 1
         return counts
 
+    def enrich_findings(findings_dict):
+        """Apply FRAMEWORK_MAPPING (with fw_rem) to findings for compare framework delta."""
+        result = []
+        for f in findings_dict.values():
+            fc = dict(f)
+            if not fc.get("frameworks"):
+                fc["frameworks"] = _inject_fw_rem(FRAMEWORK_MAPPING.get(fc.get("id", ""), {}))
+            result.append(fc)
+        return result
+
     return jsonify({
         "sessionA": {
-            "filename":   file_a,
-            "orgName":    sess_a.get("orgName", sess_a.get("clientName", "Unknown")),
-            "assessDate": sess_a.get("assessDate", ""),
-            "score":      score_a,
-            "findingCount": len(ids_a),
-            "sevCounts":  sev_counts(findings_a),
+            "filename":        file_a,
+            "orgName":         sess_a.get("orgName", sess_a.get("clientName", "Unknown")),
+            "assessDate":      sess_a.get("assessDate", ""),
+            "score":           score_a,
+            "findingCount":    len(ids_a),
+            "sevCounts":       sev_counts(findings_a),
+            "activeFrameworks": sess_a.get("activeFrameworks", []),
+            "findings":        enrich_findings(findings_a),
         },
         "sessionB": {
-            "filename":   file_b,
-            "orgName":    sess_b.get("orgName", sess_b.get("clientName", "Unknown")),
-            "assessDate": sess_b.get("assessDate", ""),
-            "score":      score_b,
-            "findingCount": len(ids_b),
-            "sevCounts":  sev_counts(findings_b),
+            "filename":        file_b,
+            "orgName":         sess_b.get("orgName", sess_b.get("clientName", "Unknown")),
+            "assessDate":      sess_b.get("assessDate", ""),
+            "score":           score_b,
+            "findingCount":    len(ids_b),
+            "sevCounts":       sev_counts(findings_b),
+            "activeFrameworks": sess_b.get("activeFrameworks", []),
+            "findings":        enrich_findings(findings_b),
         },
         "scoreDelta":    score_delta,
         "resolved":      resolved,
@@ -4358,6 +5971,15 @@ def get_findings_library():
     return jsonify([{k: v for k, v in f.items() if k != "threshold"} for f in FINDINGS_LIBRARY])
 
 
+@app.route("/docs/cis-m365-benchmark")
+def serve_cis_benchmark():
+    """Serve the local CIS M365 Foundations Benchmark PDF."""
+    pdf_path = os.path.join(BASE_DIR, "CIS", "CIS_Microsoft_365_Foundations_Benchmark_v7.0.0.pdf")
+    if os.path.exists(pdf_path):
+        return send_file(pdf_path, mimetype="application/pdf")
+    return "CIS benchmark PDF not found", 404
+
+
 @app.route("/")
 def serve_index():
     """Serve the frontend HTML file - avoids file:// CORS issues."""
@@ -4366,6 +5988,177 @@ def serve_index():
         with open(index_path, "r", encoding="utf-8") as f:
             return f.read(), 200, {"Content-Type": "text/html"}
     return "index.html not found", 404
+
+
+# =================================================================
+#  SCHEDULED SCANS — Windows Task Scheduler Integration
+# =================================================================
+
+HEADLESS_RUNNER_PATH = os.path.join(BASE_DIR, "run_scheduled_scan.py")
+
+def _ensure_headless_runner():
+    """Write the headless scan runner script if it doesn't exist."""
+    script = r'''#!/usr/bin/env python3
+"""
+Headless scheduled scan runner for M365 Assessment Toolkit.
+Called by Windows Task Scheduler — uses App Registration auth only.
+Results are saved as JSON + CSV to the output folder.
+"""
+import sys, os, json, datetime, subprocess, pathlib
+
+BASE_DIR = pathlib.Path(__file__).parent
+sys.path.insert(0, str(BASE_DIR))
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--client-name',   required=True)
+    parser.add_argument('--tenant-id',     required=True)
+    parser.add_argument('--client-id',     required=True)
+    parser.add_argument('--client-secret', required=True)
+    parser.add_argument('--modules',       required=True, help='Comma-separated list')
+    args = parser.parse_args()
+
+    modules = [m.strip() for m in args.modules.split(',') if m.strip()]
+    ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    safe_name = "".join(c if c.isalnum() or c in '-_' else '_' for c in args.client_name)
+
+    log_path = BASE_DIR / 'output' / f'scheduled_{safe_name}_{ts}.log'
+    log = open(log_path, 'w', encoding='utf-8')
+    log.write(f"M365 Assessment Toolkit — Scheduled Scan\n")
+    log.write(f"Client: {args.client_name}\nModules: {', '.join(modules)}\nStarted: {ts}\n\n")
+    log.flush()
+
+    # Call the backend scan endpoint via HTTP (backend must be running)
+    import urllib.request, urllib.error
+    payload = json.dumps({
+        "client_name": args.client_name,
+        "auth_method": "app_registration",
+        "tenant_id": args.tenant_id,
+        "client_id": args.client_id,
+        "client_secret": args.client_secret,
+        "modules": modules,
+        "scheduled": True,
+    }).encode()
+
+    try:
+        req = urllib.request.Request(
+            'http://127.0.0.1:5000/run',
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            result = json.loads(resp.read().decode())
+        out_path = BASE_DIR / 'output' / f'scheduled_{safe_name}_{ts}.json'
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, indent=2, default=str)
+        log.write(f"Scan completed. Score: {result.get('score','?')}\n")
+        log.write(f"Findings: {len(result.get('findings', []))}\n")
+        log.write(f"Output: {out_path}\n")
+        print(f"[OK] Scheduled scan complete. Output: {out_path}")
+    except Exception as e:
+        log.write(f"ERROR: {e}\n")
+        print(f"[ERROR] {e}")
+        sys.exit(1)
+    finally:
+        log.close()
+
+if __name__ == '__main__':
+    main()
+'''
+    if not os.path.exists(HEADLESS_RUNNER_PATH):
+        with open(HEADLESS_RUNNER_PATH, 'w', encoding='utf-8') as f:
+            f.write(script)
+    return HEADLESS_RUNNER_PATH
+
+
+@app.route("/schedule", methods=["POST"])
+def create_schedule():
+    body          = request.get_json()
+    client_name   = body.get("clientName", "").strip()
+    tenant_id     = body.get("tenantId", "").strip()
+    client_id     = body.get("clientId", "").strip()
+    client_secret = body.get("clientSecret", "").strip()
+    frequency     = body.get("frequency", "weekly")
+    modules       = body.get("modules", ["identity", "security"])
+
+    if not all([client_name, tenant_id, client_id, client_secret]):
+        return jsonify({"error": "Missing required fields"}), 400
+    if not modules:
+        return jsonify({"error": "No modules selected"}), 400
+
+    runner_path = _ensure_headless_runner()
+
+    # Determine Task Scheduler trigger
+    freq_map = {
+        "weekly":  "/SC WEEKLY /D MON /ST 06:00",
+        "daily":   "/SC DAILY /ST 06:00",
+        "monthly": "/SC MONTHLY /D 1 /ST 06:00",
+    }
+    schedule_args = freq_map.get(frequency, freq_map["weekly"])
+    next_run_map = {
+        "weekly": "Next Monday at 06:00",
+        "daily": "Tomorrow at 06:00",
+        "monthly": "1st of next month at 06:00",
+    }
+
+    safe_name = "".join(c if c.isalnum() or c in '-_ ' else '_' for c in client_name)[:30]
+    task_name = f"M365Scan_{safe_name.replace(' ','_')}"
+
+    python_exe = sys.executable.replace("pythonw.exe", "python.exe")
+    modules_str = ",".join(modules)
+
+    # Build the schtasks command
+    run_cmd = (
+        f'"{python_exe}" "{runner_path}"'
+        f' --client-name "{client_name}"'
+        f' --tenant-id "{tenant_id}"'
+        f' --client-id "{client_id}"'
+        f' --client-secret "{client_secret}"'
+        f' --modules "{modules_str}"'
+    )
+
+    schtasks_cmd = (
+        f'schtasks /Create /TN "{task_name}" /TR "{run_cmd}"'
+        f' {schedule_args} /RL HIGHEST /F'
+    )
+
+    try:
+        result = subprocess.run(
+            schtasks_cmd, shell=True, capture_output=True, text=True, timeout=30
+        )
+        if result.returncode != 0:
+            err = result.stderr.strip() or result.stdout.strip()
+            return jsonify({"error": f"Task Scheduler error: {err}"}), 500
+
+        return jsonify({
+            "success": True,
+            "taskName": task_name,
+            "nextRun": next_run_map.get(frequency, "As configured"),
+            "modules": modules,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/schedule/list", methods=["GET"])
+def list_schedules():
+    """List M365Scan_* tasks from Windows Task Scheduler."""
+    try:
+        result = subprocess.run(
+            'schtasks /Query /FO CSV /NH', shell=True,
+            capture_output=True, text=True, timeout=15
+        )
+        tasks = []
+        for line in result.stdout.splitlines():
+            if '"M365Scan_' in line:
+                parts = line.strip().strip('"').split('","')
+                if len(parts) >= 3:
+                    tasks.append({"name": parts[0], "nextRun": parts[1], "status": parts[2]})
+        return jsonify({"tasks": tasks})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

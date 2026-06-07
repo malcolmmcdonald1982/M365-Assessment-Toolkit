@@ -5,24 +5,24 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234f9cf9' d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>M365 Assessment Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #080e1c;
-    --bg2: #0d1828;
-    --bg3: #132135;
-    --bg4: #1b2d47;
-    --border: rgba(59,130,246,0.09);
-    --border2: rgba(59,130,246,0.22);
-    --text: #dce5f7;
-    --muted: #7888a4;
-    --accent: #1d75e8;
-    --accent2: #5b5fc7;
+    --bg:    #0a0b0f;
+    --bg2:   #111318;
+    --bg3:   #191d24;
+    --bg4:   #20252f;
+    --border:  rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text:  #f7f8fd;
+    --muted: #b8bfd0;
+    --accent:  #3b82f6;
+    --accent2: #6366f1;
     --success: #10b981;
     --warning: #f59e0b;
-    --danger: #ef4444;
+    --danger:  #ef4444;
     --mono: 'DM Mono', monospace;
-    --sans: 'Inter', sans-serif;
+    --sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
@@ -66,6 +66,83 @@
   .field input::placeholder { color: var(--muted); }
   .field.hidden { display: none; }
   .field-optional { font-size: 9px; color: var(--muted); margin-left: 4px; }
+
+  /* Framework selector */
+  .fw-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); cursor: pointer; padding: 3px 0; }
+  .fw-check input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; }
+  .fw-check span:first-of-type { flex: 1; font-family: var(--sans); }
+
+  /* Framework badges on finding cards */
+  .fw-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .fw-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--border2); color: var(--muted); background: var(--bg3); white-space: nowrap; cursor: default; }
+  .fw-badge:hover { border-color: var(--accent); color: var(--text); }
+  .fw-badge.fw-e5 { border-color: rgba(245,158,11,0.4); color: #d97706; }
+  .fw-badge.fw-none { opacity: 0.4; text-decoration: line-through; }
+
+  /* Compliance context accordion */
+  .cc-toggle { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--border2); border-radius: 4px; padding: 3px 9px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+  .cc-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .cc-toggle .cc-arrow { font-size: 9px; transition: transform 0.2s; }
+  .cc-toggle.open .cc-arrow { transform: rotate(180deg); }
+  .cc-panel { display: none; margin-top: 8px; border: 1px solid var(--border2); border-radius: 6px; overflow: hidden; }
+  .cc-panel.open { display: block; }
+  .cc-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .cc-table th { background: var(--bg3); color: var(--muted); font-weight: 600; text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--border2); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cc-table td { padding: 7px 10px; vertical-align: top; border-bottom: 1px solid var(--border); color: var(--text); }
+  .cc-table tr:last-child td { border-bottom: none; }
+  .cc-table tr:hover td { background: var(--bg3); }
+  .cc-fw-name { font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .cc-control { font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .cc-desc { color: var(--text2); }
+  .cc-rationale { color: var(--muted); font-style: italic; }
+  .cc-ref-link { color: var(--accent); text-decoration: none; margin-left: 4px; font-size: 10px; opacity: 0.7; }
+  .cc-ref-link:hover { opacity: 1; }
+  .cc-row { cursor: pointer; }
+  .cc-row:hover td { background: rgba(99,102,241,0.07); }
+  .cc-row-active td { background: rgba(99,102,241,0.1) !important; }
+  .cc-rem-row { display: none; }
+  .cc-rem-cell { padding: 8px 14px 10px 14px !important; background: var(--bg3); border-left: 3px solid var(--accent); color: var(--text2); font-size: 11px; line-height: 1.5; }
+  .cc-rem-cell strong { color: var(--accent); font-weight: 600; }
+  /* Export compliance annex button */
+  .cc-export-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border2); background: var(--bg2); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .cc-export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Finding annotations (status + notes) ── */
+  .finding-annotation { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .annotation-status-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .annotation-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
+  .status-btn { font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg3); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .status-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .status-btn.active-open      { background: rgba(34,197,94,0.12); border-color: #22c55e; color: #22c55e; font-weight: 600; }
+  .status-btn.active-accepted  { background: rgba(245,158,11,0.12); border-color: #f59e0b; color: #f59e0b; font-weight: 600; }
+  .status-btn.active-fp        { background: rgba(99,102,241,0.12); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .status-btn.active-na        { background: rgba(100,116,139,0.12); border-color: var(--muted); color: var(--muted); font-weight: 600; }
+  .annotation-reason-wrap { margin-top: 7px; display: none; }
+  .annotation-reason-wrap.visible { display: block; }
+  .annotation-reason { width: 100%; box-sizing: border-box; background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; color: var(--text); font-size: 12px; padding: 6px 10px; resize: vertical; min-height: 48px; font-family: inherit; transition: border-color 0.15s; }
+  .annotation-reason:focus { outline: none; border-color: var(--accent); }
+  .annotation-reason.invalid { border-color: var(--danger); }
+  .annotation-notes-wrap { margin-top: 6px; }
+  .annotation-notes-toggle { font-size: 11px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px; }
+  .annotation-notes-toggle:hover { color: var(--accent); }
+  .annotation-notes { width: 100%; box-sizing: border-box; background: var(--bg3); border: 1px solid var(--border2); border-radius: 5px; color: var(--text); font-size: 12px; padding: 6px 10px; resize: vertical; min-height: 56px; font-family: inherit; margin-top: 5px; display: none; transition: border-color 0.15s; }
+  .annotation-notes.open { display: block; }
+  .annotation-notes:focus { outline: none; border-color: var(--accent); }
+  /* Card visual states for non-Open findings */
+  .finding-card.status-accepted  { border-left: 3px solid #f59e0b; opacity: 0.85; }
+  .finding-card.status-fp        { border-left: 3px solid var(--accent); opacity: 0.75; }
+  .finding-card.status-na        { border-left: 3px solid var(--muted); opacity: 0.65; }
+  .finding-status-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .finding-status-badge.accepted  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .finding-status-badge.fp        { background: rgba(99,102,241,0.15); color: var(--accent); }
+  .finding-status-badge.na        { background: rgba(100,116,139,0.15); color: var(--muted); }
+  /* Score band label */
+  .score-band { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .score-band-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* Exec report button */
+  .exec-report-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 7px 16px; border-radius: 6px; border: 1px solid var(--accent); background: rgba(99,102,241,0.08); color: var(--accent); cursor: pointer; font-weight: 500; transition: all 0.15s; }
+  .exec-report-btn:hover { background: var(--accent); color: #fff; }
+  .exec-report-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .module-list { display: flex; flex-direction: column; gap: 6px; }
   .module-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; user-select: none; }
@@ -416,9 +493,329 @@
   .update-now-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .update-dismiss { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; flex-shrink: 0; }
   .update-dismiss:hover { color: var(--text); }
+
+  /* ─── Enterprise UI polish — v1.5 ─── */
+
+  /* ── Posture banner — Overview hero ── */
+  .posture-banner {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .posture-banner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .posture-client-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .posture-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .posture-score-section { text-align: center; flex-shrink: 0; }
+  .posture-score-value {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-family: var(--sans);
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(255,255,255,0.15);
+    display: inline-block;
+  }
+  .posture-score-value:hover { border-color: rgba(255,255,255,0.4); }
+  .posture-score-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+  }
+  /* Score breakdown tooltip */
+  .score-breakdown-popup { position:absolute;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1rem 1.25rem;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;font-size:12px; }
+  .score-breakdown-popup h4 { font-size:13px;font-weight:700;margin:0 0 10px;color:var(--text); }
+  .sbd-row { display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border); }
+  .sbd-row:last-child { border-bottom:none; }
+  .sbd-label { color:var(--muted);font-family:var(--mono); }
+  .sbd-val { font-weight:600;font-family:var(--mono); }
+  .sbd-total { margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);display:flex;justify-content:space-between;font-weight:700; }
+  .sbd-note { font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5;font-family:var(--mono); }
+  /* Elapsed timer */
+  .scan-timer { font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px; }
+  /* Severity breakdown chips in posture banner */
+  .posture-severity-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .posture-sev-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 11px;
+    padding: 4px 10px; border-radius: 5px; font-weight: 500;
+  }
+  .posture-sev-chip.critical { background: rgba(239,68,68,0.12); color: var(--danger); border: 1px solid rgba(239,68,68,0.25); }
+  .posture-sev-chip.high    { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.25); }
+  .posture-sev-chip.medium  { background: rgba(29,117,232,0.12); color: var(--accent); border: 1px solid rgba(29,117,232,0.25); }
+  .posture-sev-chip.low     { background: rgba(16,185,129,0.12); color: var(--success); border: 1px solid rgba(16,185,129,0.25); }
+  .posture-sev-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .posture-sev-chip.critical .posture-sev-dot { background: var(--danger); }
+  .posture-sev-chip.high    .posture-sev-dot { background: var(--warning); }
+  .posture-sev-chip.medium  .posture-sev-dot { background: var(--accent); }
+  .posture-sev-chip.low     .posture-sev-dot { background: var(--success); }
+
+  /* ── Finding cards — severity as card-level left border ── */
+  .finding-severity { display: none !important; }
+  .finding-card:has(.finding-severity.critical) { border-left: 3px solid var(--danger) !important; }
+  .finding-card:has(.finding-severity.high)     { border-left: 3px solid var(--warning) !important; }
+  .finding-card:has(.finding-severity.medium)   { border-left: 3px solid var(--accent) !important; }
+  .finding-card:has(.finding-severity.low)      { border-left: 3px solid var(--success) !important; }
+  .finding-severity-reason { font-size: 11.5px; color: var(--muted); margin: 4px 0 6px; line-height: 1.5; font-style: italic; border-left: 2px solid var(--border2); padding-left: 8px; }
+
+  /* ── Framework badges — larger, more readable ── */
+  .fw-badge { font-size: 10px !important; padding: 3px 8px !important; border-radius: 4px !important; letter-spacing: 0.01em; }
+
+  /* ── Tabs — more substantial, stronger active state ── */
+  .tab { padding: 15px 20px !important; }
+  .tab.active { background: rgba(29,117,232,0.06); }
+
+  /* ── Section titles — stronger hierarchy ── */
+  .section-title { font-size: 15px !important; letter-spacing: -0.01em; }
+
+  /* ── Metric cards — refined corners ── */
+  .metric-card { border-radius: 12px !important; }
+
+  /* ── Sidebar info banners — professional SVG-icon style ── */
+  .sidebar-notice {
+    margin: 0 1.25rem;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .sidebar-notice.success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); color: var(--success); }
+  .sidebar-notice.warn    { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); color: #d97706; }
+  .sidebar-notice svg { flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Header — stronger top accent ── */
+  header { border-top-width: 3px !important; }
+
+  /* ── Scrollbar refinement ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* ═══════════════════════════════════════════════════
+     GLASS-FRAME TREATMENT — v1.5
+     Strategy: gradient light sources on the body give
+     glass surfaces something to catch. Blur only on
+     chrome (header, sidebar, tabs). Data surfaces stay
+     solid — readability over aesthetics.
+  ════════════════════════════════════════════════════ */
+
+  /* Body — two subtle radial light sources */
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 70% 50% at 15% -5%,  rgba(59,130,246,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse 55% 40% at 88% 105%, rgba(99,102,241,0.08) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+
+  /* Header glass — content scrolls beneath it */
+  header {
+    background: rgba(10,11,15,0.82) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-top-width: 2px !important;
+  }
+
+  /* Sidebar glass */
+  aside {
+    background: rgba(12,13,18,0.78) !important;
+    backdrop-filter: blur(16px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  }
+
+  /* Tab bar glass — sits above scrollable content */
+  .tabs {
+    background: rgba(10,11,15,0.88) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  /* Sessions panel glass */
+  .sessions-panel {
+    background: rgba(10,11,15,0.92) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+  }
+
+  /* Posture banner — the showpiece glass card */
+  .posture-banner {
+    background: rgba(255,255,255,0.04) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  }
+  .posture-banner::before {
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent)) !important;
+    opacity: 0.9;
+  }
+
+  /* Score number — the hero moment. Glow matches its colour. */
+  .posture-score-value {
+    filter: drop-shadow(0 0 28px currentColor);
+    opacity: 0.95;
+  }
+
+  /* Simulator panels */
+  .sim-panel {
+    background: rgba(255,255,255,0.03) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+  }
+  .sim-score-banner {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Run button — stronger gradient + glow presence */
+  .run-btn {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+    box-shadow: 0 0 24px rgba(59,130,246,0.28), 0 2px 8px rgba(0,0,0,0.5) !important;
+  }
+  .run-btn:hover {
+    opacity: 1 !important;
+    box-shadow: 0 0 40px rgba(59,130,246,0.45), 0 4px 20px rgba(0,0,0,0.6) !important;
+  }
+
+  /* Logo icon — accent glow */
+  .logo-icon {
+    background: linear-gradient(140deg, var(--accent), var(--accent2)) !important;
+    box-shadow: 0 0 18px rgba(59,130,246,0.45) !important;
+  }
+
+  /* Status dot online — subtle pulse glow */
+  .status-dot.online {
+    box-shadow: 0 0 7px var(--success) !important;
+  }
+
+  /* ── Permissions modal ── */
+  .perm-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px); }
+  .perm-modal { background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:2rem;max-width:540px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  .perm-modal h2 { font-size:17px;font-weight:700;margin:0 0 6px;color:var(--fg); }
+  .perm-modal .perm-sub { font-size:12px;color:var(--muted);margin-bottom:1.25rem;font-family:var(--mono); }
+  .perm-item { display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border); }
+  .perm-item:last-of-type { border-bottom:none; }
+  .perm-icon { font-size:18px;flex-shrink:0;margin-top:1px; }
+  .perm-item-text strong { display:block;font-size:13px;font-weight:600;color:var(--fg);margin-bottom:2px; }
+  .perm-item-text span { font-size:11px;color:var(--muted);line-height:1.5; }
+  .perm-ro-badge { display:inline-block;background:rgba(34,197,94,0.12);border:1px solid #22c55e;color:#22c55e;font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:10px;margin-bottom:1rem;font-weight:600; }
+  .perm-footer { display:flex;justify-content:flex-end;gap:10px;margin-top:1.25rem; }
+  .perm-cancel { padding:8px 18px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:13px;cursor:pointer; }
+  .perm-proceed { padding:8px 22px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer; }
+
+  /* ── Module progress checklist ── */
+  .mod-progress-panel { background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1rem; }
+  .mod-progress-title { font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px; }
+  .mod-progress-title .spin { animation:spin 1s linear infinite;display:inline-block; }
+  .mod-row { display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border); }
+  .mod-row:last-child { border-bottom:none; }
+  .mod-row-icon { width:18px;text-align:center;font-size:14px;flex-shrink:0; }
+  .mod-row-name { flex:1;font-family:var(--mono);color:var(--fg); }
+  .mod-row-status { font-size:10px;font-family:var(--mono);color:var(--muted); }
+  .mod-row.done .mod-row-name { color:var(--success); }
+  .mod-row.running .mod-row-name { color:var(--accent); }
+  .mod-row.failed .mod-row-name { color:var(--error); }
+
+  /* ── Save toast ── */
+  #saveToast { position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;font-size:12px;font-family:var(--mono);padding:8px 16px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.4);opacity:0;transform:translateY(8px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;z-index:9998; }
+  #saveToast.show { opacity:1;transform:translateY(0); }
+
+  /* ── Logo upload ── */
+  .logo-upload-area { border:2px dashed var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:border-color 0.15s;position:relative; }
+  .logo-upload-area:hover { border-color:var(--accent); }
+  .logo-upload-area input[type=file] { position:absolute;inset:0;opacity:0;cursor:pointer; }
+  .logo-preview { max-height:48px;max-width:100%;border-radius:4px;display:block;margin:0 auto 4px; }
+  .logo-upload-hint { font-size:10px;color:var(--muted);font-family:var(--mono); }
+
+  /* Progress bar gradient refresh */
+  .prog-fill {
+    background: linear-gradient(90deg, var(--accent), var(--accent2)) !important;
+  }
+
+  /* Sim framework compliance bar */
+  .sim-fw-bar {
+    background: rgba(255,255,255,0.03) !important;
+    border-color: rgba(255,255,255,0.09) !important;
+  }
+
+  /* ── Framework filter bar (Findings tab) ── */
+  .fw-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .fw-filter-label { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .fw-filter-btn { font-family: var(--mono); font-size: 10px; padding: 4px 12px; border-radius: 12px; border: 1px solid var(--border2); background: var(--bg3); color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .fw-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .fw-filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ── Simulator framework compliance meters ── */
+  .sim-fw-bar { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 18px; }
+  .sim-fw-header { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+  .sim-fw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .sim-fw-label { font-family: var(--mono); font-size: 10px; display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .sim-fw-label span:first-child { color: var(--text); }
+  .sim-fw-track { background: var(--bg3); border-radius: 3px; height: 5px; overflow: hidden; border: 1px solid var(--border); }
+  .sim-fw-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease, background 0.4s; }
+  .sim-fw-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
+
+<!-- Save toast -->
+<div id="saveToast">✓ Saved</div>
+
+<!-- Permissions explainer modal (injected by JS when scan starts) -->
+<div id="permOverlay" class="perm-overlay" style="display:none;">
+  <div class="perm-modal">
+    <h2>🔒 What this scan accesses</h2>
+    <p class="perm-sub">Read-only · No changes are made to your tenant</p>
+    <span class="perm-ro-badge">✓ READ ONLY — no data is modified</span>
+    <div class="perm-item"><div class="perm-icon">👤</div><div class="perm-item-text"><strong>Identity &amp; Conditional Access</strong><span>Reads sign-in policies, CA rules, MFA registration — via Microsoft Graph (read permissions only)</span></div></div>
+    <div class="perm-item"><div class="perm-icon">🛡️</div><div class="perm-item-text"><strong>Defender &amp; Security Centre</strong><span>Reads Secure Score, alert policies, anti-phishing &amp; anti-malware settings</span></div></div>
+    <div class="perm-item"><div class="perm-icon">📧</div><div class="perm-item-text"><strong>Exchange Online</strong><span>Reads mail transport rules, DKIM/DMARC config, audit settings — no emails are read</span></div></div>
+    <div class="perm-item"><div class="perm-icon">💬</div><div class="perm-item-text"><strong>Teams &amp; SharePoint</strong><span>Reads external sharing policies and guest access settings only</span></div></div>
+    <div class="perm-item"><div class="perm-icon">📱</div><div class="perm-item-text"><strong>Intune / Endpoint</strong><span>Reads device compliance policies and configuration profiles</span></div></div>
+    <div class="perm-item"><div class="perm-icon">⚙️</div><div class="perm-item-text"><strong>PowerShell modules required</strong><span>The first scan installs required modules automatically (ExchangeOnlineManagement, Microsoft.Graph, MicrosoftTeams). This takes 3–5 min on first run — subsequent scans are fast. Requires internet access.</span></div></div>
+    <div class="perm-item"><div class="perm-icon">⚠️</div><div class="perm-item-text"><strong>If a module fails mid-scan</strong><span>The scan continues — failed modules are skipped and logged. Check the Run Log tab for details. Common causes: MFA prompt timeout, Conditional Access blocking the script account, or insufficient role. Re-run the scan after resolving the issue.</span></div></div>
+    <div class="perm-footer">
+      <button class="perm-cancel" onclick="document.getElementById('permOverlay').style.display='none'">Cancel</button>
+      <button class="perm-proceed" onclick="confirmAndRunAssessment()">Understood — Run Scan</button>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="logo">
@@ -469,9 +866,13 @@
   <div class="sessions-header">
     <div>
       <h3>Saved Assessments</h3>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;">Click to load a previous result</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;">Load a result — or compare two to track improvement</div>
     </div>
     <button class="sessions-close" onclick="closeSessionsPanel()">&#x2715;</button>
+  </div>
+  <div style="padding:10px 16px;background:rgba(59,130,246,0.07);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">📊 Track improvement between assessments</span>
+    <button onclick="closeSessionsPanel(); document.getElementById('compareTab').click();" style="font-size:10px;padding:4px 10px;background:var(--accent);border:none;border-radius:5px;color:#fff;cursor:pointer;font-family:var(--mono);">Compare Sessions →</button>
   </div>
   <div class="sessions-list" id="sessionsList">
     <div class="sessions-empty">Loading saved assessments...</div>
@@ -496,6 +897,22 @@
         <label>Assessment Date</label>
         <input type="date" id="assessDate">
       </div>
+      <div class="field">
+        <label style="margin-bottom:6px;">Compliance Frameworks in Scope</label>
+        <div id="frameworkSelector" style="display:flex;flex-direction:column;gap:4px;">
+          <label class="fw-check"><input type="checkbox" value="cis"  checked> <span>CIS M365 v7.0.0</span> <span style="color:var(--muted);font-size:10px;">Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="nist" checked> <span>NIST CSF 2.0</span> <span style="color:var(--muted);font-size:10px;">US / Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="iso"  checked> <span>ISO 27001:2022</span> <span style="color:var(--muted);font-size:10px;">Global</span></label>
+          <label class="fw-check"><input type="checkbox" value="caf"  checked> <span>NCSC CAF v4.0</span> <span style="color:var(--muted);font-size:10px;">🇬🇧 UK CNI</span></label>
+        </div>
+        <div style="margin-top:5px;display:flex;gap:8px;">
+          <button onclick="setAllFrameworks(true)"  style="font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">All</button>
+          <button onclick="setAllFrameworks(false)" style="font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">None</button>
+        </div>
+        <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;padding:7px 9px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);">
+          ℹ️ Only frameworks with stable, publicly accessible reference links are listed. Cyber Essentials, SOC 2, Essential Eight and EU NIS2 are excluded as their vendor documentation URLs are subject to change — findings are still internally mapped to these frameworks where applicable.
+        </div>
+      </div>
     </div>
 
     <!-- 2. Consultant -->
@@ -513,6 +930,17 @@
         <label>Your Email</label>
         <input type="email" id="consultantEmail" placeholder="e.g. jane@example.com" value="">
       </div>
+      <div class="field">
+        <label>Company Logo <span style="color:var(--muted);font-size:10px;">(appears on reports)</span></label>
+        <div class="logo-upload-area" onclick="document.getElementById('logoFileInput').click()">
+          <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/svg+xml" style="display:none" onchange="handleLogoUpload(event)">
+          <img id="logoPreview" class="logo-preview" style="display:none;">
+          <div class="logo-upload-hint" id="logoUploadHint">Click to upload PNG / JPG / SVG</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button onclick="clearLogo()" style="font-size:10px;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;display:none;" id="logoClearBtn">Remove logo</button>
+        </div>
+      </div>
     </div>
 
     <!-- 3. Authentication (Assessment / Read) -->
@@ -527,7 +955,7 @@
 
       <!-- Interactive fields -->
       <div id="authInteractive">
-        <div class="auth-note">A browser popup will appear for each workload. Sign in with a read-access account. No setup required on the client side.</div>
+        <div class="auth-note" style="background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.3);color:var(--text);">💡 You can assess <strong>any tenant</strong> — your own or a client's. Enter the client's Tenant ID below and sign in with an account that has read access to their environment.</div>
         <div class="auth-note" style="margin-top:6px;">Minimum role required: <strong style="color:var(--text)">Global Reader</strong> covers most modules. Exchange also accepts <strong style="color:var(--text)">Exchange Administrator</strong>.</div>
         <div class="field">
           <label>Tenant ID <span class="field-optional">(optional — speeds up login)</span></label>
@@ -628,6 +1056,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Assessment Modules</div>
       <button class="select-all-btn" onclick="toggleAll()">select all</button>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;line-height:1.5;">💡 To re-run a single module after remediation, deselect all others and run again.</div>
       <div class="module-list" id="moduleList">
         <div class="module-item checked" data-module="identity" onclick="toggleModule(this)">
           <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
@@ -662,14 +1091,44 @@
       </div>
     </div>
 
-    <div style="margin: 0 1.25rem; padding: 8px 10px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; font-family: var(--mono); font-size: 10px; color: var(--success); line-height: 1.5;">
-      🔒 Assessment is read-only. No changes are made to your tenant during a scan. Remediation requires explicit approval.
+    <div class="sidebar-notice success">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Assessment is read-only. No changes are made to your tenant during a scan. Remediation requires explicit approval.
+    </div>
+
+    <div class="sidebar-notice warn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      First scan takes 5–12 min while PowerShell modules load. Subsequent scans are faster.
+    </div>
+
+    <!-- Framework versions -->
+    <div style="margin:0 1.25rem 0.75rem;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px;">Framework Versions</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text);line-height:1.8;">
+        CIS M365 Foundations v7.0<br>
+        NIST CSF 2.0<br>
+        ISO 27001:2022 (Annex A)<br>
+        NCSC CAF v4.0
+      </div>
     </div>
 
     <button class="run-btn" id="runBtn" onclick="runAssessment()">
       <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
       Run Assessment
     </button>
+
+    <!-- Progress bar -->
+    <div id="scanProgressBar" style="display:none;margin:0 1.25rem;padding:8px 0;">
+      <div id="scanProgressLabel" style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px;">Running...</div>
+      <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;border:1px solid var(--border);">
+        <div class="prog-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width 0.5s ease;"></div>
+      </div>
+    </div>
+
+    <!-- Stop Tool button -->
+    <div style="margin:0 1.25rem 1rem;text-align:center;">
+      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer;font-family:var(--mono);" title="Stops the backend Python process">⏹ Stop Tool</button>
+    </div>
 
     <!-- 6. Remediation Settings -->
     <div class="sidebar-section">
@@ -698,6 +1157,38 @@
       <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--text);">Commercial</div>
     </div>
 
+    <div class="sidebar-section">
+      <div class="sidebar-label">Scheduled Scans <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-family:var(--mono);">NEW</span></div>
+      <div style="font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+        Run weekly unattended scans using App Registration auth. Results save to the output folder automatically. Requires Tenant ID, Client ID, and Client Secret.
+      </div>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client Name (for output file)</label>
+      <input type="text" id="schedClientName" placeholder="e.g. Contoso Ltd" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Tenant ID</label>
+      <input type="text" id="schedTenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client ID</label>
+      <input type="text" id="schedClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client Secret</label>
+      <input type="password" id="schedClientSecret" placeholder="••••••••••••••••" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Frequency</label>
+      <select id="schedFrequency" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+        <option value="weekly">Weekly (every Monday 6:00 AM)</option>
+        <option value="daily">Daily (every day 6:00 AM)</option>
+        <option value="monthly">Monthly (1st of each month)</option>
+      </select>
+      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Modules to scan</label>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;" id="schedModulesWrap">
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="identity" checked> Identity</label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="security" checked> Security</label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="exchange"> Exchange</label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="sharepoint"> SharePoint</label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="teams"> Teams</label>
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="intune"> Intune</label>
+      </div>
+      <button onclick="createScheduledScan()" style="width:100%;padding:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);">&#128197; Create Scheduled Scan</button>
+      <div id="schedStatus" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11.5px;font-family:var(--mono);line-height:1.5;"></div>
+    </div>
+
   </aside>
 
   <div class="panel">
@@ -721,15 +1212,23 @@
         <p>Enter assessment details, choose your authentication method, select modules, then click Run Assessment.</p>
       </div>
       <div id="overviewResults" style="display:none;">
-        <div class="section-head" style="margin-bottom:1.5rem; align-items:flex-start;">
+        <div class="posture-banner">
           <div>
-            <div style="display:flex;align-items:center;"><div class="section-title" id="overviewClientName" style="font-size:16px;">—</div><span id="loadedBadge" class="loaded-badge" style="display:none;">&#x2713; Loaded from file</span></div>
-            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;" id="overviewDate">—</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;" id="overviewAuthMethod">—</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+              <div class="posture-client-name" id="overviewClientName">—</div>
+              <span id="loadedBadge" class="loaded-badge" style="display:none;">&#x2713; Loaded from file</span>
+            </div>
+            <div class="posture-meta" id="overviewDate">—</div>
+            <div class="posture-meta" id="overviewAuthMethod">—</div>
+            <div class="posture-severity-row" id="postureSevRow"></div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:36px;font-weight:700;" id="overallScore">—</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">overall score</div>
+          <div class="posture-score-section" style="position:relative;">
+            <div class="posture-score-value" id="overallScore" onclick="toggleScoreBreakdown(event)" title="Click to see how this score was calculated">—</div>
+            <div class="posture-score-label">Attack Path Score <span style="font-size:9px;opacity:0.5;">(click for breakdown)</span></div>
+            <div class="score-band" id="scoreBandLabel"></div>
+            <div class="score-band-sub" id="scoreBandSub"></div>
+            <div class="score-band-sub" id="scoreExcludedNote" style="color:var(--muted);margin-top:3px;font-style:italic;"></div>
+            <div id="scoreBreakdownPopup" class="score-breakdown-popup" style="display:none;position:absolute;right:0;top:110%;"></div>
           </div>
         </div>
         <div class="metrics-grid" id="metricsGrid"></div>
@@ -738,10 +1237,16 @@
 
     <!-- Findings -->
     <div class="content" id="tab-findings" style="display:none;">
-      <div class="section-head">
+      <div class="section-head" style="margin-bottom:10px;">
         <div class="section-title">Triggered Findings</div>
-        <div class="section-count" id="findingsCount">0 findings</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="section-count" id="findingsCount">0 findings</div>
+          <button class="cc-export-btn" id="exportComplianceBtn" onclick="exportComplianceCSV()" style="display:none;" title="Download compliance mapping for all triggered findings as a spreadsheet-ready CSV">
+            ⬇ Compliance Annex (CSV)
+          </button>
+        </div>
       </div>
+      <div id="fwFilterBar" class="fw-filter-bar" style="display:none;"></div>
       <div class="findings-list" id="findingsList">
         <div class="empty-state">No findings yet — run an assessment to see results.</div>
       </div>
@@ -752,6 +1257,14 @@
       <div class="section-head" style="margin-bottom:1rem;">
         <div class="section-title">Run Log</div>
         <button class="action-btn" onclick="clearLog()" style="padding:5px 12px;font-size:11px;">Clear</button>
+      </div>
+      <!-- Module progress checklist (shown during scan) -->
+      <div id="modProgressPanel" class="mod-progress-panel" style="display:none;">
+        <div class="mod-progress-title" style="justify-content:space-between;">
+          <span><span class="spin">⟳</span> Scan in progress — modules running sequentially</span>
+          <span class="scan-timer" id="scanTimer">0:00 elapsed · est. 8–12 min total</span>
+        </div>
+        <div id="modProgressList"></div>
       </div>
       <div class="log-console" id="logConsole">
         <div class="log-line info"><span class="ts">--:--:--</span><span class="msg">M365 Assessment Tool ready. Start backend.py first.</span></div>
@@ -866,6 +1379,9 @@
             <div class="sim-score-val" id="simSSDelta" style="color:var(--accent)">—</div>
           </div>
         </div>
+
+        <!-- Framework compliance meters — updates as findings are toggled -->
+        <div id="simFwCompliance" style="display:none;margin-bottom:16px;"></div>
 
         <div class="sim-layout">
           <!-- Findings panel -->
@@ -991,7 +1507,7 @@
     <!-- Report -->
     <div class="content" id="tab-report" style="display:none;">
       <!-- Document selector -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:2rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:2rem;">
 
         <!-- Assessment Report -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
@@ -1010,6 +1526,24 @@
             </button>
             <button class="action-btn" id="downloadPdfBtn" onclick="downloadReport('pdf')" disabled>
               <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Executive Summary Report -->
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1.25rem;border-top:2px solid var(--accent);">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Executive Summary</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+            Board-ready summary — score, key risks, exceptions.<br>No technical detail. 4–5 pages.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="exec-report-btn" id="downloadExecWordBtn" onclick="downloadExecReport('docx')" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Word
+            </button>
+            <button class="exec-report-btn" id="downloadExecPdfBtn" onclick="downloadExecReport('pdf')" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               PDF
             </button>
           </div>
@@ -1037,6 +1571,24 @@
           </div>
         </div>
 
+        <!-- Raw Data Export -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Raw Data Export</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.5;">
+            Download session data as JSON for SIEM ingestion,<br>GRC tools, or your own analysis.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="action-btn" id="exportJsonBtn" onclick="exportRawJson()" disabled>
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              JSON
+            </button>
+            <button class="action-btn" id="exportCsvBtn" onclick="exportFindingsCsv()" disabled>
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CSV
+            </button>
+          </div>
+        </div>
+
       </div>
       <div class="report-preview" id="reportPreview">
         <div class="empty-state" style="padding:3rem 0;">Run an assessment first, then generate your report.</div>
@@ -1046,18 +1598,757 @@
 </main>
 
 <footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
-  <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.3.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span id="footerVersion" style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.4.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
 <script>
 const BACKEND = 'http://localhost:5000';
-let assessmentData = null;
-let allSelected = false;
-let currentAuthMethod  = 'interactive';
-let currentEnvironment = 'commercial';
+let assessmentData      = null;
+let allSelected         = false;
+let currentAuthMethod   = 'interactive';
+let currentEnvironment  = 'commercial';
+let loadedSessionFile   = null;          // filename of the currently loaded session
+let findingAnnotations  = {};            // { [findingId]: { status, reason, notes } }
+let _annotationSaveTimer = null;         // debounce handle
+
+// ── Score bands ──────────────────────────────────────────────────────────────
+const SCORE_BANDS = [
+  { min: 90, label: 'Excellent',        sub: 'Strong security posture — minimal risk exposure.',           colour: '#22c55e' },
+  { min: 75, label: 'Good',             sub: 'Well-managed risk with minor gaps to address.',              colour: '#84cc16' },
+  { min: 60, label: 'Fair',             sub: 'Notable gaps present — remediation recommended.',            colour: '#f59e0b' },
+  { min: 40, label: 'Poor',             sub: 'Significant vulnerabilities — prioritise remediation.',      colour: '#f97316' },
+  { min:  0, label: 'Critical Risk',    sub: 'Immediate action required — high exposure to attack.',       colour: '#ef4444' },
+];
+function getScoreBand(score) {
+  return SCORE_BANDS.find(b => score >= b.min) || SCORE_BANDS[SCORE_BANDS.length - 1];
+}
+
+// ── Score recalculation (mirrors backend calculate_score, respects annotations) ─
+function recalculateScore(findings) {
+  const open = findings.filter(f => {
+    const ann = findingAnnotations[f.id];
+    return !ann || ann.status === 'open' || !ann.status;
+  });
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  open.forEach(f => { if (counts[f.severity] !== undefined) counts[f.severity]++; });
+  const penalty = Math.min(counts.critical * 8, 32) + Math.min(counts.high * 5, 20)
+                + Math.min(counts.medium * 3, 12) + Math.min(counts.low * 1, 4);
+  return Math.max(10, 100 - penalty);
+}
+
+// ── Annotation persistence ───────────────────────────────────────────────────
+// ── Raw data export ──────────────────────────────────────────
+function exportRawJson() {
+  if (!assessmentData) return;
+  const payload = {
+    ...assessmentData,
+    annotations: findingAnnotations,
+    adjustedScore: recalculateScore(assessmentData.findings || []),
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const org  = (assessmentData.clientName || 'Assessment').replace(/\s+/g, '_');
+  const date = assessmentData.assessDate || new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `M365_Assessment_${org}_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportFindingsCsv() {
+  if (!assessmentData?.findings) return;
+  const headers = ['ID','Title','Severity','Module','Description','Recommendation','Status','Reason','Frameworks'];
+  const rows = assessmentData.findings.map(f => {
+    const ann = findingAnnotations[f.id] || {};
+    const fws = f.frameworks ? Object.keys(f.frameworks).filter(k => f.frameworks[k]).join('; ') : '';
+    return [f.id, f.title, f.severity, f.module, f.description, f.recommendation,
+            ann.status || 'open', ann.reason || '', fws]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
+  const csv  = [headers.join(','), ...rows].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const org  = (assessmentData.clientName || 'Assessment').replace(/\s+/g, '_');
+  a.href = url;
+  a.download = `M365_Findings_${org}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Score breakdown popup ────────────────────────────────────
+function toggleScoreBreakdown(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('scoreBreakdownPopup');
+  if (!popup) return;
+  if (popup.style.display !== 'none') { popup.style.display = 'none'; return; }
+  if (!assessmentData?.findings) return;
+
+  const findings = assessmentData.findings;
+  const open = findings.filter(f => {
+    const ann = findingAnnotations[f.id];
+    return !ann || !ann.status || ann.status === 'open';
+  });
+  const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+  open.forEach(f => { if (counts[f.severity] !== undefined) counts[f.severity]++; });
+
+  const cPen = Math.min(counts.critical * 8, 32);
+  const hPen = Math.min(counts.high    * 5, 20);
+  const mPen = Math.min(counts.medium  * 3, 12);
+  const lPen = Math.min(counts.low     * 1,  4);
+  const totalPen = cPen + hPen + mPen + lPen;
+  const score = Math.max(10, 100 - totalPen);
+  const excluded = findings.length - open.length;
+
+  popup.innerHTML = `
+    <h4>How this score is calculated</h4>
+    <div class="sbd-row"><span class="sbd-label">Base score</span><span class="sbd-val">100</span></div>
+    ${counts.critical > 0 ? `<div class="sbd-row"><span class="sbd-label" style="color:#ef4444;">Critical ×${counts.critical} (−8 each, max −32)</span><span class="sbd-val" style="color:#ef4444;">−${cPen}</span></div>` : ''}
+    ${counts.high     > 0 ? `<div class="sbd-row"><span class="sbd-label" style="color:#f97316;">High ×${counts.high} (−5 each, max −20)</span><span class="sbd-val" style="color:#f97316;">−${hPen}</span></div>` : ''}
+    ${counts.medium   > 0 ? `<div class="sbd-row"><span class="sbd-label" style="color:#f59e0b;">Medium ×${counts.medium} (−3 each, max −12)</span><span class="sbd-val" style="color:#f59e0b;">−${mPen}</span></div>` : ''}
+    ${counts.low      > 0 ? `<div class="sbd-row"><span class="sbd-label" style="color:#84cc16;">Low ×${counts.low} (−1 each, max −4)</span><span class="sbd-val" style="color:#84cc16;">−${lPen}</span></div>` : ''}
+    <div class="sbd-total"><span>Final score</span><span>${score}/100</span></div>
+    ${excluded > 0 ? `<div class="sbd-note">⚠ ${excluded} finding${excluded > 1 ? 's' : ''} excluded (Accepted Risk / FP / N/A) — not counted in penalties.</div>` : ''}
+    <div class="sbd-note">Penalties are capped per severity band to prevent a single category from dominating the score. Minimum score is 10.</div>
+  `;
+  popup.style.display = 'block';
+}
+// Close score popup when clicking elsewhere
+document.addEventListener('click', () => {
+  const p = document.getElementById('scoreBreakdownPopup');
+  if (p) p.style.display = 'none';
+});
+
+// ── Elapsed timer ────────────────────────────────────────────
+let _scanStartTime = null;
+let _timerInterval = null;
+function startScanTimer() {
+  _scanStartTime = Date.now();
+  const el = document.getElementById('scanTimer');
+  _timerInterval = setInterval(() => {
+    if (!el) return;
+    const sec = Math.floor((Date.now() - _scanStartTime) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = String(sec % 60).padStart(2, '0');
+    el.textContent = `${m}:${s} elapsed · est. 8–12 min total`;
+  }, 1000);
+}
+function stopScanTimer() {
+  clearInterval(_timerInterval);
+  _timerInterval = null;
+  const el = document.getElementById('scanTimer');
+  if (el && _scanStartTime) {
+    const sec = Math.floor((Date.now() - _scanStartTime) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = String(sec % 60).padStart(2, '0');
+    el.textContent = `Completed in ${m}:${s}`;
+  }
+}
+
+// ── Save toast ───────────────────────────────────────────────
+let _toastTimer = null;
+function showSaveToast() {
+  const t = document.getElementById('saveToast');
+  if (!t) return;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── Logo upload ──────────────────────────────────────────────
+let consultantLogoBase64 = null;
+function handleLogoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    consultantLogoBase64 = e.target.result; // data URL
+    const img = document.getElementById('logoPreview');
+    const hint = document.getElementById('logoUploadHint');
+    const clearBtn = document.getElementById('logoClearBtn');
+    img.src = consultantLogoBase64;
+    img.style.display = 'block';
+    hint.style.display = 'none';
+    clearBtn.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+function clearLogo() {
+  consultantLogoBase64 = null;
+  document.getElementById('logoPreview').style.display = 'none';
+  document.getElementById('logoUploadHint').style.display = 'block';
+  document.getElementById('logoClearBtn').style.display = 'none';
+  document.getElementById('logoFileInput').value = '';
+}
+
+async function createScheduledScan() {
+  const clientName   = document.getElementById('schedClientName').value.trim();
+  const tenantId     = document.getElementById('schedTenantId').value.trim();
+  const clientId     = document.getElementById('schedClientId').value.trim();
+  const clientSecret = document.getElementById('schedClientSecret').value.trim();
+  const frequency    = document.getElementById('schedFrequency').value;
+  const modules      = [...document.querySelectorAll('#schedModulesWrap input:checked')].map(cb => cb.value);
+  const statusEl     = document.getElementById('schedStatus');
+
+  if (!clientName || !tenantId || !clientId || !clientSecret) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(239,68,68,0.1)';
+    statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+    statusEl.style.color = '#f87171';
+    statusEl.textContent = '✗ Please fill in Client Name, Tenant ID, Client ID, and Client Secret.';
+    return;
+  }
+  if (modules.length === 0) {
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(239,68,68,0.1)';
+    statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+    statusEl.style.color = '#f87171';
+    statusEl.textContent = '✗ Select at least one module to scan.';
+    return;
+  }
+
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(99,102,241,0.08)';
+  statusEl.style.border = '1px solid rgba(99,102,241,0.3)';
+  statusEl.style.color = '#818cf8';
+  statusEl.textContent = '⏳ Creating scheduled task…';
+
+  try {
+    const resp = await fetch('http://localhost:5000/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientName, tenantId, clientId, clientSecret, frequency, modules })
+    });
+    const data = await resp.json();
+    if (resp.ok && data.success) {
+      statusEl.style.background = 'rgba(16,185,129,0.08)';
+      statusEl.style.border = '1px solid rgba(16,185,129,0.3)';
+      statusEl.style.color = 'var(--success)';
+      statusEl.innerHTML = `✓ Scheduled task created.<br>Task: <b>${data.taskName}</b><br>Next run: ${data.nextRun}<br>Results saved to: output\\`;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch (err) {
+    statusEl.style.background = 'rgba(239,68,68,0.1)';
+    statusEl.style.border = '1px solid rgba(239,68,68,0.3)';
+    statusEl.style.color = '#f87171';
+    statusEl.textContent = '✗ ' + err.message;
+  }
+}
+
+function saveAnnotations() {
+  if (!loadedSessionFile) return;
+  clearTimeout(_annotationSaveTimer);
+  _annotationSaveTimer = setTimeout(async () => {
+    const score = assessmentData?.findings ? recalculateScore(assessmentData.findings) : null;
+    try {
+      await fetch(`${BACKEND}/sessions/${loadedSessionFile}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ annotations: findingAnnotations, ...(score !== null && { adjustedScore: score }) }),
+      });
+      showSaveToast();
+    } catch (e) { console.warn('Annotation save failed:', e); }
+  }, 800);
+}
+
+function getAnnotation(findingId) {
+  return findingAnnotations[findingId] || { status: 'open', reason: '', notes: '' };
+}
+
+function setAnnotation(findingId, patch) {
+  findingAnnotations[findingId] = { ...getAnnotation(findingId), ...patch };
+  saveAnnotations();
+  refreshScoreDisplay();
+}
+
+function refreshScoreDisplay() {
+  if (!assessmentData?.findings) return;
+  const adj = recalculateScore(assessmentData.findings);
+  const el  = document.getElementById('overallScore');
+  if (!el) return;
+  const band = getScoreBand(adj);
+  el.textContent = `${adj}/100`;
+  el.style.color = band.colour;
+  const bandEl = document.getElementById('scoreBandLabel');
+  if (bandEl) { bandEl.textContent = band.label; bandEl.style.color = band.colour; }
+  const subEl = document.getElementById('scoreBandSub');
+  if (subEl) subEl.textContent = band.sub;
+  // Update excluded count
+  const excluded = (assessmentData.findings || []).filter(f => {
+    const s = findingAnnotations[f.id]?.status;
+    return s && s !== 'open';
+  }).length;
+  const exEl = document.getElementById('scoreExcludedNote');
+  if (exEl) exEl.textContent = excluded > 0 ? `${excluded} finding${excluded > 1 ? 's' : ''} excluded (accepted/FP/N/A)` : '';
+}
 
 document.getElementById('assessDate').value = new Date().toISOString().split('T')[0];
+
+// ── Framework helpers ────────────────────────────────────────
+const FW_LABELS = {
+  cis:  'CIS M365 v7.0', nist: 'NIST CSF 2.0', iso: 'ISO 27001:2022', caf: 'NCSC CAF v4.0'
+};
+
+// CIS M365 Foundations Benchmark v7.0.0 — control ID → PDF page number (from bookmarks)
+const CIS_PAGE_MAP = {
+  '1.1.2':           25,
+  '1.1.3':           29,
+  '2.1.6':          100,
+  '2.1.7':          103,
+  '2.1.8':          109,
+  '2.1.9':          113,
+  '2.1.10':         117,
+  '3.1.1':          165,
+  '4.1':            185,
+  '5.1.2.2':        198,
+  '5.1.4.6':        236,
+  '5.1.5.1':        240,
+  '5.1.5.4':        251,
+  '5.1.5.6':        261,
+  '5.1.6.2':        270,
+  '5.2.2.2':        287,
+  '5.2.2.3':        291,
+  '5.2.2.6':        303,
+  '5.2.3.1':        349,
+  '5.2.3.5':        364,
+  '5.3.1':          395,
+  '6.1.2':          420,
+  '6.2.1':          431,
+  '7.2.1':          464,
+  '7.2.4':          472,
+  '7.2.6':          477,
+  '7.2.9':          488,
+  '8.2.2':          513,
+  '8.2.3':          517,
+  '8.4.1':          527,
+  '8.5.1':          530,
+};
+
+// ISO 27001:2022 Annex A — control ID → isms.online per-control URL (all 93 controls)
+const ISO_CONTROL_MAP = {
+  'A.5.1':  'https://www.isms.online/iso-27001/annex-a-2022/5-1-information-security-policies-2022/',
+  'A.5.2':  'https://www.isms.online/iso-27001/annex-a-2022/5-2-information-security-roles-responsibilities-2022/',
+  'A.5.3':  'https://www.isms.online/iso-27001/annex-a-2022/5-3-segregation-of-duties-2022/',
+  'A.5.4':  'https://www.isms.online/iso-27001/annex-a-2022/5-4-management-responsibilities-2022/',
+  'A.5.5':  'https://www.isms.online/iso-27001/annex-a-2022/5-5-contact-with-government-authorities-2022/',
+  'A.5.6':  'https://www.isms.online/iso-27001/annex-a-2022/5-6-contact-with-special-interest-groups-2022/',
+  'A.5.7':  'https://www.isms.online/iso-27001/annex-a-2022/5-7-threat-intelligence-2022/',
+  'A.5.8':  'https://www.isms.online/iso-27001/annex-a-2022/5-8-information-security-in-project-management-2022/',
+  'A.5.9':  'https://www.isms.online/iso-27001/annex-a-2022/5-9-inventory-of-information-other-associated-assets-2022/',
+  'A.5.10': 'https://www.isms.online/iso-27001/annex-a-2022/5-10-acceptable-use-of-information-other-associated-assets-2022/',
+  'A.5.11': 'https://www.isms.online/iso-27001/annex-a-2022/5-11-return-of-assets-2022/',
+  'A.5.12': 'https://www.isms.online/iso-27001/annex-a-2022/5-12-classification-of-information-2022/',
+  'A.5.13': 'https://www.isms.online/iso-27001/annex-a-2022/5-13-labelling-of-information-2022/',
+  'A.5.14': 'https://www.isms.online/iso-27001/annex-a-2022/5-14-information-transfer-2022/',
+  'A.5.15': 'https://www.isms.online/iso-27001/annex-a-2022/5-15-access-control-2022/',
+  'A.5.16': 'https://www.isms.online/iso-27001/annex-a-2022/5-16-identity-management-2022/',
+  'A.5.17': 'https://www.isms.online/iso-27001/annex-a-2022/5-17-authentication-information-2022/',
+  'A.5.18': 'https://www.isms.online/iso-27001/annex-a-2022/5-18-access-rights-2022/',
+  'A.5.19': 'https://www.isms.online/iso-27001/annex-a-2022/5-19-information-security-supplier-relationships-2022/',
+  'A.5.20': 'https://www.isms.online/iso-27001/annex-a-2022/5-20-information-security-within-supplier-agreements-2022/',
+  'A.5.21': 'https://www.isms.online/iso-27001/annex-a-2022/5-21-managing-information-security-ict-supply-chain-2022/',
+  'A.5.22': 'https://www.isms.online/iso-27001/annex-a-2022/5-22-monitoring-review-change-management-of-supplier-services-2022/',
+  'A.5.23': 'https://www.isms.online/iso-27001/annex-a-2022/5-23-information-security-use-of-cloud-services-2022/',
+  'A.5.24': 'https://www.isms.online/iso-27001/annex-a-2022/5-24-incident-management-planning-and-preparation-2022/',
+  'A.5.25': 'https://www.isms.online/iso-27001/annex-a-2022/5-25-assessment-decision-information-security-events-2022/',
+  'A.5.26': 'https://www.isms.online/iso-27001/annex-a-2022/5-26-response-to-information-security-incidents-2022/',
+  'A.5.27': 'https://www.isms.online/iso-27001/annex-a-2022/5-27-learning-from-information-security-incidents-2022/',
+  'A.5.28': 'https://www.isms.online/iso-27001/annex-a-2022/5-28-collection-of-evidence-2022/',
+  'A.5.29': 'https://www.isms.online/iso-27001/annex-a-2022/5-29-information-security-during-disruption-2022/',
+  'A.5.30': 'https://www.isms.online/iso-27001/annex-a-2022/5-30-readiness-for-business-continuity-2022/',
+  'A.5.31': 'https://www.isms.online/iso-27001/annex-a-2022/5-31-legal-statutory-regulatory-contractual-requirements-2022/',
+  'A.5.32': 'https://www.isms.online/iso-27001/annex-a-2022/5-32-intellectual-property-rights-2022/',
+  'A.5.33': 'https://www.isms.online/iso-27001/annex-a-2022/5-33-protection-of-records-2022/',
+  'A.5.34': 'https://www.isms.online/iso-27001/annex-a-2022/5-34-privacy-and-protection-of-pii-2022/',
+  'A.5.35': 'https://www.isms.online/iso-27001/annex-a-2022/5-35-independent-review-of-information-security-2022/',
+  'A.5.36': 'https://www.isms.online/iso-27001/annex-a-2022/5-36-compliance-policies-rules-standards-information-security-2022/',
+  'A.5.37': 'https://www.isms.online/iso-27001/annex-a-2022/5-37-documented-operating-procedures-2022/',
+  'A.6.1':  'https://www.isms.online/iso-27001/annex-a-2022/6-1-screening-2022/',
+  'A.6.2':  'https://www.isms.online/iso-27001/annex-a-2022/6-2-terms-and-conditions-of-employment-2022/',
+  'A.6.3':  'https://www.isms.online/iso-27001/annex-a-2022/6-3-information-security-awareness-education-training-2022/',
+  'A.6.4':  'https://www.isms.online/iso-27001/annex-a-2022/6-4-disciplinary-process-2022/',
+  'A.6.5':  'https://www.isms.online/iso-27001/annex-a-2022/6-5-responsibilities-after-termination-change-of-employment-2022/',
+  'A.6.6':  'https://www.isms.online/iso-27001/annex-a-2022/6-6-confidentiality-or-non-disclosure-agreements-2022/',
+  'A.6.7':  'https://www.isms.online/iso-27001/annex-a-2022/6-7-remote-working-2022/',
+  'A.6.8':  'https://www.isms.online/iso-27001/annex-a-2022/6-8-information-security-event-reporting-2022/',
+  'A.7.1':  'https://www.isms.online/iso-27001/annex-a-2022/7-1-physical-security-perimeters-2022/',
+  'A.7.2':  'https://www.isms.online/iso-27001/annex-a-2022/7-2-physical-entry-2022/',
+  'A.7.3':  'https://www.isms.online/iso-27001/annex-a-2022/7-3-securing-offices-rooms-facilities-2022/',
+  'A.7.4':  'https://www.isms.online/iso-27001/annex-a-2022/7-4-physical-security-monitoring-2022/',
+  'A.7.5':  'https://www.isms.online/iso-27001/annex-a-2022/7-5-protecting-against-physical-environmental-threats-2022/',
+  'A.7.6':  'https://www.isms.online/iso-27001/annex-a-2022/7-6-working-in-secure-areas-2022/',
+  'A.7.7':  'https://www.isms.online/iso-27001/annex-a-2022/7-7-clear-desk-clear-screen-2022/',
+  'A.7.8':  'https://www.isms.online/iso-27001/annex-a-2022/7-8-equipment-siting-protection-2022/',
+  'A.7.9':  'https://www.isms.online/iso-27001/annex-a-2022/7-9-security-of-assets-off-premises-2022/',
+  'A.7.10': 'https://www.isms.online/iso-27001/annex-a-2022/7-10-storage-media-2022/',
+  'A.7.11': 'https://www.isms.online/iso-27001/annex-a-2022/7-11-supporting-utilities-2022/',
+  'A.7.12': 'https://www.isms.online/iso-27001/annex-a-2022/7-12-cabling-security-2022/',
+  'A.7.13': 'https://www.isms.online/iso-27001/annex-a-2022/7-13-equipment-maintenance-2022/',
+  'A.7.14': 'https://www.isms.online/iso-27001/annex-a-2022/7-14-secure-disposal-or-re-use-of-equipment-2022/',
+  'A.8.1':  'https://www.isms.online/iso-27001/annex-a-2022/8-1-user-endpoint-devices-2022/',
+  'A.8.2':  'https://www.isms.online/iso-27001/annex-a-2022/8-2-use-of-privileged-access-rights-2022/',
+  'A.8.3':  'https://www.isms.online/iso-27001/annex-a-2022/8-3-information-access-restriction-2022/',
+  'A.8.4':  'https://www.isms.online/iso-27001/annex-a-2022/8-4-access-to-source-code-2022/',
+  'A.8.5':  'https://www.isms.online/iso-27001/annex-a-2022/8-5-secure-authentication-2022/',
+  'A.8.6':  'https://www.isms.online/iso-27001/annex-a-2022/8-6-capacity-management-2022/',
+  'A.8.7':  'https://www.isms.online/iso-27001/annex-a-2022/8-7-protection-against-malware-2022/',
+  'A.8.8':  'https://www.isms.online/iso-27001/annex-a-2022/8-8-management-of-technical-vulnerabilities-2022/',
+  'A.8.9':  'https://www.isms.online/iso-27001/annex-a-2022/8-9-configuration-management-2022/',
+  'A.8.10': 'https://www.isms.online/iso-27001/annex-a-2022/8-10-information-deletion-2022/',
+  'A.8.11': 'https://www.isms.online/iso-27001/annex-a-2022/8-11-data-masking-2022/',
+  'A.8.12': 'https://www.isms.online/iso-27001/annex-a-2022/8-12-data-leakage-prevention-2022/',
+  'A.8.13': 'https://www.isms.online/iso-27001/annex-a-2022/8-13-information-backup-2022/',
+  'A.8.14': 'https://www.isms.online/iso-27001/annex-a-2022/8-14-redundancy-of-information-processing-facilities-2022/',
+  'A.8.15': 'https://www.isms.online/iso-27001/annex-a-2022/8-15-logging-2022/',
+  'A.8.16': 'https://www.isms.online/iso-27001/annex-a-2022/8-16-monitoring-activities-2022/',
+  'A.8.17': 'https://www.isms.online/iso-27001/annex-a-2022/8-17-clock-synchronisation-2022/',
+  'A.8.18': 'https://www.isms.online/iso-27001/annex-a-2022/8-18-use-of-privileged-utility-programs-2022/',
+  'A.8.19': 'https://www.isms.online/iso-27001/annex-a-2022/8-19-installation-software-on-operational-systems-2022/',
+  'A.8.20': 'https://www.isms.online/iso-27001/annex-a-2022/8-20-network-security-2022/',
+  'A.8.21': 'https://www.isms.online/iso-27001/annex-a-2022/8-21-security-of-network-services-2022/',
+  'A.8.22': 'https://www.isms.online/iso-27001/annex-a-2022/8-22-segregation-of-networks-2022/',
+  'A.8.23': 'https://www.isms.online/iso-27001/annex-a-2022/8-23-web-filtering-2022/',
+  'A.8.24': 'https://www.isms.online/iso-27001/annex-a-2022/8-24-use-of-cryptography-2022/',
+  'A.8.25': 'https://www.isms.online/iso-27001/annex-a-2022/8-25-secure-development-life-cycle-2022/',
+  'A.8.26': 'https://www.isms.online/iso-27001/annex-a-2022/8-26-application-security-requirements-2022/',
+  'A.8.27': 'https://www.isms.online/iso-27001/annex-a-2022/8-27-secure-system-architecture-engineering-principles-2022/',
+  'A.8.28': 'https://www.isms.online/iso-27001/annex-a-2022/8-28-secure-coding-2022/',
+  'A.8.29': 'https://www.isms.online/iso-27001/annex-a-2022/8-29-security-testing-in-development-acceptance-2022/',
+  'A.8.30': 'https://www.isms.online/iso-27001/annex-a-2022/8-30-outsourced-development-2022/',
+  'A.8.31': 'https://www.isms.online/iso-27001/annex-a-2022/8-31-separation-of-development-test-production-environments-2022/',
+  'A.8.32': 'https://www.isms.online/iso-27001/annex-a-2022/8-32-change-management-2022/',
+  'A.8.33': 'https://www.isms.online/iso-27001/annex-a-2022/8-33-test-information-2022/',
+  'A.8.34': 'https://www.isms.online/iso-27001/annex-a-2022/8-34-protection-information-systems-during-audit-testing-2022/',
+};
+
+// Framework reference documentation URLs.
+// For NIST and frameworks with per-control URLs, getFwRefUrl() generates them dynamically.
+// For others, these are the authoritative guidance landing pages.
+// Fallback base URLs (used only when per-control lookup returns nothing)
+const FW_DOCS_BASE = {
+  iso: 'https://www.isms.online/iso-27001/annex-a/',
+};
+// CAF principles (NCSC) — verified working URLs
+const FW_DOCS_CONTROL = {
+  'caf:A2':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-a-managing-security-risk/principle-a2-risk-management',
+  'caf:B2':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-b/principle-b2-identity-and-access-control',
+  'caf:B2, A2': 'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-b/principle-b2-identity-and-access-control',
+  'caf:B3':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-b/principle-b3-data-security',
+  'caf:B2, B3': 'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-b/principle-b2-identity-and-access-control',
+  'caf:B4':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-b/principle-b4-system-security',
+  'caf:C1':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-c-detecting-cyber-security-events/principle-c1-security-monitoring',
+  'caf:C1, C2': 'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-c-detecting-cyber-security-events/principle-c1-security-monitoring',
+  'caf:C2':     'https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-c-detecting-cyber-security-events/principle-c2-threat-hunting',
+};
+
+function getFwRefUrl(fwKey, fw) {
+  const controlId = fw.id || fw.pillar || '';
+  // CIS M365: local PDF opened at the exact page for this control
+  if (fwKey === 'cis' && controlId) {
+    const primary = controlId.split('/')[0].trim();
+    const page = CIS_PAGE_MAP[primary];
+    const base = 'http://localhost:5000/docs/cis-m365-benchmark';
+    return page ? `${base}#page=${page}` : base;
+  }
+  // NIST CSF 2.0: per-control csf.tools page
+  if (fwKey === 'nist' && controlId) {
+    const parts = controlId.split(',')[0].trim().toLowerCase();
+    const seg = parts.split('.');
+    if (seg.length >= 2) {
+      const fn = seg[0];
+      const cat = `${seg[0]}.${seg[1].split('-')[0]}`;
+      return `https://csf.tools/reference/nist-cybersecurity-framework/v2-0/${fn}/${cat}/${parts}/`;
+    }
+  }
+  // ISO 27001: per-control isms.online page
+  if (fwKey === 'iso' && controlId) {
+    const primary = controlId.split(',')[0].trim();
+    return ISO_CONTROL_MAP[primary] || 'https://www.isms.online/iso-27001/annex-a/';
+  }
+  // CAF: per-principle NCSC page (verified working)
+  if (fwKey === 'caf') {
+    const specific = FW_DOCS_CONTROL[`caf:${controlId}`];
+    return specific || null;
+  }
+  // CE, E8, NIS2, SOC2: no reliable per-control links — omit ↗ icon
+  return null;
+}
+function getActiveFrameworks() {
+  return [...document.querySelectorAll('#frameworkSelector input[type=checkbox]:checked')]
+    .map(c => c.value);
+}
+function setAllFrameworks(checked) {
+  document.querySelectorAll('#frameworkSelector input[type=checkbox]')
+    .forEach(c => c.checked = checked);
+}
+function buildFwBadges(frameworks) {
+  const active = getActiveFrameworks();
+  if (!frameworks || active.length === 0) return '';
+  return '<div class="fw-badges">' +
+    active.map(k => {
+      const fw = frameworks[k];
+      if (!fw) return '';
+      const isE5 = fw.profile && fw.profile.includes('E5');
+      const tip = fw.id + (fw.profile ? ' · ' + fw.profile : '') + '\n' + (fw.title || '');
+      return `<span class="fw-badge${isE5?' fw-e5':''}" title="${tip}">${FW_LABELS[k] || k}${fw.id ? ' · '+fw.id : ''}</span>`;
+    }).join('') +
+  '</div>';
+}
+
+function buildComplianceContext(findingId, frameworks) {
+  const active = getActiveFrameworks();
+  if (!frameworks || !active.length) return '';
+  const rows = active.map(k => {
+    const fw = frameworks[k];
+    if (!fw) return '';
+    const label = FW_LABELS[k] || k;
+    const controlId = fw.id || fw.pillar || '—';
+    const desc = fw.desc || fw.title || '—';
+    const rationale = fw.rationale || '';
+    const rem = fw.fw_rem || '';
+    const isE5 = fw.profile && fw.profile.includes('E5');
+    const refUrl = getFwRefUrl(k, fw);
+    const linkHtml = refUrl
+      ? ` <a href="${refUrl}" target="_blank" rel="noopener" class="cc-ref-link" title="View standard documentation">↗</a>`
+      : '';
+    return `<tr class="cc-row" onclick="toggleCcRow(this)">
+      <td class="cc-fw-name">${label}${isE5 ? ' <span style="font-size:9px;color:#d97706;">(E5)</span>' : ''}</td>
+      <td class="cc-control">${controlId}${linkHtml}</td>
+      <td class="cc-desc">${desc}</td>
+      <td class="cc-rationale">${rationale}</td>
+    </tr>${rem ? `<tr class="cc-rem-row"><td colspan="4" class="cc-rem-cell"><strong>Action:</strong> ${rem}</td></tr>` : ''}`;
+  }).join('');
+  if (!rows.replace(/<[^>]*>/g,'').trim()) return '';
+  const uid = 'cc-' + findingId;
+  return `
+    <button class="cc-toggle" id="${uid}-btn" onclick="toggleComplianceContext('${uid}')">
+      <span>Compliance Context</span><span class="cc-arrow">▼</span>
+    </button>
+    <div class="cc-panel" id="${uid}-panel">
+      <table class="cc-table">
+        <thead><tr><th>Framework</th><th>Control</th><th>Requirement</th><th>Why it applies <span style="font-weight:400;opacity:0.6;">(click row for action)</span></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function toggleCcRow(row) {
+  // Show/hide the remediation row immediately after this data row
+  const next = row.nextElementSibling;
+  if (next && next.classList.contains('cc-rem-row')) {
+    next.style.display = next.style.display === 'none' || !next.style.display ? 'table-row' : 'none';
+    row.classList.toggle('cc-row-active', next.style.display === 'table-row');
+  }
+}
+
+function toggleComplianceContext(uid) {
+  const btn   = document.getElementById(uid + '-btn');
+  const panel = document.getElementById(uid + '-panel');
+  if (!btn || !panel) return;
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+
+function exportComplianceCSV() {
+  const findings = assessmentData?.findings;
+  if (!findings || !findings.length) return;
+  const active = getActiveFrameworks();
+  const triggered = findings.filter(f => f.triggered !== false);
+  const rows = [['Finding ID','Title','Severity','Module','Framework','Control ID','Control Title','Requirement','Why It Applies','Action']];
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sorted = [...triggered].sort((a,b) => (order[a.severity]??9) - (order[b.severity]??9));
+  sorted.forEach(f => {
+    if (!f.frameworks) return;
+    active.forEach(k => {
+      const fw = f.frameworks[k];
+      if (!fw) return;
+      const csvEsc = v => `"${String(v||'').replace(/"/g,'""')}"`;
+      rows.push([
+        f.id, f.title, f.severity, f.module,
+        FW_LABELS[k]||k,
+        fw.id || fw.pillar || '',
+        fw.title || '',
+        fw.desc || '',
+        fw.rationale || '',
+        fw.fw_rem || ''
+      ].map(csvEsc));
+    });
+  });
+  const csv = rows.map(r => r.join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const org = assessmentData?.orgName || assessmentData?.clientName || 'Assessment';
+  const date = assessmentData?.assessDate || new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `${org}_Compliance_Annex_${date}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Framework filter bar (Findings tab) ─────────────────────
+function buildFwFilterBar(findings) {
+  const bar = document.getElementById('fwFilterBar');
+  if (!bar) return;
+  const active = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  // Only show frameworks that have at least one triggered finding mapped
+  const present = active.filter(fw => findings.some(f => f.frameworks && f.frameworks[fw]));
+  if (!present.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML =
+    `<span class="fw-filter-label">Filter:</span>` +
+    `<button class="fw-filter-btn active" data-fw="all" onclick="filterFindings('all')">All findings</button>` +
+    present.map(fw =>
+      `<button class="fw-filter-btn" data-fw="${fw}" onclick="filterFindings('${fw}')">${FW_LABELS[fw]||fw}</button>`
+    ).join('');
+}
+
+function filterFindings(fw) {
+  document.querySelectorAll('#fwFilterBar .fw-filter-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.fw === fw)
+  );
+  const cards = document.querySelectorAll('#findingsList .finding-card');
+  let visible = 0;
+  cards.forEach(card => {
+    const mapped = (card.dataset.frameworks || '').split(',').filter(Boolean);
+    const show = fw === 'all' || mapped.includes(fw);
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const total = cards.length;
+  const countEl = document.getElementById('findingsCount');
+  if (fw === 'all') {
+    countEl.textContent = `${total} finding${total !== 1 ? 's' : ''}`;
+  } else {
+    countEl.textContent = `${visible} of ${total} — ${FW_LABELS[fw]||fw}`;
+  }
+}
+
+// ── Simulator framework compliance meters ────────────────────
+function renderFwCompliance() {
+  const container = document.getElementById('simFwCompliance');
+  if (!container || !simFindings || !simFindings.length) return;
+  const active = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  if (!active.length) { container.style.display = 'none'; return; }
+
+  const items = active.map(fw => {
+    const mapped = simFindings.filter(f => f.frameworks && f.frameworks[fw]);
+    if (!mapped.length) return null;
+    const open  = mapped.filter(f => simState[f.id] !== false).length;
+    const fixed = mapped.length - open;
+    const pct   = Math.round((fixed / mapped.length) * 100);
+    const color = pct === 100 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+    return `
+      <div>
+        <div class="sim-fw-label">
+          <span>${FW_LABELS[fw]||fw}</span>
+          <span style="color:${color}">${fixed}/${mapped.length} gaps closed</span>
+        </div>
+        <div class="sim-fw-track">
+          <div class="sim-fw-fill" style="width:${pct}%;background:${color};"></div>
+        </div>
+        <div class="sim-fw-sub">${open} gap${open !== 1 ? 's' : ''} remaining</div>
+      </div>`;
+  }).filter(Boolean);
+
+  if (!items.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="sim-fw-bar">
+      <div class="sim-fw-header">Framework Gap Coverage — simulated fixes applied</div>
+      <div class="sim-fw-grid">${items.join('')}</div>
+    </div>`;
+}
+
+// ── Heartbeat (keeps backend alive while browser is open) ────
+setInterval(() => {
+  fetch(`${BACKEND}/heartbeat`, {method:'POST'}).catch(()=>{});
+}, 30000);
+
+// ── Progress bar + module checklist polling ──────────────────
+let _progressInterval = null;
+const MODULE_LABELS = {
+  identity: 'Identity & Conditional Access',
+  security: 'Defender & Security Centre',
+  exchange: 'Exchange Online',
+  teams:    'Teams',
+  sharepoint:'SharePoint',
+  intune:   'Intune / Endpoint',
+};
+let _modStatusMap = {};  // module -> 'pending'|'running'|'done'|'failed'
+
+function initModuleChecklist(modules) {
+  _modStatusMap = {};
+  modules.forEach(m => { _modStatusMap[m] = 'pending'; });
+  renderModuleChecklist();
+  document.getElementById('modProgressPanel').style.display = 'block';
+}
+
+function renderModuleChecklist() {
+  const list = document.getElementById('modProgressList');
+  if (!list) return;
+  list.innerHTML = Object.entries(_modStatusMap).map(([mod, state]) => {
+    const icon  = state === 'done' ? '✅' : state === 'running' ? '⟳' : state === 'failed' ? '❌' : '○';
+    const label = MODULE_LABELS[mod] || mod;
+    const status = state === 'running' ? 'scanning...' : state === 'done' ? 'complete' : state === 'failed' ? 'failed' : 'waiting';
+    return `<div class="mod-row ${state}">
+      <div class="mod-row-icon ${state === 'running' ? 'spin' : ''}">${icon}</div>
+      <div class="mod-row-name">${label}</div>
+      <div class="mod-row-status">${status}</div>
+    </div>`;
+  }).join('');
+}
+
+function startProgressPolling(modules) {
+  const bar = document.getElementById('scanProgressBar');
+  const label = document.getElementById('scanProgressLabel');
+  if (bar) bar.style.display = 'block';
+  initModuleChecklist(modules);
+  startScanTimer();
+  _progressInterval = setInterval(async () => {
+    try {
+      const r = await fetch(`${BACKEND}/progress`);
+      const d = await r.json();
+      // Update thin bar
+      const pct = d.total > 0 ? Math.round((d.step / d.total) * 100) : 0;
+      if (bar) bar.querySelector('.prog-fill').style.width = pct + '%';
+      if (label) label.textContent = d.label || 'Running...';
+      // Update module checklist
+      if (d.module) {
+        // Mark previous modules done
+        Object.keys(_modStatusMap).forEach(m => {
+          if (_modStatusMap[m] === 'running') _modStatusMap[m] = 'done';
+        });
+        _modStatusMap[d.module] = 'running';
+        renderModuleChecklist();
+      }
+      if (d.status === 'complete' || d.status === 'idle') {
+        // Mark all running as done
+        Object.keys(_modStatusMap).forEach(m => {
+          if (_modStatusMap[m] === 'running') _modStatusMap[m] = 'done';
+        });
+        renderModuleChecklist();
+        stopProgressPolling();
+      }
+    } catch {}
+  }, 1000);
+}
+function stopProgressPolling() {
+  clearInterval(_progressInterval);
+  _progressInterval = null;
+  stopScanTimer();
+  const bar = document.getElementById('scanProgressBar');
+  if (bar) setTimeout(() => { bar.style.display = 'none'; }, 1500);
+  // Hide checklist after a short delay so user can see final state
+  setTimeout(() => {
+    const panel = document.getElementById('modProgressPanel');
+    if (panel) panel.style.display = 'none';
+  }, 4000);
+}
 
 async function checkBackend() {
   try {
@@ -1065,6 +2356,12 @@ async function checkBackend() {
     if (r.ok) {
       document.getElementById('statusDot').className = 'status-dot online';
       document.getElementById('statusText').textContent = 'backend online';
+      // Update footer version dynamically from backend
+      const data = await r.json();
+      if (data.version) {
+        const el = document.getElementById('footerVersion');
+        if (el) el.innerHTML = `M365 Assessment Toolkit v${data.version} &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a>`;
+      }
     } else { setOffline(); }
   } catch { setOffline(); }
 }
@@ -1272,13 +2569,22 @@ function validateInputs(auth) {
   return null;
 }
 
-async function runAssessment() {
+// ── Permissions explainer ────────────────────────────────────
+function runAssessment() {
   const auth = getAuthPayload();
   const error = validateInputs(auth);
   if (error) { alert(error); return; }
+  // Show permissions modal first — user must confirm before scan starts
+  document.getElementById('permOverlay').style.display = 'flex';
+}
 
+async function confirmAndRunAssessment() {
+  document.getElementById('permOverlay').style.display = 'none';
+
+  const auth = getAuthPayload();
   const modules = [...document.querySelectorAll('.module-item.checked')].map(m => m.dataset.module);
   const clientName = document.getElementById('orgName').value.trim();
+  const activeFrameworks = getActiveFrameworks();
 
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
@@ -1289,21 +2595,27 @@ async function runAssessment() {
   const authLabel = auth.authMethod === 'interactive' ? 'Interactive Login' : auth.authMethod === 'certificate' ? 'Certificate' : 'App Registration';
   addLog(`Auth method: ${authLabel}`, 'info');
   addLog(`Modules: ${modules.join(', ')}`, 'info');
+  addLog(`Frameworks in scope: ${activeFrameworks.map(f => FW_LABELS[f]||f).join(', ')}`, 'info');
+  addLog(`First scan takes 5–12 minutes while PowerShell modules load. Subsequent scans are faster. Please wait...`, 'warn');
 
   if (auth.authMethod === 'interactive') {
     addLog('Browser login popups will appear for each workload — complete each sign-in to continue.', 'warn');
   }
 
+  startProgressPolling(modules);
+
   try {
     const response = await fetch(`${BACKEND}/run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clientName, modules, ...auth })
+      body: JSON.stringify({ clientName, modules, activeFrameworks, ...auth })
     });
     if (!response.ok) throw new Error(`Backend returned ${response.status}`);
 
     const data = await response.json();
-    assessmentData = data;
+    assessmentData     = data;
+    loadedSessionFile  = data.savedFile || null;
+    findingAnnotations = {};   // fresh scan — no annotations yet
 
     (data.log || []).forEach(e => addLog(e.message, e.type || 'info'));
     addLog(`Assessment complete — ${data.findings?.length || 0} findings triggered.`, 'success');
@@ -1311,6 +2623,10 @@ async function runAssessment() {
     renderOverview(data);
     renderFindings(data.findings || []);
     document.getElementById('generateReportBtn').disabled = false;
+    document.getElementById('downloadExecWordBtn').disabled = false;
+    document.getElementById('downloadExecPdfBtn').disabled = false;
+    document.getElementById('exportJsonBtn').disabled = false;
+    document.getElementById('exportCsvBtn').disabled = false;
     switchTab('overview', document.querySelectorAll('.tab')[0]);
 
   } catch (err) {
@@ -1318,8 +2634,15 @@ async function runAssessment() {
     addLog('Is backend.py running? Start it with: python backend.py', 'warn');
   }
 
+  stopProgressPolling();
   btn.disabled = false;
   btn.innerHTML = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg> Run Assessment`;
+}
+
+async function stopTool() {
+  if (!confirm('Stop the M365 Assessment Toolkit backend? The browser tab will no longer work after this.')) return;
+  try { await fetch(`${BACKEND}/shutdown`, {method:'POST'}); } catch {}
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;color:#6b7280;font-size:14px;">Tool stopped. Close this tab.</div>';
 }
 
 function renderOverview(data) {
@@ -1330,10 +2653,27 @@ function renderOverview(data) {
   document.getElementById('overviewAuthMethod').textContent =
     `Auth: ${data.authMethod === 'interactive' ? 'Interactive Login' : data.authMethod === 'certificate' ? 'Certificate' : 'App Registration'}`;
 
-  const score = data.score || 0;
+  const score = recalculateScore(data.findings || []);
+  const band  = getScoreBand(score);
   const scoreEl = document.getElementById('overallScore');
   scoreEl.textContent = `${score}/100`;
-  scoreEl.style.color = score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--warning)' : 'var(--danger)';
+  scoreEl.style.color = band.colour;
+  const bandEl = document.getElementById('scoreBandLabel');
+  if (bandEl) { bandEl.textContent = band.label; bandEl.style.color = band.colour; }
+  const subEl = document.getElementById('scoreBandSub');
+  if (subEl) subEl.textContent = band.sub;
+  const exEl = document.getElementById('scoreExcludedNote');
+  if (exEl) exEl.textContent = '';
+
+  // Severity breakdown chips
+  const sevCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+  (data.findings || []).forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
+  const sevRow = document.getElementById('postureSevRow');
+  if (sevRow) {
+    sevRow.innerHTML = Object.entries(sevCounts).filter(([,n]) => n > 0)
+      .map(([sev, n]) => `<span class="posture-sev-chip ${sev}"><span class="posture-sev-dot"></span>${n} ${sev}</span>`)
+      .join('');
+  }
 
   const grid = document.getElementById('metricsGrid');
   grid.innerHTML = '';
@@ -1362,6 +2702,8 @@ const investCache = {};
 
 function renderFindings(findings) {
   document.getElementById('findingsCount').textContent = `${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
+  const exportBtn = document.getElementById('exportComplianceBtn');
+  if (exportBtn) exportBtn.style.display = findings.length > 0 ? '' : 'none';
   const list = document.getElementById('findingsList');
   if (findings.length === 0) {
     list.innerHTML = '<div class="empty-state">No findings triggered — tenant looks healthy.</div>';
@@ -1374,6 +2716,23 @@ function renderFindings(findings) {
     const hasScript = INVESTIGATE_IDS.has(f.id);
     const card = document.createElement('div');
     card.className = 'finding-card';
+    card.dataset.frameworks = f.frameworks
+      ? Object.keys(f.frameworks).filter(k => f.frameworks[k]).join(',')
+      : '';
+    const ann = getAnnotation(f.id);
+    const statusClass = ann.status !== 'open' && ann.status
+      ? `status-${ann.status === 'accepted_risk' ? 'accepted' : ann.status === 'false_positive' ? 'fp' : 'na'}`
+      : '';
+    if (statusClass) card.classList.add(statusClass);
+
+    const statusBadgeHtml = ann.status && ann.status !== 'open'
+      ? `<span class="finding-status-badge ${ann.status === 'accepted_risk' ? 'accepted' : ann.status === 'false_positive' ? 'fp' : 'na'}">${ann.status === 'accepted_risk' ? 'Accepted Risk' : ann.status === 'false_positive' ? 'False Positive' : 'N/A'}</span>`
+      : '';
+
+    const effortColor = f.effort === 'Low' ? 'var(--success)' : f.effort === 'Medium' ? '#f59e0b' : 'var(--danger)';
+    const effortHtml = f.effort
+      ? `<span class="finding-badge" style="background:var(--bg3);color:${effortColor};border:1px solid ${effortColor}33;" title="Estimated remediation effort">⏱ ${f.effort} · ~${f.effort_hours}h</span>`
+      : '';
     card.innerHTML = `
       <div class="finding-severity ${f.severity}"></div>
       <div class="finding-body">
@@ -1381,11 +2740,16 @@ function renderFindings(findings) {
           <div class="finding-title">${f.title}</div>
           <span class="finding-badge badge-${f.severity}">${f.severity}</span>
           <span class="finding-badge" style="background:var(--bg3);color:var(--muted);">${f.id}</span>
+          ${effortHtml}
+          ${statusBadgeHtml}
           ${hasScript ? `<button class="invest-btn" id="invest-btn-${f.id}" onclick="toggleInvestScript('${f.id}')">&#x1F50D; Investigate</button>` : ''}
         </div>
         <div class="finding-desc">${f.description}</div>
+        ${f.severity_reason ? `<div class="finding-severity-reason">⚖ <strong>Why ${f.severity}?</strong> ${f.severity_reason}</div>` : ''}
         <div class="finding-rec">${f.recommendation}</div>
         <div class="finding-meta">Module: ${f.module} &nbsp;|&nbsp; Metric: ${f.metric} &nbsp;|&nbsp; Observed: ${f.observed_value}</div>
+        ${f.frameworks ? buildFwBadges(f.frameworks) : ''}
+        ${f.frameworks ? buildComplianceContext(f.id, f.frameworks) : ''}
         ${hasScript ? `
         <div class="invest-block" id="invest-block-${f.id}">
           <div class="invest-block-header">
@@ -1394,9 +2758,130 @@ function renderFindings(findings) {
           </div>
           <div class="invest-script" id="invest-script-${f.id}"></div>
         </div>` : ''}
+        <div class="finding-annotation">
+          <div class="annotation-status-row">
+            <span class="annotation-label">Status</span>
+            <button class="status-btn ${!ann.status || ann.status === 'open' ? 'active-open' : ''}" onclick="setFindingStatus('${f.id}', 'open', this)">Open</button>
+            <button class="status-btn ${ann.status === 'accepted_risk' ? 'active-accepted' : ''}" onclick="setFindingStatus('${f.id}', 'accepted_risk', this)">Accepted Risk</button>
+            <button class="status-btn ${ann.status === 'false_positive' ? 'active-fp' : ''}" onclick="setFindingStatus('${f.id}', 'false_positive', this)">False Positive</button>
+            <button class="status-btn ${ann.status === 'not_applicable' ? 'active-na' : ''}" onclick="setFindingStatus('${f.id}', 'not_applicable', this)">Not Applicable</button>
+          </div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;">Status &amp; notes are auto-saved to the session file — they persist when you reload or share the session.</div>
+          <div class="annotation-reason-wrap ${ann.status && ann.status !== 'open' ? 'visible' : ''}" id="reason-wrap-${f.id}">
+            <textarea class="annotation-reason" id="reason-${f.id}" placeholder="Reason required — document why this finding is being excluded from the score…" rows="2" oninput="onReasonInput('${f.id}')">${ann.reason || ''}</textarea>
+          </div>
+          <div class="annotation-notes-wrap">
+            <button class="annotation-notes-toggle" onclick="toggleNotes('${f.id}')">
+              <span id="notes-toggle-arrow-${f.id}">▶</span> Consultant notes${ann.notes ? ' ✎' : ''}
+            </button>
+            <textarea class="annotation-notes ${ann.notes ? 'open' : ''}" id="notes-${f.id}" placeholder="Add your observations, site findings, client context…" rows="3" oninput="onNotesInput('${f.id}')">${ann.notes || ''}</textarea>
+          </div>
+        </div>
       </div>`;
     list.appendChild(card);
   });
+  buildFwFilterBar(findings);
+}
+
+// ── Annotation interaction handlers ─────────────────────────────────────────
+function setFindingStatus(findingId, status, btn) {
+  // Update button active states
+  const row = btn.closest('.annotation-status-row');
+  row.querySelectorAll('.status-btn').forEach(b => {
+    b.className = 'status-btn';
+  });
+  const classMap = { open: 'active-open', accepted_risk: 'active-accepted', false_positive: 'active-fp', not_applicable: 'active-na' };
+  btn.classList.add(classMap[status] || 'active-open');
+
+  // Show/hide reason field
+  const reasonWrap = document.getElementById(`reason-wrap-${findingId}`);
+  if (status !== 'open') {
+    reasonWrap.classList.add('visible');
+  } else {
+    reasonWrap.classList.remove('visible');
+    document.getElementById(`reason-${findingId}`).classList.remove('invalid');
+  }
+
+  // Update card visual state
+  const card = btn.closest('.finding-card');
+  card.classList.remove('status-accepted', 'status-fp', 'status-na');
+  if (status === 'accepted_risk')   card.classList.add('status-accepted');
+  if (status === 'false_positive')  card.classList.add('status-fp');
+  if (status === 'not_applicable')  card.classList.add('status-na');
+
+  // Update status badge in header
+  const header = card.querySelector('.finding-header');
+  const existingBadge = header.querySelector('.finding-status-badge');
+  if (existingBadge) existingBadge.remove();
+  if (status !== 'open') {
+    const labelMap = { accepted_risk: 'Accepted Risk', false_positive: 'False Positive', not_applicable: 'N/A' };
+    const clsMap   = { accepted_risk: 'accepted', false_positive: 'fp', not_applicable: 'na' };
+    const badge = document.createElement('span');
+    badge.className = `finding-status-badge ${clsMap[status]}`;
+    badge.textContent = labelMap[status];
+    header.appendChild(badge);
+  }
+
+  setAnnotation(findingId, { status });
+}
+
+function onReasonInput(findingId) {
+  const val = document.getElementById(`reason-${findingId}`).value.trim();
+  document.getElementById(`reason-${findingId}`).classList.toggle('invalid', !val);
+  setAnnotation(findingId, { reason: val });
+}
+
+function onNotesInput(findingId) {
+  const val = document.getElementById(`notes-${findingId}`).value;
+  setAnnotation(findingId, { notes: val });
+}
+
+function toggleNotes(findingId) {
+  const ta  = document.getElementById(`notes-${findingId}`);
+  const arr = document.getElementById(`notes-toggle-arrow-${findingId}`);
+  const open = ta.classList.toggle('open');
+  arr.textContent = open ? '▼' : '▶';
+  if (open) ta.focus();
+}
+
+// ── Executive report download ────────────────────────────────────────────────
+async function downloadExecReport(format) {
+  if (!assessmentData) return;
+  const btn = document.getElementById(`downloadExec${format === 'docx' ? 'Word' : 'Pdf'}Btn`);
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const payload = {
+      ...assessmentData,
+      annotations: findingAnnotations,
+      adjustedScore: recalculateScore(assessmentData.findings || []),
+      scoreBand: getScoreBand(recalculateScore(assessmentData.findings || [])).label,
+      consultantName:  document.getElementById('consultantName')?.value  || '',
+      consultantRole:  document.getElementById('consultantRole')?.value  || '',
+      consultantEmail: document.getElementById('consultantEmail')?.value || '',
+      consultantLogo:  consultantLogoBase64 || null,
+      format,
+    };
+    const r = await fetch(`${BACKEND}/generate-exec-report`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const org  = (assessmentData.clientName || 'Assessment').replace(/\s+/g,'_');
+    const date = assessmentData.assessDate || new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `${org}_Executive_Summary_${date}.${format === 'docx' ? 'docx' : 'pdf'}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert(`Executive report failed: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = format === 'docx' ? 'Word' : 'PDF';
+  }
 }
 
 async function toggleInvestScript(findingId) {
@@ -1465,6 +2950,7 @@ async function generateReport() {
       consultantName:  (document.getElementById('consultantName')?.value  || '').trim() || '[Consultant Name]',
       consultantRole:  (document.getElementById('consultantRole')?.value  || '').trim() || '[Role]',
       consultantEmail: (document.getElementById('consultantEmail')?.value || '').trim() || '[Email]',
+      consultantLogo:  consultantLogoBase64 || null,
     };
     const r = await fetch(`${BACKEND}/report`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1507,6 +2993,7 @@ function getConsultantDetails() {
     name:  (document.getElementById('consultantName')?.value  || '').trim() || '[Consultant Name]',
     role:  (document.getElementById('consultantRole')?.value  || '').trim() || '[Role]',
     email: (document.getElementById('consultantEmail')?.value || '').trim() || '[Email]',
+    logo:  consultantLogoBase64 || null,
   };
 }
 
@@ -1518,6 +3005,7 @@ function buildReportPayload(base = {}) {
     consultantName:  c.name,
     consultantRole:  c.role,
     consultantEmail: c.email,
+    consultantLogo:  c.logo,
   };
 }
 
@@ -1757,7 +3245,9 @@ async function loadSession(filename) {
     const r = await fetch(`${BACKEND}/sessions/${filename}`);
     if (!r.ok) throw new Error('Session not found');
     const data = await r.json();
-    assessmentData = data;
+    assessmentData     = data;
+    loadedSessionFile  = filename;
+    findingAnnotations = data.annotations || {};
 
     // Restore organisation name fields
     if (data.clientName) document.getElementById('orgName').value = data.clientName;
@@ -1789,6 +3279,10 @@ async function loadSession(filename) {
     document.getElementById('generateReportBtn').disabled = false;
     document.getElementById('downloadWordBtn').disabled = false;
     document.getElementById('downloadPdfBtn').disabled = false;
+    document.getElementById('downloadExecWordBtn').disabled = false;
+    document.getElementById('downloadExecPdfBtn').disabled = false;
+    document.getElementById('exportJsonBtn').disabled = false;
+    document.getElementById('exportCsvBtn').disabled = false;
     checkRemediationReportAvailable();
 
     // Show loaded badge
@@ -1961,6 +3455,7 @@ function renderSimResults() {
 
   renderSimChains();
   renderSimNarrative();
+  renderFwCompliance();
 }
 
 function renderSimChains() {
@@ -2140,6 +3635,38 @@ async function exportSimReport() {
 <p>${fixedIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-fixed">&#10003; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
 <h2>Still Open (${openIds.length})</h2>
 <p>${openIds.map(id => { const f = (assessmentData.findings||[]).find(f=>f.id===id); return `<span class="finding-open">&#10007; ${id}${f?' - '+f.title:''}</span>`; }).join('<br>')}</p>
+<h2>Framework Compliance Projection</h2>
+${(() => {
+  const activeFws = (assessmentData?.activeFrameworks) || getActiveFrameworks();
+  if (!activeFws.length) return '<p style="color:#6c757d">No frameworks selected.</p>';
+  const rows = activeFws.map(fw => {
+    const mapped  = simFindings.filter(f => f.frameworks && f.frameworks[fw]);
+    if (!mapped.length) return '';
+    const open    = mapped.filter(f => simState[f.id] !== false).length;
+    const closed  = mapped.length - open;
+    const pct     = Math.round((closed / mapped.length) * 100);
+    const col     = pct === 100 ? '#27AE60' : pct >= 50 ? '#D4AC0D' : '#C0392B';
+    const bg      = pct === 100 ? '#EAF7EE' : pct >= 50 ? '#FEFAE7' : '#FDECEA';
+    return `<tr>
+      <td style="padding:8px 12px;font-weight:600">${FW_LABELS[fw]||fw}</td>
+      <td style="padding:8px 12px;text-align:center">${mapped.length}</td>
+      <td style="padding:8px 12px;text-align:center;color:#C0392B;font-weight:${open>0?'bold':'normal'}">${open}</td>
+      <td style="padding:8px 12px;text-align:center;color:#27AE60;font-weight:${closed>0?'bold':'normal'}">${closed}</td>
+      <td style="padding:8px 12px;text-align:center;background:${bg};color:${col};font-weight:bold">${pct}%</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+  if (!rows) return '<p style="color:#6c757d">No framework data available.</p>';
+  return `<table style="width:100%;border-collapse:collapse;border:1px solid #dee2e6;">
+    <thead><tr style="background:#1B2A4A;color:#fff">
+      <th style="padding:8px 12px;text-align:left">Framework</th>
+      <th style="padding:8px 12px">Gaps in scope</th>
+      <th style="padding:8px 12px">Still open</th>
+      <th style="padding:8px 12px">Closed by fixes</th>
+      <th style="padding:8px 12px">Coverage</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+})()}
 <h2>Attack Chain Impact</h2>
 ${chains.map(c => `<div class="chain ${c.status}">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -2765,6 +4292,32 @@ function renderComparisonResults(data) {
   html += findingRows(data.newFindings, '! NEW FINDINGS', 'var(--danger)');
   html += findingRows(data.stillOpen,   '— STILL OPEN',  'var(--warning)');
   html += findingRows(data.improved,    '↑ IMPROVED',    'var(--accent)');
+
+  // Framework compliance delta
+  const fwsA = sA.activeFrameworks || [];
+  const fwsB = sB.activeFrameworks || [];
+  const allFws = [...new Set([...fwsA, ...fwsB])].filter(fw => FW_LABELS[fw]);
+  if (allFws.length > 0) {
+    const fwRows = allFws.map(fw => {
+      const gapsA = (sA.findings || []).filter(f => f.frameworks && f.frameworks[fw]).length;
+      const gapsB = (sB.findings || []).filter(f => f.frameworks && f.frameworks[fw]).length;
+      const delta = gapsB - gapsA;
+      const deltaCol = delta < 0 ? 'var(--success)' : delta > 0 ? 'var(--danger)' : 'var(--muted)';
+      const deltaStr = delta === 0 ? 'No change' : delta < 0 ? `${Math.abs(delta)} fewer gaps` : `${delta} more gaps`;
+      const deltaIcon = delta < 0 ? '↓' : delta > 0 ? '↑' : '=';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+        <span style="font-family:var(--mono);font-size:10px;flex:1;color:var(--text);">${FW_LABELS[fw]||fw}</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${gapsA} gaps</span>
+        <span style="color:var(--muted);">→</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);">${gapsB} gaps</span>
+        <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:${deltaCol};min-width:120px;text-align:right;">${deltaIcon} ${deltaStr}</span>
+      </div>`;
+    }).join('');
+    html += `<div style="margin-bottom:1.5rem;">
+      <div style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono);margin-bottom:10px;letter-spacing:0.05em;">FRAMEWORK COMPLIANCE CHANGE</div>
+      ${fwRows}
+    </div>`;
+  }
 
   if (data.metricChanges && data.metricChanges.length > 0) {
     html += `<div style="margin-bottom:1.5rem;">

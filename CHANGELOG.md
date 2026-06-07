@@ -2,6 +2,68 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.7.0] - 2026-06-07
+
+### New Findings (6 new — 48 → 54 total)
+
+**On-Premises AD Sync**
+- SYNC-001 — Entra Connect Sync Stale (last sync >3h) — High
+- SYNC-002 — Federated Authentication Detected (ADFS/PTA attack surface) — Medium
+
+**Guest & B2B Security**
+- GUEST-001 — Guest Users Can Invite Other Guests — Medium
+- GUEST-002 — Guest Users Have Member-Level Directory Permissions — High
+- GUEST-003 — No Guest Access Reviews Configured — Medium
+- GUEST-004 — No Cross-Tenant Access Restrictions Configured — Medium
+
+All 6 new findings include: severity justification, effort estimates, full framework mappings (CIS, NIST, ISO, CE, CAF, SOC2, E8, NIS2), and PowerShell investigation scripts.
+
+### New Features
+
+**Potential Breach Cost Estimates**
+- Every triggered finding now shows a financial exposure range (e.g. £500K – £5M for Critical)
+- Based on IBM Cost of a Data Breach Report 2024 UK averages, by severity band
+- Displayed on finding cards in the UI (amber callout)
+- Shown as a dedicated "Potential exposure" row in Word finding cards across all report types
+- Gives CEOs and boards a financial language anchor for each finding
+
+**Industry Benchmark Comparison**
+- Score display now shows how the tenant compares to the industry average (62/100)
+- Colour-coded delta: green if above, amber if within ±5, red if below
+- Industry benchmark line shown on the Score Trend chart
+- Included in the Word assessment report score section
+- Source: Microsoft Security Intelligence Report 2024 / IBM Cost of a Data Breach 2024
+
+**GRC Export (CSV)**
+- New "GRC Export (CSV)" button in the Findings tab alongside the Compliance Annex export
+- Exports all triggered findings as a structured spreadsheet: Finding ID, Title, Severity, Module, Status, Effort, Hours, Breach Cost (low/high), Observed Value, Framework list, Reason/Notes
+- BOM-prefixed for Excel compatibility
+- Ready to drop into ServiceNow, Archer, Jira, or any GRC platform
+
+**Score Trend Chart**
+- New "Score Trend" section in the Compare tab
+- Load 2–6 saved session JSON files to plot score over time
+- SVG line chart with colour-coded score dots, band zone shading, and industry benchmark line
+- Legend shows each session's score, org name, and date
+- Fully client-side — no additional backend calls required
+
+**Data Residency Notice**
+- "🔒 Fully local — no data leaves your machine" notice in the footer
+- Tooltip explains the tool operates entirely locally against your own tenant via Microsoft Graph API
+- Addresses the question auditors and compliance officers always ask
+
+### Report Improvements
+
+- Score section now includes a two-column benchmark comparison table (Your score vs Industry average)
+- Score bands unified to 5 levels across all report types (Excellent/Good/Fair/Poor/Critical Risk)
+- Breach cost added to every finding card in all three Word report types
+- Page numbers (Page X of Y) added to footer of all reports (v1.6.0 improvement)
+- Consultant email used in footer instead of hardcoded placeholder (v1.6.0 improvement)
+
+### Bug Fixes / Improvements
+- `COLOURS.orange` added to report colour palette (was referenced but undefined — caused report generation errors for "Poor" band scores)
+- New metrics added to METRIC_DISPLAY for all 7 new identity data points
+
 ## [1.6.0] - 2026-06-07
 
 ### New Features

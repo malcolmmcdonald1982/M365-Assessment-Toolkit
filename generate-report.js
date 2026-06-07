@@ -71,6 +71,8 @@ const COLOURS = {
   greenBg:     'EAF7EE',
   amber:       'D4AC0D',
   amberBg:     'FEFAE7',
+  orange:      'D35400',
+  orangeBg:    'FEF0E7',
   red:         'C0392B',
   redBg:       'FDECEA',
 
@@ -399,10 +401,44 @@ function buildScoreSection(data) {
   const score    = data.score || 0;
   const findings = data.findings || [];
 
+  const benchScore = 62;
+  const benchDelta = score - benchScore;
+  const benchColour = benchDelta >= 5 ? COLOURS.green : benchDelta >= -5 ? COLOURS.amber : COLOURS.red;
+  const benchLabel  = benchDelta > 0 ? `▲ ${benchDelta} points above industry average` : benchDelta < 0 ? `▼ ${Math.abs(benchDelta)} points below industry average` : 'At industry average';
+
   return [
     heading1('2. Overall Score'),
     para([run(`The score starts at 100 and is reduced by triggered findings: Critical (−8 each, max −32), High (−5 each, max −20), Medium (−3 each, max −12), Low (−1 each, max −4). Penalties are capped per severity band so a single category cannot dominate the score. The minimum possible score is 10. Findings marked Accepted Risk, False Positive or Not Applicable are excluded from the calculation.`)], { before: 120, after: 200, line: 300 }),
     buildScoreBanner(score),
+    spacer(1),
+
+    // Industry benchmark comparison
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [4680, 4680],
+      rows: [new TableRow({ children: [
+        new TableCell({
+          children: [para([
+            run(`Your score: `, { colour: COLOURS.slate, size: 20 }),
+            run(`${score}/100`, { bold: true, colour: benchColour, size: 24 }),
+            run(`  ${benchLabel}`, { colour: benchColour, size: 20 }),
+          ], { before: 80, after: 80 })],
+          shading: { fill: COLOURS.offWhite, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          margins: { top: 60, bottom: 60, left: 160, right: 120 },
+        }),
+        new TableCell({
+          children: [para([
+            run(`Industry average: `, { colour: COLOURS.slate, size: 20 }),
+            run(`${benchScore}/100`, { bold: true, colour: COLOURS.amber, size: 24 }),
+            run('  · Microsoft Security Intelligence Report 2024', { colour: COLOURS.darkGrey, size: 16, italics: true }),
+          ], { before: 80, after: 80 })],
+          shading: { fill: COLOURS.offWhite, type: ShadingType.CLEAR },
+          borders: allBorders(COLOURS.midGrey, 4),
+          margins: { top: 60, bottom: 60, left: 160, right: 120 },
+        }),
+      ]})],
+    }),
     spacer(1),
     buildFindingsCounts(findings),
     spacer(1),
@@ -489,6 +525,13 @@ function buildFindingCard(f, index) {
         ...(f.effort ? [new TableRow({ children: [
           cell(para([run('Remediation effort', { bold: true, colour: COLOURS.navyLight, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.offWhite, borders: allBorders(COLOURS.midGrey, 4) }),
           cell(para([run(`${f.effort} · ~${f.effort_hours || '?'}h estimated`, { colour: COLOURS.darkGrey, size: 20 })], { before: 60, after: 60, line: 300 }), { width: colW2 }),
+        ]})] : []),
+        ...(f.breach_cost_low && f.breach_cost_high ? [new TableRow({ children: [
+          cell(para([run('Potential exposure', { bold: true, colour: COLOURS.amber, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 }), { width: colW1, bg: COLOURS.amberBg, borders: allBorders(COLOURS.midGrey, 4) }),
+          cell(para([
+            run(`£${f.breach_cost_low >= 1000 ? (f.breach_cost_low/1000)+'M' : f.breach_cost_low+'K'} – £${f.breach_cost_high >= 1000 ? (f.breach_cost_high/1000)+'M' : f.breach_cost_high+'K'}`, { colour: COLOURS.orange, size: 22, bold: true }),
+            run('  ·  IBM Cost of a Data Breach 2024 (UK average, this severity band)', { colour: COLOURS.darkGrey, size: 17, italics: true }),
+          ], { before: 60, after: 60, line: 300 }), { width: colW2 }),
         ]})] : []),
       ],
     }),

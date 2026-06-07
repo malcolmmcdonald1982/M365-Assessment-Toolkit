@@ -1215,6 +1215,142 @@ FRAMEWORK_MAPPING = {
                  "desc": "Managed identity privilege is managed as part of access control and asset management policy.",
                  "rationale": "Managed identities with admin roles are an access control failure under NIS2 requirements."},
     },
+
+    # ── On-prem sync findings ─────────────────────────────────────────────────
+    "SYNC-001": {
+        "cis":  {"id": "5.1.2", "title": "Ensure directory synchronisation is healthy", "profile": "E3 L1",
+                 "desc": "Entra Connect sync is current; last sync within the expected interval.",
+                 "rationale": "Stale sync means cloud identities diverge from on-premises — terminated accounts may retain access."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions, entitlements, and authorisations managed",
+                 "desc": "Cloud identity permissions remain consistent with on-premises authoritative source.",
+                 "rationale": "A stale sync breaks the authoritative identity chain — Entra ID no longer reflects HR-driven changes."},
+        "iso":  {"id": "A.8.2, A.5.16", "title": "Privileged access rights / Identity management",
+                 "desc": "Identity lifecycle management processes ensure cloud access reflects current employment status.",
+                 "rationale": "Stale sync means the identity management process has broken — leaver accounts may retain cloud access."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "User accounts in the cloud reflect current on-premises state; terminated user access is removed promptly.",
+                 "rationale": "A stale sync means Cyber Essentials UAC controls cannot be verified for cloud access."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Identity lifecycle is maintained; cloud access reflects current organisational state.",
+                 "rationale": "Sync health failures undermine identity and access control assurance under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "User access reflects current authoritative identity data; terminated users are removed promptly.",
+                 "rationale": "A broken sync allows terminated users to retain cloud access — violating E8 privilege restriction."},
+        "nis2": {"id": "NIS2-i", "title": "Business continuity and crisis management",
+                 "desc": "Directory synchronisation continuity is maintained as a critical identity infrastructure component.",
+                 "rationale": "Sync failure is an identity infrastructure continuity failure under NIS2."},
+    },
+    "SYNC-002": {
+        "cis":  {"id": "5.1.3", "title": "Evaluate migration from ADFS to Entra ID native authentication", "profile": "E3 L1",
+                 "desc": "Federated domains are evaluated for migration to PHS to reduce on-premises authentication dependency.",
+                 "rationale": "Federated authentication introduces on-premises infrastructure as a single point of failure and attack vector."},
+        "nist": {"id": "PR.AA-01, PR.AA-05", "title": "Identities and credentials managed / Access permissions managed",
+                 "desc": "Authentication infrastructure dependencies are minimised; cloud-native authentication preferred.",
+                 "rationale": "ADFS infrastructure is an additional identity attack surface not present in PHS deployments."},
+        "iso":  {"id": "A.8.2, A.5.20", "title": "Privileged access rights / Addressing information security within supplier agreements",
+                 "desc": "On-premises authentication infrastructure is secured and monitored as a critical dependency.",
+                 "rationale": "ADFS server compromise enables SAML token forgery — ISO 27001 A.8.2 requires privileged system protection."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Authentication infrastructure is assessed for risk; federation servers are hardened and monitored.",
+                 "rationale": "Federation servers represent a high-value identity control point — CAF B2 requires explicit risk management."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Federation infrastructure is assessed; ADFS server administrative access is restricted and monitored.",
+                 "rationale": "Compromised ADFS infrastructure grants admin-equivalent cloud access — E8 admin restriction applies."},
+        "nis2": {"id": "NIS2-h", "title": "Security of network and information systems",
+                 "desc": "Authentication infrastructure security is managed; on-premises dependencies are risk-assessed.",
+                 "rationale": "ADFS server vulnerabilities are a network and information system security risk under NIS2 Article 21."},
+    },
+
+    # ── Guest / B2B findings ──────────────────────────────────────────────────
+    "GUEST-001": {
+        "cis":  {"id": "5.2.3", "title": "Ensure only admins can invite guest users", "profile": "E3 L1",
+                 "desc": "Guest invitations are restricted to administrators and the Guest Inviter role.",
+                 "rationale": "Allowing members to invite guests introduces unvetted external identities without security oversight."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions, entitlements, and authorisations managed",
+                 "desc": "External identity provisioning is controlled and authorised through a defined process.",
+                 "rationale": "Uncontrolled guest invitations circumvent the authorised identity provisioning process."},
+        "iso":  {"id": "A.5.15, A.5.17", "title": "Access control / Authentication information",
+                 "desc": "External user access is controlled; guest identities are provisioned through an authorised process.",
+                 "rationale": "Member-initiated guest invitations bypass access control policy — ISO 27001 A.5.15 requires authorised access."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Guest accounts are provisioned only through an authorised process with appropriate oversight.",
+                 "rationale": "Uncontrolled guest invitation allows any employee to introduce external accounts — violating UAC controls."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "External identity provisioning is controlled and logged; guest invitation is an authorised process.",
+                 "rationale": "Uncontrolled guest invitations undermine identity and access control governance under CAF B2."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Guest provisioning is a privileged action restricted to authorised administrators.",
+                 "rationale": "Allowing all users to invite guests is an access control violation — E8 requires explicit authorisation."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External identity provisioning is controlled as part of access control policy.",
+                 "rationale": "Uncontrolled guest invitation is an access control failure under NIS2 Article 21(2)(i)."},
+    },
+    "GUEST-002": {
+        "cis":  {"id": "5.2.4", "title": "Ensure guest users have restricted directory permissions", "profile": "E3 L1",
+                 "desc": "Guest users are assigned the restricted guest role — not member-level directory permissions.",
+                 "rationale": "Member-level guest permissions allow external users to enumerate the full tenant directory."},
+        "nist": {"id": "PR.AA-05, PR.DS-01", "title": "Access permissions managed / Data-at-rest protected",
+                 "desc": "Guest directory access is restricted to prevent unauthorised data enumeration.",
+                 "rationale": "Member-level guest permissions allow data discovery — violating both access control and data protection principles."},
+        "iso":  {"id": "A.5.15, A.5.12", "title": "Access control / Classification of information",
+                 "desc": "External guest access to directory information is restricted to what is necessary.",
+                 "rationale": "Member-level guest permissions grant access to directory data that should be restricted — ISO 27001 A.5.12 applies."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Guest user access is restricted to the minimum necessary directory information.",
+                 "rationale": "Member-level guest permissions violate least-privilege principles required under Cyber Essentials UAC."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Guest directory access is restricted; external users cannot enumerate internal identity data.",
+                 "rationale": "Member-level guest permissions undermine directory data confidentiality — CAF B2 identity controls apply."},
+        "e8":   {"id": "E8-5, E8-6", "title": "Restrict Administrative Privileges / Patch Applications",
+                 "desc": "Guest users have minimum necessary directory permissions; member-level access is not granted.",
+                 "rationale": "Unrestricted guest directory enumeration is a data access control failure under Essential Eight."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External identity access to internal directory data is controlled and restricted.",
+                 "rationale": "Member-level guest permissions are an access control failure under NIS2 Article 21(2)(i)."},
+    },
+    "GUEST-003": {
+        "cis":  {"id": "5.2.6", "title": "Ensure guest access is reviewed periodically", "profile": "E3 L2",
+                 "desc": "Recurring access reviews are configured to validate guest user access at defined intervals.",
+                 "rationale": "Without access reviews, guest accounts accumulate and inactive guests retain persistent access."},
+        "nist": {"id": "PR.AA-04, PR.AA-05", "title": "Identities authenticated / Access permissions managed",
+                 "desc": "Guest identity validity is periodically reviewed and confirmed by business owners.",
+                 "rationale": "Unreviewed guest access violates the ongoing access validation principle."},
+        "iso":  {"id": "A.5.18, A.5.15", "title": "Access rights / Access control",
+                 "desc": "Guest user access rights are reviewed at regular intervals and revoked when no longer required.",
+                 "rationale": "ISO 27001 A.5.18 explicitly requires periodic review of access rights — guests are a high-priority target."},
+        "ce":   {"pillar": "UAC", "title": "User Access Control",
+                 "desc": "Guest accounts are reviewed regularly and removed when access is no longer required.",
+                 "rationale": "Cyber Essentials UAC requires accounts to be removed when no longer needed — guest reviews enforce this."},
+        "soc2": {"id": "CC6.2, CC6.3", "title": "Access reviews and role-based access",
+                 "desc": "Guest access is reviewed periodically; access reviews are documented and exceptions recorded.",
+                 "rationale": "SOC 2 CC6.2/CC6.3 require periodic access reviews — guest access is an explicit scope area."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Guest access is periodically reviewed; inactive guests are removed through a defined process.",
+                 "rationale": "CAF B2 requires identity lifecycle controls — periodic guest reviews are a core control."},
+        "e8":   {"id": "E8-5", "title": "Restrict Administrative Privileges",
+                 "desc": "Guest access is reviewed periodically; inactive accounts are removed to prevent accumulation.",
+                 "rationale": "E8 requires access to be reviewed — guest accounts without reviews represent uncontrolled accumulation."},
+        "nis2": {"id": "NIS2-j, NIS2-i", "title": "Human resources security / Business continuity",
+                 "desc": "Guest access is reviewed regularly as part of identity lifecycle and access control policy.",
+                 "rationale": "Unreviewed guest access is a human resources security failure under NIS2 Article 21."},
+    },
+    "GUEST-004": {
+        "cis":  {"id": "5.2.7", "title": "Configure cross-tenant access restrictions", "profile": "E3 L1",
+                 "desc": "Cross-tenant access policy restricts inbound B2B collaboration to approved partner tenants.",
+                 "rationale": "Without restrictions, users from any Microsoft tenant globally can be invited as guests."},
+        "nist": {"id": "PR.AA-05", "title": "Access permissions, entitlements, and authorisations managed",
+                 "desc": "External tenant access is explicitly authorised through cross-tenant access policy.",
+                 "rationale": "Unrestricted cross-tenant access bypasses the authorised access provisioning process."},
+        "iso":  {"id": "A.5.15, A.5.20", "title": "Access control / Supplier relationships",
+                 "desc": "External tenant access is controlled; collaboration is restricted to vetted and authorised partner tenants.",
+                 "rationale": "ISO 27001 A.5.20 requires information security controls in supplier relationships — external tenant access is in scope."},
+        "caf":  {"id": "B2", "title": "Identity and Access Control",
+                 "desc": "Cross-tenant identity access is explicitly controlled through allowlist or blocklist policy.",
+                 "rationale": "Unrestricted cross-tenant access is an identity and access control gap under CAF B2."},
+        "nis2": {"id": "NIS2-j", "title": "Human resources security, access control, asset management",
+                 "desc": "External identity access is controlled through cross-tenant policy as part of access management.",
+                 "rationale": "Unrestricted B2B collaboration is an access control failure under NIS2 Article 21."},
+    },
 }
 
 # ─────────────────────────────────────────────────────────────
@@ -1747,6 +1883,56 @@ def build_findings_library():
          "severity_reason":"High because any compromised Azure workload running under a privileged managed identity inherits admin-level tenant access — the attack surface extends beyond M365 into Azure compute and services.",
          "effort":"Medium","effort_hours":3,
          "secure_score_impact": 3},
+
+        # ── On-Premises Sync Findings ─────────────────────────────────────────
+        {"id":"SYNC-001","title":"Entra Connect Sync Stale — Last Sync >3 Hours","module":"identity","metric":"onprem_sync_age_hours",
+         "threshold": lambda v: isinstance(v,(int,float)) and v > 3,
+         "description":"Entra ID hybrid sync is enabled but the last successful directory sync was more than 3 hours ago. When sync is stale, Entra ID does not reflect current on-premises user or group state — disabled on-prem accounts may retain cloud access, and new or modified accounts may not receive correct permissions.",
+         "recommendation":"Check the Microsoft Entra Connect server for sync errors via the Synchronisation Service Manager. Restart the Azure AD Sync service if stalled. Review the Application and System event logs for Entra Connect errors. Consider configuring sync health alerts via Azure AD Connect Health.",
+         "severity_reason":"High because a stalled sync means cloud identity state diverges from on-premises — terminated employees may retain M365 access, and attackers who compromise on-prem AD can no longer reliably propagate changes.",
+         "effort":"Medium","effort_hours":2,
+         "secure_score_impact": 4},
+
+        {"id":"SYNC-002","title":"Federated Authentication Detected — ADFS / PTA Attack Surface","module":"identity","metric":"federated_domain_count",
+         "threshold": lambda v: isinstance(v,int) and v > 0,
+         "description":"One or more of your verified domains use federated authentication (ADFS or Pass-Through Authentication) rather than Password Hash Synchronisation (PHS). Federated authentication introduces additional on-premises infrastructure as a dependency for cloud authentication. If the federation server is compromised or unavailable, cloud access may be impacted. ADFS in particular has been a repeated target of nation-state actors.",
+         "recommendation":"Evaluate migrating from ADFS/PTA to Password Hash Synchronisation with Seamless SSO. PHS enables passwordless sign-in, supports Identity Protection risk-based CA policies, and removes the on-premises authentication dependency. Use Microsoft's ADFS to Entra ID migration guide. If ADFS is required, ensure it is hardened, monitored, and MFA is enforced at the ADFS layer.",
+         "severity_reason":"Medium because federated authentication expands the attack surface to on-premises infrastructure — ADFS servers have been targeted by APT groups specifically to forge SAML tokens and gain persistent cloud access.",
+         "effort":"High","effort_hours":20,
+         "secure_score_impact": 3},
+
+        # ── Guest / B2B Findings ──────────────────────────────────────────────
+        {"id":"GUEST-001","title":"Guest Users Can Invite Other Guests","module":"identity","metric":"guest_invite_policy",
+         "threshold": lambda v: isinstance(v,str) and v in ("adminsGuestInvitersAndAllMembers","everyone"),
+         "description":"Your tenant's guest invite policy allows regular member users (or anyone) to invite external guests directly, without administrator approval. This means any employee can introduce external identities into your Entra ID tenant — these guests inherit access to M365 resources shared with 'All users' or default groups.",
+         "recommendation":"Set the guest invite policy to 'Only administrators and users in the Guest Inviter role can invite' via Entra ID > External Identities > External collaboration settings > Guest invite settings. This ensures all guest access requires administrative approval.",
+         "severity_reason":"Medium because uncontrolled guest invitations allow any employee to introduce unvetted external identities, expanding the attack surface without IT or security oversight.",
+         "effort":"Low","effort_hours":1,
+         "secure_score_impact": 3},
+
+        {"id":"GUEST-002","title":"Guest Users Have Member-Level Directory Permissions","module":"identity","metric":"guest_has_member_perms",
+         "threshold": lambda v: v is True,
+         "description":"Guest users in this tenant have been granted member-level directory permissions rather than the restricted guest role. By default, guests have limited directory visibility — they cannot enumerate all users, groups, and applications. Member-level permissions grant guests the same directory read access as internal users, significantly expanding what a compromised or malicious guest can discover.",
+         "recommendation":"Go to Entra ID > External Identities > External collaboration settings > Guest user access. Set to 'Guest users have limited access to properties and memberships of directory objects' (the restricted guest setting). Review and remediate any guests who have accessed sensitive directory information.",
+         "severity_reason":"High because member-level guest permissions allow external users to enumerate your entire tenant directory — user lists, group memberships, application registrations — providing a roadmap for targeted attacks or data exfiltration.",
+         "effort":"Low","effort_hours":1,
+         "secure_score_impact": 4},
+
+        {"id":"GUEST-003","title":"No Guest Access Reviews Configured","module":"identity","metric":"guest_access_review_exists",
+         "threshold": lambda v: v is False,
+         "description":"No Access Reviews have been detected in this tenant. Without periodic access reviews, guest accounts accumulate over time — ex-partners, former contractors, and project guests who no longer need access continue to hold Entra ID identities and retain any permissions they were granted. This is a common compliance gap flagged in ISO 27001, SOC 2, and Cyber Essentials assessments.",
+         "recommendation":"Configure recurring Guest Access Reviews in Entra ID > Identity Governance > Access Reviews. Set quarterly reviews assigned to business owners or team leads. Require reviewers to confirm or remove each guest. Enable auto-removal for guests not confirmed within the review window. Note: Access Reviews require Entra ID P2 / Microsoft Entra ID Governance licensing.",
+         "severity_reason":"Medium because without periodic review, guest accounts accumulate silently — every inactive guest is a potential persistent access path that bypasses your joiner/mover/leaver controls.",
+         "effort":"Medium","effort_hours":3,
+         "secure_score_impact": 4},
+
+        {"id":"GUEST-004","title":"No Cross-Tenant Access Restrictions Configured","module":"identity","metric":"external_collab_restricted",
+         "threshold": lambda v: v is False,
+         "description":"No cross-tenant access policy restrictions have been configured. By default, Entra ID allows inbound B2B collaboration from any external tenant. Without explicit tenant allowlisting or blocklisting, any user in any Microsoft tenant can be invited as a guest. This makes it difficult to enforce partner vetting, prevent data sharing with sanctioned organisations, or meet regulatory requirements around data residency.",
+         "recommendation":"Configure Cross-Tenant Access Policies in Entra ID > External Identities > Cross-tenant access settings. Add explicit allow-list entries for trusted partner tenants. Set the default inbound policy to block all unless explicitly permitted. This does not prevent inviting guests — it gives you control over which tenants can be invited from.",
+         "severity_reason":"Medium because without cross-tenant restrictions, there is no technical control preventing users from being invited from any tenant globally — including personal Microsoft accounts and tenants in sanctioned jurisdictions.",
+         "effort":"Medium","effort_hours":4,
+         "secure_score_impact": 3},
     ]
     # Apply framework mappings to all findings
     for f in findings:
@@ -1809,6 +1995,44 @@ METRIC_DISPLAY = {
     "implicit_grant_app_count":        {"label":"Implicit Grant Apps",              "format":"{}",   "desc":"Apps with implicit ID/access token issuance enabled"},
     "priv_service_principal_count":    {"label":"Privileged Service Principals",    "format":"{}",   "desc":"Service principals with high-privilege directory roles"},
     "priv_managed_identity_count":     {"label":"Privileged Managed Identities",    "format":"{}",   "desc":"Managed identities with high-privilege directory roles"},
+    "onprem_sync_enabled":             {"label":"On-Premises Sync Enabled",         "format":"{}",   "desc":"Whether Entra Connect hybrid sync is active"},
+    "onprem_sync_age_hours":           {"label":"Sync Staleness (Hours)",           "format":"{}h",  "desc":"Hours since last successful Entra Connect sync"},
+    "federated_domain_count":          {"label":"Federated Domains",               "format":"{}",   "desc":"Domains using ADFS or Pass-Through Authentication"},
+    "guest_invite_policy":             {"label":"Guest Invite Policy",             "format":"{}",   "desc":"Who is permitted to invite external guest users"},
+    "guest_has_member_perms":          {"label":"Guest Member-Level Permissions",  "format":"{}",   "desc":"Whether guests have member-level directory access"},
+    "guest_access_review_exists":      {"label":"Guest Access Reviews",            "format":"{}",   "desc":"Whether Access Reviews are configured for guests"},
+    "external_collab_restricted":      {"label":"Cross-Tenant Access Restricted",  "format":"{}",   "desc":"Whether cross-tenant B2B access policy is configured"},
+}
+
+# ─────────────────────────────────────────────────────────────
+#  BREACH COST + INDUSTRY BENCHMARK
+# ─────────────────────────────────────────────────────────────
+# Estimated potential breach cost ranges per severity band (£ thousands)
+# Based on IBM Cost of a Data Breach Report 2024 (UK average: £3.08M)
+# and Microsoft Digital Defence Report 2024
+BREACH_COST_GBP = {
+    "critical": {"low": 500,  "high": 5000},   # £500K – £5M
+    "high":     {"low": 100,  "high": 2000},   # £100K – £2M
+    "medium":   {"low": 25,   "high": 500},    # £25K – £500K
+    "low":      {"low": 5,    "high": 100},    # £5K – £100K
+}
+
+# Industry benchmark scores — sourced from Microsoft Security Intelligence Report 2024,
+# Hornetsecurity M365 Security Report 2024, and IBM Cost of a Data Breach 2024
+INDUSTRY_BENCHMARK = {
+    "score":       62,
+    "percentiles": {90: "Top 10%", 75: "Top 25%", 62: "Industry average", 50: "Below average", 40: "Significant risk"},
+    "source":      "Microsoft Security Intelligence Report 2024 / IBM Cost of a Data Breach 2024",
+    "by_sector": {
+        "financial_services": 71,
+        "healthcare":         58,
+        "manufacturing":      54,
+        "education":          56,
+        "public_sector":      60,
+        "professional_services": 65,
+        "retail":             53,
+        "technology":         68,
+    }
 }
 
 
@@ -2146,7 +2370,7 @@ def save_session(session_data):
 # Read version from VERSION file — never hardcode so updates always reflect correctly
 _ver_file = os.path.join(BASE_DIR, "VERSION")
 CURRENT_VERSION       = open(_ver_file).read().strip() if os.path.exists(_ver_file) else "1.4.0"
-FINDINGS_LAST_UPDATED = "2026-06-07"   # Update whenever FINDINGS list is modified
+FINDINGS_LAST_UPDATED = "2026-06-07"   # Update whenever FINDINGS list is modified  (v1.7.0: SYNC-001/002, GUEST-001/002/003/004)
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
 RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
 
@@ -2154,7 +2378,8 @@ RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolki
 @app.route("/status", methods=["GET"])
 def status():
     return jsonify({"status": "online", "version": CURRENT_VERSION,
-                    "findings_loaded": len(FINDINGS_LIBRARY), "scripts_dir": SCRIPTS_DIR})
+                    "findings_loaded": len(FINDINGS_LIBRARY), "scripts_dir": SCRIPTS_DIR,
+                    "industry_benchmark": INDUSTRY_BENCHMARK})
 
 
 @app.route("/check-update", methods=["GET"])
@@ -2326,6 +2551,13 @@ def run_assessment():
     findings = evaluate_findings(all_metrics)
     score    = calculate_score(findings)
     display_metrics = [format_metric(k, v) for k, v in all_metrics.items()]
+
+    # Inject breach cost estimates into each triggered finding
+    for f in findings:
+        sev  = f.get("severity", "medium")
+        cost = BREACH_COST_GBP.get(sev, BREACH_COST_GBP["medium"])
+        f["breach_cost_low"]  = cost["low"]
+        f["breach_cost_high"] = cost["high"]
 
     L(f"Findings: {len(findings)} triggered")
     L(f"Score: {score}/100")
@@ -5607,6 +5839,210 @@ $csv = "PrivilegedManagedIdentities_$(Get-Date -Format yyyyMMdd).csv"
 $report | Export-Csv $csv -NoTypeInformation
 $report | Sort-Object Role,ManagedIdentity | Format-Table -AutoSize
 Write-Host "$($report.Count) managed identit(ies) with high-privilege roles found. Exported: $csv" -ForegroundColor $(if ($report.Count -gt 0) {'Red'} else {'Green'})
+Disconnect-MgGraph"""
+    },
+
+    "SYNC-001": {
+        "title": "On-premises Entra Connect sync health",
+        "description": "Checks the last sync time, sync errors, and overall health of Entra Connect hybrid sync.",
+        "script": r"""# SYNC-001 — Entra Connect Sync Health Check
+# Requires: Microsoft.Graph module
+# Permissions: Organization.Read.All, Directory.Read.All
+
+Connect-MgGraph -Scopes "Organization.Read.All","Directory.Read.All" -NoWelcome
+
+Write-Host "`n=== Entra Connect Sync Health ===" -ForegroundColor Cyan
+
+$org = Get-MgOrganization -Property OnPremisesSyncEnabled,OnPremisesLastSyncDateTime,DisplayName
+Write-Host "Organisation:           $($org.DisplayName)"
+Write-Host "Sync enabled:           $($org.OnPremisesSyncEnabled)"
+
+if ($org.OnPremisesLastSyncDateTime) {
+    $age = [datetime]::UtcNow - $org.OnPremisesLastSyncDateTime.ToUniversalTime()
+    Write-Host "Last sync:              $($org.OnPremisesLastSyncDateTime) UTC"
+    Write-Host "Time since last sync:   $([math]::Round($age.TotalHours, 1)) hours"
+    if ($age.TotalHours -gt 3) {
+        Write-Host "STATUS: STALE — last sync was more than 3 hours ago" -ForegroundColor Red
+    } else {
+        Write-Host "STATUS: Healthy" -ForegroundColor Green
+    }
+} else {
+    Write-Host "Last sync:              Not available (may not be configured)"
+}
+
+Write-Host "`n=== Domain Authentication Types ===" -ForegroundColor Cyan
+Get-MgDomain -Property Id,AuthenticationType,IsVerified | Where-Object { $_.IsVerified } |
+    Select-Object Id,AuthenticationType | Format-Table -AutoSize
+
+Write-Host "`n--- Action if stale: Check Synchronisation Service Manager on the Entra Connect server ---" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "SYNC-002": {
+        "title": "Federated domain configuration and ADFS risk",
+        "description": "Lists federated domains, their authentication type, and checks for ADFS/PTA configuration.",
+        "script": r"""# SYNC-002 — Federated Domain Analysis
+# Requires: Microsoft.Graph module
+# Permissions: Domain.Read.All, Organization.Read.All
+
+Connect-MgGraph -Scopes "Domain.Read.All","Organization.Read.All" -NoWelcome
+
+Write-Host "`n=== Domain Authentication Configuration ===" -ForegroundColor Cyan
+$domains = Get-MgDomain -Property Id,AuthenticationType,IsVerified,IsDefault
+$domains | Where-Object { $_.IsVerified } | Select-Object Id,AuthenticationType,IsDefault | Format-Table -AutoSize
+
+$federated = $domains | Where-Object { $_.AuthenticationType -eq 'Federated' -and $_.IsVerified }
+Write-Host "`nFederated domain count: $($federated.Count)"
+
+if ($federated.Count -gt 0) {
+    Write-Host "`nFederated domains (ADFS/PTA):" -ForegroundColor Yellow
+    $federated | ForEach-Object { Write-Host "  - $($_.Id)" -ForegroundColor Yellow }
+    Write-Host "`nRecommendation: Evaluate migration to Password Hash Synchronisation + Seamless SSO." -ForegroundColor Cyan
+    Write-Host "Reference: https://aka.ms/adfs-to-aad" -ForegroundColor Cyan
+} else {
+    Write-Host "`nNo federated domains detected — all verified domains use managed (PHS) authentication." -ForegroundColor Green
+}
+
+Disconnect-MgGraph"""
+    },
+
+    "GUEST-001": {
+        "title": "Guest invitation policy and external collaboration settings",
+        "description": "Checks who can invite guest users and the current guest invitation policy.",
+        "script": r"""# GUEST-001 — Guest Invitation Policy Review
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+Write-Host "`n=== Guest Invitation Policy ===" -ForegroundColor Cyan
+
+$authPol = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/authorizationPolicy"
+Write-Host "Allow invites from:          $($authPol.allowInvitesFrom)"
+Write-Host "Guest user role ID:          $($authPol.guestUserRoleId)"
+
+$policyMap = @{
+    'none'                                 = 'Only admins can invite guests'
+    'adminsAndGuestInviters'              = 'Admins and Guest Inviter role only'
+    'adminsGuestInvitersAndAllMembers'    = 'Admins, Guest Inviters, and ALL members — REVIEW REQUIRED'
+    'everyone'                            = 'Anyone including guests — HIGH RISK'
+}
+$policyLabel = $policyMap[$authPol.allowInvitesFrom] ?? $authPol.allowInvitesFrom
+Write-Host "`nPolicy meaning: $policyLabel" -ForegroundColor $(
+    if ($authPol.allowInvitesFrom -in @('none','adminsAndGuestInviters')) { 'Green' } else { 'Red' }
+)
+
+Write-Host "`n=== Current Guest Count ===" -ForegroundColor Cyan
+$guestCount = (Get-MgUser -Filter "userType eq 'Guest'" -All -Property Id,DisplayName,UserPrincipalName,CreatedDateTime |
+    Measure-Object).Count
+Write-Host "Total guest users: $guestCount"
+
+Write-Host "`n--- To restrict: Set via Entra ID > External Identities > External collaboration settings ---" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "GUEST-002": {
+        "title": "Guest user directory permissions and role assignment",
+        "description": "Checks whether guest users have member-level or restricted directory permissions.",
+        "script": r"""# GUEST-002 — Guest Directory Permission Level
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All, User.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All","User.Read.All" -NoWelcome
+
+Write-Host "`n=== Guest User Permission Level ===" -ForegroundColor Cyan
+
+$authPol = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/authorizationPolicy"
+$roleId  = $authPol.guestUserRoleId
+
+$roleMap = @{
+    'a0b1b346-4d3e-4e8b-98f8-753987be4970' = 'Member (FULL directory access — HIGH RISK)'
+    '2af84b1e-32c8-42b7-82bc-daa82404023b' = 'Guest (default restricted access)'
+    '10dae51f-b6af-4016-8d66-8c2a99b929b3' = 'Restricted guest (most limited — RECOMMENDED)'
+}
+$roleLabel = $roleMap[$roleId] ?? "Unknown ($roleId)"
+Write-Host "Guest role ID:     $roleId"
+Write-Host "Permission level:  $roleLabel" -ForegroundColor $(
+    if ($roleId -eq 'a0b1b346-4d3e-4e8b-98f8-753987be4970') { 'Red' } else { 'Green' }
+)
+
+Write-Host "`n=== Sample Guest Users ===" -ForegroundColor Cyan
+Get-MgUser -Filter "userType eq 'Guest'" -All -Property DisplayName,UserPrincipalName,CreatedDateTime |
+    Select-Object DisplayName,UserPrincipalName,CreatedDateTime |
+    Sort-Object CreatedDateTime -Descending | Select-Object -First 20 | Format-Table -AutoSize
+
+Write-Host "`n--- To fix: Entra ID > External Identities > External collaboration settings > Guest user access ---" -ForegroundColor Yellow
+Disconnect-MgGraph"""
+    },
+
+    "GUEST-003": {
+        "title": "Guest access reviews configuration",
+        "description": "Checks whether Access Reviews are configured for guest users (requires Entra ID P2).",
+        "script": r"""# GUEST-003 — Guest Access Review Status
+# Requires: Microsoft.Graph module (Identity Governance — Entra ID P2)
+# Permissions: AccessReview.Read.All
+
+Connect-MgGraph -Scopes "AccessReview.Read.All","User.Read.All" -NoWelcome
+
+Write-Host "`n=== Guest Access Reviews ===" -ForegroundColor Cyan
+
+try {
+    $reviews = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/identityGovernance/accessReviews/definitions?`$top=25"
+    if ($reviews.value.Count -eq 0) {
+        Write-Host "No Access Reviews configured." -ForegroundColor Red
+        Write-Host "Action required: Configure recurring guest access reviews in Entra ID > Identity Governance > Access Reviews" -ForegroundColor Yellow
+    } else {
+        Write-Host "Access Reviews found: $($reviews.value.Count)" -ForegroundColor Green
+        $reviews.value | ForEach-Object {
+            Write-Host "  - $($_.displayName) | Status: $($_.status) | Recurrence: $($_.instanceEnumerationScope)"
+        }
+    }
+} catch {
+    Write-Host "Unable to retrieve Access Reviews — check Entra ID P2 licensing and AccessReview.Read.All permission." -ForegroundColor Yellow
+    Write-Host "Error: $_"
+}
+
+Write-Host "`n=== Guest User Summary ===" -ForegroundColor Cyan
+$guests = Get-MgUser -Filter "userType eq 'Guest'" -All -Property DisplayName,UserPrincipalName,CreatedDateTime,SignInActivity
+$guests | Select-Object DisplayName,UserPrincipalName,CreatedDateTime | Sort-Object CreatedDateTime | Format-Table -AutoSize
+Write-Host "Total guests: $($guests.Count)"
+Disconnect-MgGraph"""
+    },
+
+    "GUEST-004": {
+        "title": "Cross-tenant access policy and external collaboration restrictions",
+        "description": "Reviews the cross-tenant access policy to check if external B2B collaboration is restricted to approved tenants.",
+        "script": r"""# GUEST-004 — Cross-Tenant Access Policy Review
+# Requires: Microsoft.Graph module
+# Permissions: Policy.Read.All
+
+Connect-MgGraph -Scopes "Policy.Read.All" -NoWelcome
+
+Write-Host "`n=== Cross-Tenant Access Policy ===" -ForegroundColor Cyan
+
+try {
+    $default = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/crossTenantAccessPolicy/default"
+    Write-Host "=== Default Inbound B2B Collaboration Policy ===" -ForegroundColor Cyan
+    Write-Host ($default | ConvertTo-Json -Depth 5)
+} catch {
+    Write-Host "Could not retrieve cross-tenant access policy default: $_" -ForegroundColor Yellow
+}
+
+try {
+    $partners = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/crossTenantAccessPolicy/partners"
+    Write-Host "`n=== Explicit Partner Tenant Entries ===" -ForegroundColor Cyan
+    if ($partners.value.Count -eq 0) {
+        Write-Host "No explicit partner tenant allowlist entries — all tenants use default policy." -ForegroundColor Yellow
+    } else {
+        $partners.value | ForEach-Object {
+            Write-Host "  - Tenant ID: $($_.tenantId) | Inbound: $($_.b2bCollaborationInbound)"
+        }
+    }
+} catch {
+    Write-Host "Could not retrieve partner entries: $_" -ForegroundColor Yellow
+}
+
+Write-Host "`n--- To configure: Entra ID > External Identities > Cross-tenant access settings ---" -ForegroundColor Cyan
 Disconnect-MgGraph"""
     },
 

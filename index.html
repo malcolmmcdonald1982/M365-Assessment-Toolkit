@@ -586,6 +586,7 @@
   .finding-card:has(.finding-severity.medium)   { border-left: 3px solid var(--accent) !important; }
   .finding-card:has(.finding-severity.low)      { border-left: 3px solid var(--success) !important; }
   .finding-severity-reason { font-size: 11.5px; color: var(--muted); margin: 4px 0 6px; line-height: 1.5; font-style: italic; border-left: 2px solid var(--border2); padding-left: 8px; }
+  .finding-breach-cost { font-size: 11px; color: #f59e0b; margin: 3px 0 6px; line-height: 1.5; padding: 4px 8px; background: rgba(245,158,11,0.08); border-radius: 5px; }
 
   /* Collapsible sidebar sections */
   .sidebar-collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
@@ -1287,6 +1288,7 @@
             <div class="score-band" id="scoreBandLabel"></div>
             <div class="score-band-sub" id="scoreBandSub"></div>
             <div class="score-band-sub" id="scoreExcludedNote" style="color:var(--muted);margin-top:3px;font-style:italic;"></div>
+            <div id="scoreBenchmarkRow" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;"></div>
             <div id="scoreBreakdownPopup" class="score-breakdown-popup" style="display:none;position:absolute;right:0;top:110%;"></div>
           </div>
         </div>
@@ -1305,6 +1307,9 @@
           <div class="section-count" id="findingsCount">0 findings</div>
           <button class="cc-export-btn" id="exportComplianceBtn" onclick="exportComplianceCSV()" style="display:none;" title="Download compliance mapping for all triggered findings as a spreadsheet-ready CSV">
             ⬇ Compliance Annex (CSV)
+          </button>
+          <button class="cc-export-btn" id="exportGrcBtn" onclick="exportGrcCSV()" style="display:none;" title="Export all triggered findings as a GRC-ready spreadsheet (ID, title, severity, effort, cost, frameworks, status)">
+            ⬇ GRC Export (CSV)
           </button>
         </div>
       </div>
@@ -1564,6 +1569,26 @@
       </div>
 
       <div id="compareEmpty" class="empty-state">Select two saved assessments above and click Compare.</div>
+
+      <!-- Trend Chart (multi-session) -->
+      <div style="margin-top:2rem;">
+        <div class="section-head" style="margin-bottom:12px;">
+          <div>
+            <div class="section-title">Score Trend</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;">Load up to 6 saved sessions to plot score over time</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="action-btn" onclick="document.getElementById('trendFileInput').click()" style="padding:5px 12px;font-size:11px;">+ Add Session</button>
+            <button class="action-btn" onclick="clearTrendSessions()" style="padding:5px 12px;font-size:11px;">Clear</button>
+            <input type="file" id="trendFileInput" accept=".json" multiple style="display:none;" onchange="loadTrendSessions(this.files)">
+          </div>
+        </div>
+        <div id="trendEmpty" style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:20px;text-align:center;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">Load 2 or more sessions to plot the trend.</div>
+        <div id="trendChartWrap" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;">
+          <svg id="trendChart" width="100%" height="220" style="overflow:visible;"></svg>
+          <div id="trendLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--muted);"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Report -->
@@ -1659,8 +1684,9 @@
   </div>
 </main>
 
-<footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;">
+<footer style="background:var(--bg2);border-top:1px solid var(--border);padding:10px 2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
   <span id="footerVersion" style="font-family:var(--mono);font-size:10px;color:var(--muted);">M365 Assessment Toolkit v1.4.0 &nbsp;·&nbsp; MIT Licence &nbsp;·&nbsp; <a href="https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit" target="_blank" style="color:var(--muted);text-decoration:none;">GitHub</a></span>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--success);opacity:0.75;" title="This tool operates entirely on your local machine. No assessment data, credentials, or tenant information is transmitted externally. All scripts run locally against your Microsoft 365 tenant via the Microsoft Graph API only.">🔒 Fully local — no data leaves your machine</span>
   <span style="font-family:var(--mono);font-size:10px;color:var(--muted);">Built with AI assistance &nbsp;·&nbsp; Security logic &amp; design by Malcolm McDonald &nbsp;·&nbsp; All code is open source and auditable</span>
 </footer>
 
@@ -2278,6 +2304,165 @@ function exportComplianceCSV() {
   URL.revokeObjectURL(url);
 }
 
+// ── GRC Export CSV ───────────────────────────────────────────
+function exportGrcCSV() {
+  const findings = assessmentData?.findings;
+  if (!findings || !findings.length) return;
+  const active = getActiveFrameworks();
+  const anns = findingAnnotations || {};
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sorted = [...findings].sort((a,b) => (order[a.severity]??9) - (order[b.severity]??9));
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const rows = [[
+    'Finding ID','Title','Severity','Module','Status','Effort','Est. Hours',
+    'Potential Exposure (Low £K)','Potential Exposure (High £K)',
+    'Observed Value','Frameworks','Reason / Notes'
+  ].map(esc)];
+  sorted.forEach(f => {
+    const ann = anns[f.id] || {};
+    const fwList = active.filter(k => f.frameworks && f.frameworks[k]).map(k => FW_LABELS[k]||k).join('; ');
+    rows.push([
+      f.id, f.title, f.severity, f.module,
+      ann.status || 'open',
+      f.effort || '', f.effort_hours || '',
+      f.breach_cost_low || '', f.breach_cost_high || '',
+      f.observed_value || '',
+      fwList,
+      ann.reason || ann.notes || ''
+    ].map(esc));
+  });
+  const csv = rows.map(r => r.join(',')).join('\r\n');
+  const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const org = assessmentData?.orgName || assessmentData?.clientName || 'Assessment';
+  const date = assessmentData?.assessDate || new Date().toISOString().split('T')[0];
+  a.href = url; a.download = `${org}_GRC_Export_${date}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Trend Chart (multi-session) ──────────────────────────────
+let _trendSessions = [];
+
+function loadTrendSessions(files) {
+  const readers = Array.from(files).map(file => new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => {
+      try { resolve({ name: file.name, data: JSON.parse(e.target.result) }); }
+      catch { resolve(null); }
+    };
+    r.readAsText(file);
+  }));
+  Promise.all(readers).then(results => {
+    results.forEach(r => {
+      if (!r || !r.data) return;
+      const score = r.data.adjustedScore ?? r.data.score ?? 0;
+      const date  = r.data.assessDate || r.data.savedAt?.split('T')[0] || r.name;
+      const org   = r.data.orgName || r.data.clientName || 'Unknown';
+      if (!_trendSessions.find(s => s.date === date && s.org === org)) {
+        _trendSessions.push({ date, score, org, file: r.name });
+      }
+    });
+    _trendSessions.sort((a,b) => a.date.localeCompare(b.date));
+    renderTrendChart();
+  });
+  document.getElementById('trendFileInput').value = '';
+}
+
+function clearTrendSessions() {
+  _trendSessions = [];
+  document.getElementById('trendChartWrap').style.display = 'none';
+  document.getElementById('trendEmpty').style.display = '';
+}
+
+function renderTrendChart() {
+  const sessions = _trendSessions;
+  const wrap = document.getElementById('trendChartWrap');
+  const empty = document.getElementById('trendEmpty');
+  if (sessions.length < 2) { wrap.style.display = 'none'; empty.style.display = ''; return; }
+  wrap.style.display = ''; empty.style.display = 'none';
+
+  const svg = document.getElementById('trendChart');
+  const W = svg.parentElement.clientWidth - 40 || 700;
+  const H = 200;
+  const PAD = { top: 20, right: 20, bottom: 36, left: 44 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const scores = sessions.map(s => s.score);
+  const minS = Math.max(0, Math.min(...scores) - 10);
+  const maxS = Math.min(100, Math.max(...scores) + 10);
+  const xStep = chartW / (sessions.length - 1);
+  const yScale = v => chartH - ((v - minS) / (maxS - minS)) * chartH;
+
+  const pts = sessions.map((s,i) => ({ x: PAD.left + i * xStep, y: PAD.top + yScale(s.score), score: s.score, date: s.date }));
+
+  // Band colours
+  const bandZones = [
+    { min: 90, max: 100, fill: '#16a34a22' },
+    { min: 75, max: 90,  fill: '#22c55e18' },
+    { min: 60, max: 75,  fill: '#f59e0b18' },
+    { min: 40, max: 60,  fill: '#f9731618' },
+    { min: 0,  max: 40,  fill: '#ef444420' },
+  ];
+
+  let svgHtml = `<g>`;
+  // Band zones
+  bandZones.forEach(b => {
+    const y1 = PAD.top + yScale(Math.min(b.max, maxS));
+    const y2 = PAD.top + yScale(Math.max(b.min, minS));
+    if (y2 > y1) svgHtml += `<rect x="${PAD.left}" y="${y1}" width="${chartW}" height="${y2-y1}" fill="${b.fill}"/>`;
+  });
+  // Y gridlines
+  for (let v = Math.ceil(minS/10)*10; v <= maxS; v += 10) {
+    const y = PAD.top + yScale(v);
+    svgHtml += `<line x1="${PAD.left}" y1="${y}" x2="${PAD.left+chartW}" y2="${y}" stroke="#ffffff15" stroke-width="1"/>`;
+    svgHtml += `<text x="${PAD.left-6}" y="${y+4}" text-anchor="end" font-size="9" font-family="monospace" fill="#64748b">${v}</text>`;
+  }
+  // Industry benchmark line
+  const benchY = PAD.top + yScale(62);
+  if (benchY >= PAD.top && benchY <= PAD.top + chartH) {
+    svgHtml += `<line x1="${PAD.left}" y1="${benchY}" x2="${PAD.left+chartW}" y2="${benchY}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>`;
+    svgHtml += `<text x="${PAD.left+chartW+3}" y="${benchY+4}" font-size="8" font-family="monospace" fill="#f59e0b" opacity="0.8">avg 62</text>`;
+  }
+  // Line
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+  svgHtml += `<polyline points="${polyline}" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // Dots + labels
+  pts.forEach(p => {
+    const col = p.score >= 90 ? '#16a34a' : p.score >= 75 ? '#22c55e' : p.score >= 60 ? '#f59e0b' : p.score >= 40 ? '#f97316' : '#ef4444';
+    svgHtml += `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${col}" stroke="#1e293b" stroke-width="2"/>`;
+    svgHtml += `<text x="${p.x}" y="${p.y - 10}" text-anchor="middle" font-size="10" font-weight="600" font-family="monospace" fill="${col}">${p.score}</text>`;
+    svgHtml += `<text x="${p.x}" y="${PAD.top + chartH + 14}" text-anchor="middle" font-size="8" font-family="monospace" fill="#64748b">${p.date}</text>`;
+  });
+  svgHtml += `</g>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = svgHtml;
+
+  // Legend
+  const legend = document.getElementById('trendLegend');
+  legend.innerHTML = sessions.map(s => {
+    const col = s.score >= 90 ? '#16a34a' : s.score >= 75 ? '#22c55e' : s.score >= 60 ? '#f59e0b' : s.score >= 40 ? '#f97316' : '#ef4444';
+    return `<span>● <strong style="color:${col}">${s.score}/100</strong> — ${s.org} (${s.date})</span>`;
+  }).join('');
+  const benchLi = benchY >= PAD.top && benchY <= PAD.top + chartH
+    ? `<span style="color:#f59e0b;opacity:0.8;">- - Industry average: 62/100</span>` : '';
+  if (benchLi) legend.innerHTML += benchLi;
+}
+
+// ── Industry Benchmark (score display) ──────────────────────
+let _industryBenchmark = 62;
+function updateBenchmarkRow(score) {
+  const el = document.getElementById('scoreBenchmarkRow');
+  if (!el || !score) return;
+  const b = _industryBenchmark;
+  const delta = score - b;
+  const col = delta >= 5 ? 'var(--success)' : delta >= -5 ? '#f59e0b' : 'var(--danger)';
+  const label = delta > 0 ? `▲ ${delta} above` : delta < 0 ? `▼ ${Math.abs(delta)} below` : 'At';
+  el.style.display = '';
+  el.innerHTML = `<span style="color:${col};">${label} industry average</span> &nbsp;·&nbsp; <span>Your score: <strong>${score}</strong></span> &nbsp;·&nbsp; <span style="color:var(--muted);">Industry avg: ${b}</span>`;
+}
+
 // ── Framework filter bar (Findings tab) ─────────────────────
 function buildFwFilterBar(findings) {
   const bar = document.getElementById('fwFilterBar');
@@ -2754,6 +2939,7 @@ function renderOverview(data) {
   if (subEl) subEl.textContent = band.sub;
   const exEl = document.getElementById('scoreExcludedNote');
   if (exEl) exEl.textContent = '';
+  updateBenchmarkRow(score);
 
   // Severity breakdown chips
   const sevCounts = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -2794,6 +2980,8 @@ function renderFindings(findings) {
   document.getElementById('findingsCount').textContent = `${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
   const exportBtn = document.getElementById('exportComplianceBtn');
   if (exportBtn) exportBtn.style.display = findings.length > 0 ? '' : 'none';
+  const grcBtn = document.getElementById('exportGrcBtn');
+  if (grcBtn) grcBtn.style.display = findings.length > 0 ? '' : 'none';
 
   // Per-severity summary row + tab badge
   const sevCounts = { critical:0, high:0, medium:0, low:0 };
@@ -2856,6 +3044,7 @@ function renderFindings(findings) {
         </div>
         <div class="finding-desc">${f.description}</div>
         ${f.severity_reason ? `<div class="finding-severity-reason">⚖ <strong>Why ${f.severity}?</strong> ${f.severity_reason}</div>` : ''}
+        ${(f.breach_cost_low && f.breach_cost_high) ? `<div class="finding-breach-cost">💷 <strong>Potential exposure:</strong> £${f.breach_cost_low >= 1000 ? (f.breach_cost_low/1000)+'M' : f.breach_cost_low+'K'} – £${f.breach_cost_high >= 1000 ? (f.breach_cost_high/1000)+'M' : f.breach_cost_high+'K'} &nbsp;<span style="opacity:0.55;font-style:italic;">(IBM Cost of a Data Breach 2024 — UK average for this severity band)</span></div>` : ''}
         <div class="finding-rec">${f.recommendation}</div>
         <div class="finding-meta">Module: ${f.module} &nbsp;|&nbsp; Metric: ${f.metric} &nbsp;|&nbsp; Observed: ${f.observed_value}</div>
         ${f.frameworks ? buildFwBadges(f.frameworks) : ''}
@@ -4309,6 +4498,9 @@ document.addEventListener('DOMContentLoaded', () => {
   fetch(`${BACKEND}/status`).then(r => r.json()).then(d => {
     const sub = document.getElementById('headerVersionSub');
     if (sub && d.version) sub.textContent = `Security Assessment Platform · v${d.version}`;
+    if (d.industry_benchmark && d.industry_benchmark.score) {
+      _industryBenchmark = d.industry_benchmark.score;
+    }
   }).catch(() => {});
 
   // ── Keyboard shortcut Ctrl+Enter = Run Assessment ─────────────

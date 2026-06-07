@@ -298,6 +298,51 @@ try {
         }
     } catch {}
 
+    # ─── On-Premises Sync Health ──────────────────────────────────────────────
+    $OnPremSyncEnabled    = $false
+    $OnPremSyncAgeHours   = -1
+    $FederatedDomainCount = 0
+    try {
+        $OrgData = Get-MgOrganization -Property OnPremisesSyncEnabled,OnPremisesLastSyncDateTime -ErrorAction SilentlyContinue
+        if ($OrgData -and $OrgData[0]) {
+            $OnPremSyncEnabled = [bool]$OrgData[0].OnPremisesSyncEnabled
+            if ($OrgData[0].OnPremisesLastSyncDateTime) {
+                $SyncAge            = [datetime]::UtcNow - $OrgData[0].OnPremisesLastSyncDateTime.ToUniversalTime()
+                $OnPremSyncAgeHours = [math]::Round($SyncAge.TotalHours, 1)
+            }
+        }
+    } catch {}
+    try {
+        $Domains              = Get-MgDomain -Property AuthenticationType -ErrorAction SilentlyContinue
+        $FederatedDomainCount = ($Domains | Where-Object { $_.AuthenticationType -eq 'Federated' }).Count
+    } catch {}
+
+    # ─── Guest / External Collaboration Policy ────────────────────────────────
+    $GuestInvitePolicy       = "unknown"
+    $GuestHasMemberPerms     = $false
+    $GuestAccessReviewExists = $false
+    $ExternalCollabRestricted = $false
+    try {
+        $AuthPol = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/authorizationPolicy" -ErrorAction SilentlyContinue
+        if ($AuthPol) {
+            $GuestInvitePolicy   = [string]$AuthPol.allowInvitesFrom
+            # GUID a0b1b346-4d3e-4e8b-98f8-753987be4970 = Guest assigned Member-level permissions (too broad)
+            $GuestHasMemberPerms = ($AuthPol.guestUserRoleId -eq 'a0b1b346-4d3e-4e8b-98f8-753987be4970')
+        }
+    } catch {}
+    try {
+        # Cross-tenant access policy default: if inbound B2B blocked, org has explicit control
+        $CrossTenant = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/policies/crossTenantAccessPolicy/default" -ErrorAction SilentlyContinue
+        if ($CrossTenant -and $CrossTenant.b2bCollaborationInbound) {
+            $ExternalCollabRestricted = ($CrossTenant.b2bCollaborationInbound.usersAndGroups.accessType -eq 'blocked' -or
+                                         $CrossTenant.b2bCollaborationInbound.applications.accessType    -eq 'blocked')
+        }
+    } catch {}
+    try {
+        $Reviews = Invoke-MgGraphRequest -Method GET -Uri "/v1.0/identityGovernance/accessReviews/definitions?`$top=5" -ErrorAction SilentlyContinue
+        $GuestAccessReviewExists = ($Reviews -and $null -ne $Reviews.value -and $Reviews.value.Count -gt 0)
+    } catch {}
+
     Disconnect-MgGraph -WarningAction SilentlyContinue | Out-Null
 
     # Output JSON - write directly to stdout
@@ -319,6 +364,13 @@ try {
         implicit_grant_app_count      = $ImplicitGrantAppCount
         priv_service_principal_count  = $PrivSPCount
         priv_managed_identity_count   = $PrivMICount
+        onprem_sync_enabled           = $OnPremSyncEnabled
+        onprem_sync_age_hours         = $OnPremSyncAgeHours
+        federated_domain_count        = $FederatedDomainCount
+        guest_invite_policy           = $GuestInvitePolicy
+        guest_has_member_perms        = $GuestHasMemberPerms
+        guest_access_review_exists    = $GuestAccessReviewExists
+        external_collab_restricted    = $ExternalCollabRestricted
     } | ConvertTo-Json -Compress
 
     [Console]::Out.WriteLine($result)

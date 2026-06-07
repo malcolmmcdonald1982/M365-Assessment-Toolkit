@@ -880,7 +880,7 @@
 <!-- Update banner — shown only when a newer version is available on GitHub -->
 <div id="updateBanner">
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-  <span>Update available: <span class="update-badge" id="updateVersionText"></span></span>
+  <span>Update available: <span class="update-badge" id="updateVersionText"></span><span id="updateHeadline" style="color:var(--muted);font-weight:400;"></span></span>
   <span style="color:var(--muted);">You are on <span id="currentVersionText"></span></span>
   <div style="flex:1;"></div>
   <a id="whatsNewLink" href="#" target="_blank" class="update-link-btn">What's New</a>
@@ -1289,6 +1289,7 @@
             <div class="score-band-sub" id="scoreBandSub"></div>
             <div class="score-band-sub" id="scoreExcludedNote" style="color:var(--muted);margin-top:3px;font-style:italic;"></div>
             <div id="scoreBenchmarkRow" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;"></div>
+            <div id="scoreExposureRow" style="display:none;margin-top:6px;padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px;border:1px solid rgba(245,158,11,0.3);font-family:var(--mono);font-size:10px;color:#f59e0b;text-align:center;" title="Aggregate potential breach cost across all open findings — IBM Cost of a Data Breach 2024 (UK)"></div>
             <div id="scoreBreakdownPopup" class="score-breakdown-popup" style="display:none;position:absolute;right:0;top:110%;"></div>
           </div>
         </div>
@@ -2450,6 +2451,22 @@ function renderTrendChart() {
   if (benchLi) legend.innerHTML += benchLi;
 }
 
+// ── Total financial exposure (score display) ─────────────────
+function updateExposureRow(findings) {
+  const el = document.getElementById('scoreExposureRow');
+  if (!el) return;
+  const open = (findings || []).filter(f => {
+    const ann = findingAnnotations && findingAnnotations[f.id];
+    return !ann || !ann.status || ann.status === 'open';
+  });
+  const totalLow  = open.reduce((s,f) => s + (f.breach_cost_low  || 0), 0);
+  const totalHigh = open.reduce((s,f) => s + (f.breach_cost_high || 0), 0);
+  if (!totalLow && !totalHigh) { el.style.display = 'none'; return; }
+  const fmt = v => v >= 1000 ? `£${(v/1000).toFixed(1)}M` : `£${v}K`;
+  el.style.display = '';
+  el.innerHTML = `💷 Unaddressed exposure: <strong>${fmt(totalLow)} – ${fmt(totalHigh)}</strong> &nbsp;·&nbsp; <span style="opacity:0.7;">${open.length} open finding${open.length!==1?'s':''} · IBM 2024</span>`;
+}
+
 // ── Industry Benchmark (score display) ──────────────────────
 let _industryBenchmark = 62;
 function updateBenchmarkRow(score) {
@@ -2656,6 +2673,18 @@ async function checkForUpdates() {
       document.getElementById('currentVersionText').textContent = 'v' + data.current;
       const link = document.getElementById('whatsNewLink');
       if (link && data.releases_url) link.href = data.releases_url;
+      // Show a headline if jumping more than one minor version
+      const parseVer = v => v.split('.').map(Number);
+      const [curMaj, curMin] = parseVer(data.current);
+      const [latMaj, latMin] = parseVer(data.latest);
+      const jumpSize = (latMaj - curMaj) * 10 + (latMin - curMin);
+      const headlineEl = document.getElementById('updateHeadline');
+      if (headlineEl) {
+        if (jumpSize >= 3)      headlineEl.textContent = ' — Major update: new findings, breach cost analysis, benchmarking & more';
+        else if (jumpSize >= 2) headlineEl.textContent = ' — Significant update: new findings and features included';
+        else if (jumpSize === 1) headlineEl.textContent = ' — New findings and improvements';
+        else                   headlineEl.textContent = '';
+      }
       document.getElementById('updateBanner').classList.add('visible');
     }
   } catch { /* silent — don't surface network errors to user */ }
@@ -2940,6 +2969,7 @@ function renderOverview(data) {
   const exEl = document.getElementById('scoreExcludedNote');
   if (exEl) exEl.textContent = '';
   updateBenchmarkRow(score);
+  updateExposureRow(data.findings || []);
 
   // Severity breakdown chips
   const sevCounts = { critical: 0, high: 0, medium: 0, low: 0 };
@@ -3159,6 +3189,7 @@ async function downloadExecReport(format) {
       consultantRole:  document.getElementById('consultantRole')?.value  || '',
       consultantEmail: document.getElementById('consultantEmail')?.value || '',
       consultantLogo:  consultantLogoBase64 || null,
+      scoreHistory:    _trendSessions.length >= 2 ? _trendSessions : undefined,
       format,
     };
     const r = await fetch(`${BACKEND}/generate-exec-report`, {
@@ -3250,6 +3281,7 @@ async function generateReport() {
       consultantRole:  (document.getElementById('consultantRole')?.value  || '').trim() || '[Role]',
       consultantEmail: (document.getElementById('consultantEmail')?.value || '').trim() || '[Email]',
       consultantLogo:  consultantLogoBase64 || null,
+      scoreHistory:    _trendSessions.length >= 2 ? _trendSessions : undefined,
     };
     const r = await fetch(`${BACKEND}/report`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

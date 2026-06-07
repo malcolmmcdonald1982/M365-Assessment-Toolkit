@@ -412,6 +412,37 @@ function buildScoreSection(data) {
     buildScoreBanner(score),
     spacer(1),
 
+    // Total financial exposure
+    ...(() => {
+      const totalLow  = findings.reduce((s,f) => s + (f.breach_cost_low  || 0), 0);
+      const totalHigh = findings.reduce((s,f) => s + (f.breach_cost_high || 0), 0);
+      if (!totalLow && !totalHigh) return [];
+      const fmt = v => v >= 1000 ? `£${(v/1000).toFixed(1)}M` : `£${v}K`;
+      return [
+        new Table({
+          width: { size: 9360, type: WidthType.DXA },
+          columnWidths: [2800, 6560],
+          rows: [new TableRow({ children: [
+            new TableCell({
+              children: [para([run('Total potential\nfinancial exposure', { bold: true, colour: COLOURS.white, size: 20 })], { before: 80, after: 80 })],
+              shading: { fill: COLOURS.orange, type: ShadingType.CLEAR }, borders: noBorders,
+              width: { size: 2800, type: WidthType.DXA }, margins: { top: 80, bottom: 80, left: 160, right: 120 }, verticalAlign: VerticalAlign.CENTER,
+            }),
+            new TableCell({
+              children: [
+                para([run(`${fmt(totalLow)} – ${fmt(totalHigh)}`, { bold: true, colour: COLOURS.orange, size: 40 })], { before: 60, after: 30 }),
+                para([run('Aggregate potential breach cost across all triggered findings · IBM Cost of a Data Breach 2024 (UK averages)', { colour: COLOURS.darkGrey, size: 16, italics: true })], { before: 0, after: 60, line: 260 }),
+              ],
+              shading: { fill: COLOURS.orangeBg, type: ShadingType.CLEAR },
+              borders: { top: noBorder, bottom: noBorder, left: border(COLOURS.orange, 16), right: noBorder },
+              width: { size: 6560, type: WidthType.DXA }, margins: { top: 80, bottom: 80, left: 200, right: 140 },
+            }),
+          ]})],
+        }),
+        spacer(1),
+      ];
+    })(),
+
     // Industry benchmark comparison
     new Table({
       width: { size: 9360, type: WidthType.DXA },
@@ -1235,6 +1266,222 @@ function buildComplianceAnnex(data) {
   ];
 }
 
+// ─── Cyber Insurance Posture Section ───────────────────────────────────────
+/**
+ * Maps key cyber insurance questionnaire criteria to findings.
+ * Shows PASS / FAIL / PARTIAL / NOT ASSESSED for each criterion.
+ */
+function buildCyberInsuranceSection(data) {
+  const triggered  = new Set((data.findings || []).map(f => f.id));
+  const PASS       = { label: '✔ Pass',          colour: COLOURS.green,    bg: COLOURS.greenBg  };
+  const FAIL       = { label: '✘ Fail',          colour: COLOURS.red,      bg: COLOURS.redBg    };
+  const PARTIAL    = { label: '⚠ Partial',       colour: COLOURS.amber,    bg: COLOURS.amberBg  };
+  const SCOPE      = { label: '— Not in scope',  colour: COLOURS.slate,    bg: COLOURS.lightGrey };
+
+  // Each criterion: { label, detail, findingsRequired (fail if any triggered), findingsPartial (partial), notInScope }
+  const criteria = [
+    {
+      label:    'Multi-Factor Authentication — All Users',
+      detail:   'Insurers require MFA for all users. Gaps in MFA coverage are the leading cause of credential compromise claims.',
+      required: ['ID-001', 'CA-003'],
+      partial:  [],
+    },
+    {
+      label:    'Privileged Account Protection',
+      detail:   'Admin and privileged accounts must have MFA, JIT access (PIM), and limited count. Insurer threshold: ≤5 Global Admins.',
+      required: ['ID-002', 'ID-003'],
+      partial:  [],
+    },
+    {
+      label:    'Email Security — Anti-Phishing, DMARC, SPF/DKIM',
+      detail:   'Email is the primary attack vector. Insurers expect DMARC enforcement, SPF/DKIM, and anti-phishing policies.',
+      required: ['EXO-004', 'EXO-005', 'EXO-001'],
+      partial:  ['EXO-002', 'EXO-003'],
+    },
+    {
+      label:    'Endpoint Protection & EDR',
+      detail:   'Endpoint Detection & Response must be deployed on all managed devices. Intune compliance policies enforce this.',
+      required: ['MDM-001', 'MDM-006'],
+      partial:  ['MDM-002'],
+    },
+    {
+      label:    'Patch Management',
+      detail:   'Devices must receive security patches promptly. Insurer expectation: patch critical vulnerabilities within 14 days.',
+      required: ['MDM-003'],
+      partial:  [],
+    },
+    {
+      label:    'Application Security — Third-Party App Control',
+      detail:   'Uncontrolled app registrations and OAuth consent are a growing insurer concern. High-privilege apps must be reviewed.',
+      required: ['ENTRA-001', 'ENTRA-009'],
+      partial:  ['ENTRA-002', 'ENTRA-007', 'ENTRA-008'],
+    },
+    {
+      label:    'Security Monitoring & Incident Detection',
+      detail:   'Insurers expect centralised security monitoring (SIEM). Microsoft Sentinel or equivalent required for larger organisations.',
+      required: ['SEC-006'],
+      partial:  ['SEC-001'],
+    },
+    {
+      label:    'Guest & External Access Control',
+      detail:   'Uncontrolled external identity access is increasingly cited in claims. Guest access policies must be documented.',
+      required: ['GUEST-001', 'GUEST-002'],
+      partial:  ['GUEST-003', 'GUEST-004'],
+    },
+    {
+      label:    'Data Backup & Recovery',
+      detail:   'Microsoft 365 data backup is not assessed by this tool. Verify a third-party backup solution covers Exchange, SharePoint, and OneDrive.',
+      required: [],
+      partial:  [],
+      notInScope: true,
+    },
+    {
+      label:    'Security Awareness Training',
+      detail:   'Insurers expect documented annual security awareness training and phishing simulation for all staff. Not detectable via Microsoft Graph.',
+      required: [],
+      partial:  [],
+      notInScope: true,
+    },
+    {
+      label:    'Incident Response Plan',
+      detail:   'A documented IR plan naming roles, communication procedures, and escalation paths is required by most insurers.',
+      required: [],
+      partial:  [],
+      notInScope: true,
+    },
+  ];
+
+  const rows = criteria.map((c, idx) => {
+    let status;
+    if (c.notInScope) {
+      status = SCOPE;
+    } else {
+      const anyRequired = c.required.some(id => triggered.has(id));
+      const anyPartial  = c.partial.some(id => triggered.has(id));
+      if (anyRequired)      status = FAIL;
+      else if (anyPartial)  status = PARTIAL;
+      else                   status = PASS;
+    }
+    const rowBg = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+    return new TableRow({ children: [
+      new TableCell({
+        children: [para([run(c.label, { bold: true, size: 19, colour: COLOURS.navy })], { before: 60, after: 30 }),
+                   para([run(c.detail, { size: 17, colour: COLOURS.darkGrey })], { before: 0, after: 60, line: 260 })],
+        shading: { fill: rowBg, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: 7200, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 140, right: 100 },
+      }),
+      new TableCell({
+        children: [para([run(status.label, { bold: true, colour: status.colour, size: 19 })], { align: AlignmentType.CENTER, before: 60, after: 60 })],
+        shading: { fill: status.bg, type: ShadingType.CLEAR },
+        borders: allBorders(COLOURS.midGrey, 4),
+        width: { size: 2160, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        verticalAlign: VerticalAlign.CENTER,
+      }),
+    ]});
+  });
+
+  const passCount = criteria.filter(c => {
+    if (c.notInScope) return false;
+    const anyRequired = c.required.some(id => triggered.has(id));
+    const anyPartial  = c.partial.some(id => triggered.has(id));
+    return !anyRequired && !anyPartial;
+  }).length;
+  const failCount = criteria.filter(c => !c.notInScope && c.required.some(id => triggered.has(id))).length;
+  const inScopeCount = criteria.filter(c => !c.notInScope).length;
+
+  return [
+    heading1(`4. Cyber Insurance Posture`),
+    para([run(`This section maps the assessment findings against the most common cyber insurance questionnaire criteria. Insurers increasingly require evidence of MFA, email security, endpoint protection, and controlled access as prerequisites for coverage. Of the ${inScopeCount} assessable criteria, ${passCount} pass and ${failCount} require remediation.`)], { before: 80, after: 160, line: 300 }),
+
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [7200, 2160],
+      rows: [
+        new TableRow({ tableHeader: true, children: [
+          new TableCell({ children: [para([run('Insurance Criterion', { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 7200, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 140, right: 100 } }),
+          new TableCell({ children: [para([run('Status', { bold: true, colour: COLOURS.white, size: 18 })], { align: AlignmentType.CENTER, before: 60, after: 60 })], shading: { fill: COLOURS.navy, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.navyLight, 4), width: { size: 2160, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+        ]}),
+        ...rows,
+      ],
+    }),
+    spacer(1),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [9360],
+      rows: [new TableRow({ children: [new TableCell({
+        children: [
+          para([run('ℹ  Insurance Posture Note', { bold: true, size: 20, colour: COLOURS.navyLight })], { before: 60, after: 60 }),
+          para([run('Items marked "Not in scope" (data backup, security awareness training, incident response plan) require separate verification. These are common insurability requirements and should be documented in your security programme before policy renewal. Items marked Pass represent assessed controls that were configured to the required standard at the time of this assessment.')], { before: 0, after: 60, line: 270 }),
+        ],
+        shading: { fill: COLOURS.offWhite, type: ShadingType.CLEAR },
+        borders: { top: border(COLOURS.navyLight, 8), bottom: border(COLOURS.navyLight, 8), left: border(COLOURS.navyLight, 20), right: noBorder },
+        width: { size: 9360, type: WidthType.DXA },
+        margins: { top: 80, bottom: 80, left: 160, right: 160 },
+      })]})],
+    }),
+    spacer(1),
+  ];
+}
+
+// ─── Score History Section ──────────────────────────────────────────────────
+/**
+ * If scoreHistory data is provided in the session, renders a historical scores table.
+ * scoreHistory = [{date, score, org}] — set from the trend chart sessions.
+ */
+function buildScoreHistorySection(data) {
+  const history = data.scoreHistory;
+  if (!history || history.length < 2) return [];
+
+  const sorted = [...history].sort((a,b) => a.date.localeCompare(b.date));
+  const first  = sorted[0];
+  const last   = sorted[sorted.length - 1];
+  const overall = last.score - first.score;
+  const trend   = overall > 0 ? `▲ +${overall} points improvement over ${sorted.length} assessments`
+                : overall < 0 ? `▼ ${overall} points decline over ${sorted.length} assessments`
+                : `No change over ${sorted.length} assessments`;
+  const trendCol = overall > 0 ? COLOURS.green : overall < 0 ? COLOURS.red : COLOURS.slate;
+
+  return [
+    heading1(`5. Score History`),
+    para([run(`The following table shows the security score across ${sorted.length} assessments. ${trend}.`)], { before: 80, after: 160, line: 300 }),
+    new Table({
+      width: { size: 9360, type: WidthType.DXA },
+      columnWidths: [2400, 2400, 2400, 2160],
+      rows: [
+        new TableRow({ tableHeader: true, children:
+          ['Date', 'Score', 'Change', 'Assessment'].map((h, i) => new TableCell({
+            children: [para([run(h, { bold: true, colour: COLOURS.white, size: 18 })], { before: 60, after: 60 })],
+            shading: { fill: COLOURS.navy, type: ShadingType.CLEAR },
+            borders: allBorders(COLOURS.navyLight, 4),
+            width: { size: [2400,2400,2400,2160][i], type: WidthType.DXA },
+            margins: { top: 40, bottom: 40, left: 120, right: 100 },
+          })),
+        }),
+        ...sorted.map((s, idx) => {
+          const prev   = idx > 0 ? sorted[idx-1].score : null;
+          const delta  = prev !== null ? s.score - prev : null;
+          const deltaStr = delta === null ? '—' : delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '=';
+          const deltaCol = delta === null ? COLOURS.slate : delta > 0 ? COLOURS.green : delta < 0 ? COLOURS.red : COLOURS.slate;
+          const scoreCol = s.score >= 90 ? COLOURS.green : s.score >= 75 ? COLOURS.green : s.score >= 60 ? COLOURS.amber : s.score >= 40 ? COLOURS.orange : COLOURS.red;
+          const rowBg    = idx % 2 === 0 ? COLOURS.offWhite : COLOURS.white;
+          return new TableRow({ children: [
+            new TableCell({ children: [para([run(s.date, { size: 19 })], { before: 50, after: 50 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 120, right: 80 } }),
+            new TableCell({ children: [para([run(`${s.score}/100`, { bold: true, colour: scoreCol, size: 22 })], { align: AlignmentType.CENTER, before: 50, after: 50 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+            new TableCell({ children: [para([run(deltaStr, { bold: true, colour: deltaCol, size: 20 })], { align: AlignmentType.CENTER, before: 50, after: 50 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2400, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+            new TableCell({ children: [para([run(s.org || '—', { size: 18, colour: COLOURS.darkGrey })], { before: 50, after: 50 })], shading: { fill: rowBg, type: ShadingType.CLEAR }, borders: allBorders(COLOURS.midGrey, 4), width: { size: 2160, type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 80, right: 80 } }),
+          ]});
+        }),
+      ],
+    }),
+    spacer(1),
+    para([run(`Overall trend: `, { bold: true, size: 20 }), run(trend, { bold: true, colour: trendCol, size: 20 })], { before: 60, after: 60 }),
+    spacer(1),
+  ];
+}
+
 /** Executive Summary — board-ready, 4-5 pages, no technical detail */
 async function buildExecReport(data, outputPath) {
   const annotations   = data.annotations || {};
@@ -1343,6 +1590,43 @@ async function buildExecReport(data, outputPath) {
           ]})],
         }),
         spacer(1),
+
+        // ── Total financial exposure callout ──────────────────────────────────
+        ...(() => {
+          const totalLow  = openFindings.reduce((s,f) => s + (f.breach_cost_low  || 0), 0);
+          const totalHigh = openFindings.reduce((s,f) => s + (f.breach_cost_high || 0), 0);
+          if (!totalLow && !totalHigh) return [];
+          const fmt = v => v >= 1000 ? `£${(v/1000).toFixed(1)}M` : `£${v}K`;
+          return [
+            new Table({
+              width: { size: 9360, type: WidthType.DXA },
+              columnWidths: [3000, 6360],
+              rows: [new TableRow({ children: [
+                new TableCell({
+                  children: [para([run('Total unaddressed\nfinancial exposure', { bold: true, colour: COLOURS.white, size: 20 })], { before: 80, after: 80 })],
+                  shading: { fill: COLOURS.orange, type: ShadingType.CLEAR },
+                  borders: noBorders,
+                  width: { size: 3000, type: WidthType.DXA },
+                  margins: { top: 80, bottom: 80, left: 160, right: 120 },
+                  verticalAlign: VerticalAlign.CENTER,
+                }),
+                new TableCell({
+                  children: [
+                    para([
+                      run(`${fmt(totalLow)} – ${fmt(totalHigh)}`, { bold: true, colour: COLOURS.orange, size: 40 }),
+                    ], { before: 60, after: 30 }),
+                    para([run('Aggregate potential breach cost across all open findings · IBM Cost of a Data Breach 2024 (UK averages by severity band)', { colour: COLOURS.darkGrey, size: 16, italics: true })], { before: 0, after: 60, line: 260 }),
+                  ],
+                  shading: { fill: COLOURS.orangeBg, type: ShadingType.CLEAR },
+                  borders: { top: noBorder, bottom: noBorder, left: border(COLOURS.orange, 16), right: noBorder },
+                  width: { size: 6360, type: WidthType.DXA },
+                  margins: { top: 80, bottom: 80, left: 200, right: 140 },
+                }),
+              ]})],
+            }),
+            spacer(1),
+          ];
+        })(),
 
         // Severity breakdown table
         ...(Object.values(sevCounts).some(v => v > 0) ? (() => {
@@ -1494,9 +1778,16 @@ async function buildExecReport(data, outputPath) {
           spacer(1),
         ] : []),
 
+        // ── Cyber Insurance Posture ───────────────────────────────────────────
+        pageBreak(),
+        ...buildCyberInsuranceSection(data),
+
+        // ── Score History ─────────────────────────────────────────────────────
+        ...buildScoreHistorySection(data),
+
         // ── Next Steps ────────────────────────────────────────────────────────
-        ...(exceptions.length === 0 ? [pageBreak()] : []),
-        heading1(`${exceptions.length > 0 ? '5' : '4'}. Next Steps`),
+        ...(exceptions.length === 0 ? [] : [pageBreak()]),
+        heading1(`${exceptions.length > 0 ? '6' : '5'}. Next Steps`),
         para([run('To improve the security posture of this Microsoft 365 environment, we recommend the following next steps:')], { before: 80, after: 120, line: 300 }),
         para([run('1.  Review the full Assessment Report with the IT/security team — it contains technical detail, investigation scripts and remediation guidance for every finding.')], { before: 40, after: 40, line: 280 }),
         para([run('2.  Prioritise Critical and High findings — these carry the greatest risk and should be remediated first.')], { before: 40, after: 40, line: 280 }),
@@ -1559,6 +1850,7 @@ async function buildReport(data, outputPath) {
         ...buildFindingsSection(data),
         ...buildRecommendationsSection(data),
         ...buildRiskExceptions(data),
+        ...buildScoreHistorySection(data),
         ...buildAssessmentMeta(data),
         ...buildFrameworkSection(data),
         ...buildComplianceAnnex(data),

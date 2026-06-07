@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%234f9cf9' d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>M365 Assessment Tool</title>
+<title>M365 Assessment Toolkit</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -587,6 +587,35 @@
   .finding-card:has(.finding-severity.low)      { border-left: 3px solid var(--success) !important; }
   .finding-severity-reason { font-size: 11.5px; color: var(--muted); margin: 4px 0 6px; line-height: 1.5; font-style: italic; border-left: 2px solid var(--border2); padding-left: 8px; }
 
+  /* Collapsible sidebar sections */
+  .sidebar-collapsible-header { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .sidebar-collapsible-header:hover .sidebar-label { color: var(--text); }
+  .sidebar-collapse-arrow { font-size: 9px; color: var(--muted); transition: transform 0.2s; }
+  .sidebar-collapse-arrow.open { transform: rotate(90deg); }
+  .sidebar-collapsible-body { display: none; margin-top: 10px; }
+  .sidebar-collapsible-body.open { display: block; }
+
+  /* Tab count badge */
+  .tab-badge { display: inline-flex; align-items: center; justify-content: center; background: var(--danger); color: #fff; border-radius: 10px; font-size: 9px; font-weight: 700; padding: 1px 5px; margin-left: 5px; min-width: 16px; line-height: 14px; vertical-align: middle; }
+  .tab-badge.warn { background: var(--warning); }
+
+  /* Post-scan report prompt */
+  .report-prompt { display: none; margin: 1rem 0 0; padding: 12px 16px; background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .report-prompt-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .report-prompt-text strong { color: var(--accent); }
+  .report-prompt-btn { flex-shrink: 0; padding: 7px 16px; background: var(--accent); border: none; border-radius: 6px; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
+  .report-prompt-btn:hover { opacity: 0.88; }
+
+  /* Sidebar field inputs without .field wrapper (Scheduled Scans) */
+  .sched-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; transition: border-color 0.2s; box-sizing: border-box; margin-bottom: 8px; }
+  .sched-input:focus { border-color: var(--accent); }
+  .sched-input::placeholder { color: var(--muted); }
+  .sched-label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+
+  /* Stop Tool button — hidden until scanning */
+  #stopToolWrap { display: none; }
+  #stopToolWrap.visible { display: block; }
+
   /* ── Framework badges — larger, more readable ── */
   .fw-badge { font-size: 10px !important; padding: 3px 8px !important; border-radius: 4px !important; letter-spacing: 0.01em; }
 
@@ -823,8 +852,8 @@
       <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
     </div>
     <div>
-      <div class="logo-text">M365 Assessment Tool</div>
-      <div class="logo-sub">Security Assessment Platform</div>
+      <div class="logo-text">M365 Assessment Toolkit</div>
+      <div class="logo-sub" id="headerVersionSub">Security Assessment Platform</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
@@ -1019,7 +1048,12 @@
 
     <!-- Remediation Authentication -->
     <div class="sidebar-section">
-      <div class="sidebar-label">Remediation Authentication <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,0.15);color:var(--success);border:1px solid rgba(16,185,129,0.3);font-family:var(--mono);">NEW</span></div>
+      <div class="sidebar-collapsible-header" onclick="toggleSidebarSection('remAuth')">
+        <div class="sidebar-label" style="margin-bottom:0;">Remediation Authentication</div>
+        <span class="sidebar-collapse-arrow" id="remAuthArrow">▶</span>
+      </div>
+      <div class="sidebar-collapsible-body" id="remAuthBody">
+      <div style="height:10px;"></div>
       <div class="auth-toggle" style="margin-bottom:10px;">
         <button class="auth-btn active" id="btnRemSame" onclick="setRemAuth('same')">Same as Assessment</button>
         <button class="auth-btn" id="btnRemSeparate" onclick="setRemAuth('separate')">Separate</button>
@@ -1050,12 +1084,13 @@
           <div class="field"><label>Certificate Thumbprint</label><input type="text" id="writeCertThumbprint" placeholder="e.g. A1B2C3D4E5F6..." style="font-family:monospace;"></div>
         </div>
       </div>
+      </div><!-- end remAuthBody -->
     </div>
 
     <!-- 4. Assessment Modules -->
     <div class="sidebar-section">
       <div class="sidebar-label">Assessment Modules</div>
-      <button class="select-all-btn" onclick="toggleAll()">select all</button>
+      <button class="select-all-btn" onclick="toggleAll()">Select All</button>
       <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;line-height:1.5;">💡 To re-run a single module after remediation, deselect all others and run again.</div>
       <div class="module-list" id="moduleList">
         <div class="module-item checked" data-module="identity" onclick="toggleModule(this)">
@@ -1125,9 +1160,9 @@
       </div>
     </div>
 
-    <!-- Stop Tool button -->
-    <div style="margin:0 1.25rem 1rem;text-align:center;">
-      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer;font-family:var(--mono);" title="Stops the backend Python process">⏹ Stop Tool</button>
+    <!-- Stop Tool button — only visible while scan is running -->
+    <div id="stopToolWrap" style="margin:0 1.25rem 1rem;text-align:center;">
+      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:var(--danger);cursor:pointer;font-family:var(--mono);">⏹ Stop Scan</button>
     </div>
 
     <!-- 6. Remediation Settings -->
@@ -1151,42 +1186,42 @@
       </div>
     </div>
 
-    <!-- 8. Environment -->
     <div class="sidebar-section">
-      <div class="sidebar-label">Environment</div>
-      <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:var(--sans);font-size:13px;color:var(--text);">Commercial</div>
-    </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-label">Scheduled Scans <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-family:var(--mono);">NEW</span></div>
-      <div style="font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
-        Run weekly unattended scans using App Registration auth. Results save to the output folder automatically. Requires Tenant ID, Client ID, and Client Secret.
+      <div class="sidebar-collapsible-header" onclick="toggleSidebarSection('schedScans')">
+        <div class="sidebar-label" style="margin-bottom:0;">Scheduled Scans <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-family:var(--mono);">NEW</span></div>
+        <span class="sidebar-collapse-arrow" id="schedScansArrow">▶</span>
       </div>
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client Name (for output file)</label>
-      <input type="text" id="schedClientName" placeholder="e.g. Contoso Ltd" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Tenant ID</label>
-      <input type="text" id="schedTenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client ID</label>
-      <input type="text" id="schedClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Client Secret</label>
-      <input type="password" id="schedClientSecret" placeholder="••••••••••••••••" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Frequency</label>
-      <select id="schedFrequency" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <div class="sidebar-collapsible-body" id="schedScansBody">
+      <div style="height:10px;"></div>
+      <div style="font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+        Unattended recurring scans using App Registration auth. Results saved to the output folder automatically.
+      </div>
+      <label class="sched-label">Client Name (for output file)</label>
+      <input type="text" id="schedClientName" placeholder="e.g. Contoso Ltd" class="sched-input">
+      <label class="sched-label">Tenant ID</label>
+      <input type="text" id="schedTenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="sched-input">
+      <label class="sched-label">Client ID</label>
+      <input type="text" id="schedClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" class="sched-input">
+      <label class="sched-label">Client Secret</label>
+      <input type="password" id="schedClientSecret" placeholder="••••••••••••••••" class="sched-input">
+      <label class="sched-label">Frequency</label>
+      <select id="schedFrequency" class="sched-input" style="margin-bottom:8px;">
         <option value="weekly">Weekly (every Monday 6:00 AM)</option>
         <option value="daily">Daily (every day 6:00 AM)</option>
         <option value="monthly">Monthly (1st of each month)</option>
       </select>
-      <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px;">Modules to scan</label>
+      <label class="sched-label">Modules to scan</label>
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;" id="schedModulesWrap">
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="identity" checked> Identity</label>
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="security" checked> Security</label>
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="exchange"> Exchange</label>
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="sharepoint"> SharePoint</label>
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="teams"> Teams</label>
-        <label style="font-size:11px;display:flex;align-items:center;gap:3px;"><input type="checkbox" value="intune"> Intune</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="identity" checked> Identity</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="security" checked> Security</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="exchange"> Exchange</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="sharepoint"> SharePoint</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="teams"> Teams</label>
+        <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="intune"> Intune</label>
       </div>
       <button onclick="createScheduledScan()" style="width:100%;padding:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);">&#128197; Create Scheduled Scan</button>
       <div id="schedStatus" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11.5px;font-family:var(--mono);line-height:1.5;"></div>
+      </div><!-- end schedScansBody -->
     </div>
 
   </aside>
@@ -1194,7 +1229,7 @@
   <div class="panel">
     <div class="tabs">
       <div class="tab active" onclick="switchTab('overview', this)">Overview</div>
-      <div class="tab" onclick="switchTab('findings', this)">Findings</div>
+      <div class="tab" onclick="switchTab('findings', this)" id="findingsTab">Findings <span class="tab-badge" id="findingsTabBadge" style="display:none;"></span></div>
       <div class="tab" onclick="switchTab('log', this)">Run Log</div>
       <div class="tab" onclick="switchTab('report', this)">Report</div>
       <div class="tab" onclick="switchTab('remediation', this)" id="remediationTab">Remediation</div>
@@ -1209,8 +1244,32 @@
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <h2>Ready to assess</h2>
-        <p>Enter assessment details, choose your authentication method, select modules, then click Run Assessment.</p>
+        <p style="margin-bottom:1.5rem;">Fill in the left panel, then click <strong style="color:var(--text);">Run Assessment</strong> to start.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:380px;text-align:left;">
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0;font-weight:700;">1</div>
+            <div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">Assessment Details</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Enter the organisation name, your consultant details, and select which compliance frameworks are in scope.</div></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0;font-weight:700;">2</div>
+            <div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">Authenticate &amp; Choose Modules</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Use Interactive login (any tenant, browser popup) or App Registration (unattended). Select which workloads to scan.</div></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--accent);flex-shrink:0;font-weight:700;">3</div>
+            <div><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">Run &amp; Generate Report</div><div style="font-size:11px;color:var(--muted);line-height:1.5;">Click Run Assessment. When complete, go to the <strong style="color:var(--text);">Report</strong> tab to generate your Word document deliverable.</div></div>
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;">Or load a previous assessment → <button onclick="openSessionsPanel()" style="background:none;border:none;color:var(--accent);font-family:var(--mono);font-size:10px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;">Load Assessment</button></div>
       </div>
+      <!-- Post-scan report prompt — shown after scan completes -->
+      <div class="report-prompt" id="reportPrompt">
+        <div class="report-prompt-text">
+          ✅ Assessment complete. <strong>Ready to generate your report?</strong><br>
+          <span style="font-size:11px;color:var(--muted);">Generate the full assessment, executive summary, or remediation plan as a Word document.</span>
+        </div>
+        <button class="report-prompt-btn" onclick="switchTab('report', document.querySelector('.tab:nth-child(4)'))">Go to Report →</button>
+      </div>
+
       <div id="overviewResults" style="display:none;">
         <div class="posture-banner">
           <div>
@@ -1238,7 +1297,10 @@
     <!-- Findings -->
     <div class="content" id="tab-findings" style="display:none;">
       <div class="section-head" style="margin-bottom:10px;">
-        <div class="section-title">Triggered Findings</div>
+        <div>
+          <div class="section-title">Triggered Findings</div>
+          <div id="findingsSevSummary" style="display:none;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="section-count" id="findingsCount">0 findings</div>
           <button class="cc-export-btn" id="exportComplianceBtn" onclick="exportComplianceCSV()" style="display:none;" title="Download compliance mapping for all triggered findings as a spreadsheet-ready CSV">
@@ -1750,6 +1812,32 @@ function stopScanTimer() {
 
 // ── Save toast ───────────────────────────────────────────────
 let _toastTimer = null;
+// ── Collapsible sidebar sections ──────────────────────────────────────────────
+function toggleSidebarSection(key) {
+  const body  = document.getElementById(`${key}Body`);
+  const arrow = document.getElementById(`${key}Arrow`);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (arrow) arrow.classList.toggle('open', !isOpen);
+}
+
+// ── Scan running state — show/hide Stop button ────────────────────────────────
+let _scanRunning = false;
+function setScanRunning(running) {
+  _scanRunning = running;
+  const wrap = document.getElementById('stopToolWrap');
+  if (wrap) wrap.classList.toggle('visible', running);
+  const btn = document.getElementById('runBtn');
+  if (btn) btn.disabled = running;
+}
+
+// ── Show report prompt after scan ────────────────────────────────────────────
+function showReportPrompt() {
+  const el = document.getElementById('reportPrompt');
+  if (el) { el.style.display = 'flex'; setTimeout(() => el.style.display = 'flex', 50); }
+}
+
 function showSaveToast() {
   const t = document.getElementById('saveToast');
   if (!t) return;
@@ -2436,6 +2524,7 @@ setTimeout(checkForUpdates, 3000);
 
 function setAuth(method) {
   currentAuthMethod = method;
+  localStorage.setItem('m365tool_authMethod', method);
   document.getElementById('btnInteractive').className = 'auth-btn' + (method === 'interactive' ? ' active' : '');
   document.getElementById('btnAppReg').className     = 'auth-btn' + (method === 'appreg'      ? ' active' : '');
   document.getElementById('btnCert').className       = 'auth-btn' + (method === 'certificate' ? ' active' : '');
@@ -2587,7 +2676,7 @@ async function confirmAndRunAssessment() {
   const activeFrameworks = getActiveFrameworks();
 
   const btn = document.getElementById('runBtn');
-  btn.disabled = true;
+  setScanRunning(true);
   btn.innerHTML = `<svg viewBox="0 0 24 24" style="animation:spin 1s linear infinite;stroke:white;fill:none;width:16px;height:16px;stroke-width:2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Running...`;
 
   switchTab('log', document.querySelectorAll('.tab')[2]);
@@ -2628,6 +2717,7 @@ async function confirmAndRunAssessment() {
     document.getElementById('exportJsonBtn').disabled = false;
     document.getElementById('exportCsvBtn').disabled = false;
     switchTab('overview', document.querySelectorAll('.tab')[0]);
+    showReportPrompt();
 
   } catch (err) {
     addLog(`Error: ${err.message}`, 'error');
@@ -2635,7 +2725,7 @@ async function confirmAndRunAssessment() {
   }
 
   stopProgressPolling();
-  btn.disabled = false;
+  setScanRunning(false);
   btn.innerHTML = `<svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg> Run Assessment`;
 }
 
@@ -2704,6 +2794,26 @@ function renderFindings(findings) {
   document.getElementById('findingsCount').textContent = `${findings.length} finding${findings.length !== 1 ? 's' : ''}`;
   const exportBtn = document.getElementById('exportComplianceBtn');
   if (exportBtn) exportBtn.style.display = findings.length > 0 ? '' : 'none';
+
+  // Per-severity summary row + tab badge
+  const sevCounts = { critical:0, high:0, medium:0, low:0 };
+  findings.forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
+  const sevEl = document.getElementById('findingsSevSummary');
+  if (sevEl && findings.length > 0) {
+    sevEl.style.display = 'flex';
+    const sevColours = { critical:'var(--danger)', high:'var(--warning)', medium:'var(--accent)', low:'var(--success)' };
+    sevEl.innerHTML = Object.entries(sevCounts).filter(([,c])=>c>0).map(([s,c])=>
+      `<span style="font-family:var(--mono);font-size:10px;padding:1px 7px;border-radius:3px;background:${sevColours[s]}22;color:${sevColours[s]};border:1px solid ${sevColours[s]}44;">${c} ${s}</span>`
+    ).join('');
+  }
+  // Tab badge — show critical count or total
+  const badge = document.getElementById('findingsTabBadge');
+  if (badge) {
+    badge.style.display = findings.length > 0 ? '' : 'none';
+    badge.textContent = findings.length;
+    badge.className = `tab-badge${sevCounts.critical > 0 ? '' : ' warn'}`;
+  }
+
   const list = document.getElementById('findingsList');
   if (findings.length === 0) {
     list.innerHTML = '<div class="empty-state">No findings triggered — tenant looks healthy.</div>';
@@ -4158,6 +4268,56 @@ function updateRemStats() {
 document.addEventListener('DOMContentLoaded', () => {
   const remTab = document.getElementById('remediationTab');
   if (remTab) remTab.addEventListener('click', () => buildRemediationTab());
+
+  // ── Sidebar collapsible sections ─────────────────────────────
+  // Both start collapsed; user expands on demand
+  // (already collapsed by default — .sidebar-collapsible-body is display:none)
+
+  // ── localStorage form persistence ────────────────────────────
+  const PERSIST_FIELDS = ['orgName','contactName','consultantName','consultantRole','consultantEmail','changeRefLabel','approverLabel'];
+  PERSIST_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const saved = localStorage.getItem(`m365tool_${id}`);
+    if (saved) el.value = saved;
+    el.addEventListener('input', () => localStorage.setItem(`m365tool_${id}`, el.value));
+  });
+  // Persist auth method selection
+  const savedAuth = localStorage.getItem('m365tool_authMethod');
+  if (savedAuth) setAuth(savedAuth);
+  // Persist framework checkboxes
+  document.querySelectorAll('#frameworkSelector input[type=checkbox]').forEach(cb => {
+    const key = `m365tool_fw_${cb.value}`;
+    const saved = localStorage.getItem(key);
+    if (saved !== null) cb.checked = saved === 'true';
+    cb.addEventListener('change', () => localStorage.setItem(key, cb.checked));
+  });
+
+  // ── beforeunload — warn if annotations exist ─────────────────
+  window.addEventListener('beforeunload', e => {
+    const hasAnnotations = Object.keys(findingAnnotations).some(id => {
+      const ann = findingAnnotations[id];
+      return ann && (ann.status || ann.notes || ann.reason);
+    });
+    if (hasAnnotations && !loadedSessionFile) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // ── Version in header sub-line ────────────────────────────────
+  fetch(`${BACKEND}/status`).then(r => r.json()).then(d => {
+    const sub = document.getElementById('headerVersionSub');
+    if (sub && d.version) sub.textContent = `Security Assessment Platform · v${d.version}`;
+  }).catch(() => {});
+
+  // ── Keyboard shortcut Ctrl+Enter = Run Assessment ─────────────
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const btn = document.getElementById('runBtn');
+      if (btn && !btn.disabled) btn.click();
+    }
+  });
 });
 
 // ── Comparison Tab ─────────────────────────────────────────────

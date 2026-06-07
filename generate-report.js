@@ -17,7 +17,8 @@
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   Header, Footer, AlignmentType, HeadingLevel, BorderStyle, WidthType,
-  ShadingType, VerticalAlign, PageBreak, LevelFormat, ImageRun
+  ShadingType, VerticalAlign, PageBreak, LevelFormat, ImageRun, PageNumber,
+  TabStopType, TabStopLeader
 } = require('docx');
 const fs = require('fs');
 
@@ -253,9 +254,9 @@ function buildCoverPage(data) {
 
 /** Overall score banner - big coloured block */
 function buildScoreBanner(score) {
-  const colour = score >= 70 ? COLOURS.green : score >= 50 ? COLOURS.amber : COLOURS.red;
-  const bg     = score >= 70 ? COLOURS.greenBg : score >= 50 ? COLOURS.amberBg : COLOURS.redBg;
-  const label  = score >= 70 ? 'Good' : score >= 50 ? 'Needs Attention' : 'At Risk';
+  const colour = score >= 90 ? COLOURS.green : score >= 75 ? COLOURS.green : score >= 60 ? COLOURS.amber : score >= 40 ? COLOURS.orange : COLOURS.red;
+  const bg     = score >= 90 ? COLOURS.greenBg : score >= 75 ? COLOURS.greenBg : score >= 60 ? COLOURS.amberBg : score >= 40 ? COLOURS.amberBg : COLOURS.redBg;
+  const label  = score >= 90 ? 'Excellent' : score >= 75 ? 'Good' : score >= 60 ? 'Fair' : score >= 40 ? 'Poor' : 'Critical Risk';
 
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
@@ -326,7 +327,7 @@ function buildExecSummary(data) {
   const critical  = findings.filter(f => f.severity === 'critical').length;
   const high      = findings.filter(f => f.severity === 'high').length;
   const score     = data.score || 0;
-  const scoreText = score >= 70 ? 'a good overall security posture' : score >= 50 ? 'a number of areas requiring attention' : 'significant security risks that require urgent attention';
+  const scoreText = score >= 90 ? 'a strong overall security posture' : score >= 75 ? 'a good overall security posture with minor gaps' : score >= 60 ? 'a number of notable gaps requiring attention' : score >= 40 ? 'significant vulnerabilities requiring prioritised remediation' : 'critical security risks requiring immediate action';
 
   const topFindings = findings
     .filter(f => ['critical','high'].includes(f.severity))
@@ -417,9 +418,11 @@ function buildScoreSection(data) {
           cell(para([run('Meaning', { bold: true, colour: COLOURS.white })]), { width: 4360, bg: COLOURS.navy, borders: noBorders }),
         ]}),
         ...([
-          ['70 - 100', 'Good', COLOURS.greenBg, COLOURS.green,   'Tenant is well-configured. Some improvements may still be beneficial.'],
-          ['50 - 69',  'Needs Attention', COLOURS.amberBg, COLOURS.amber, 'Notable gaps exist. A remediation plan should be agreed and acted on.'],
-          ['0 - 49',   'At Risk', COLOURS.redBg, COLOURS.red,  'Significant security risks are present. Immediate action is required.'],
+          ['90 - 100', 'Excellent',       COLOURS.greenBg, COLOURS.green,  'Strong security posture — minimal risk exposure.'],
+          ['75 - 89',  'Good',            COLOURS.greenBg, COLOURS.green,  'Well-managed risk with minor gaps to address.'],
+          ['60 - 74',  'Fair',            COLOURS.amberBg, COLOURS.amber,  'Notable gaps present — a remediation plan should be agreed and acted on.'],
+          ['40 - 59',  'Poor',            COLOURS.amberBg, COLOURS.orange, 'Significant vulnerabilities present — prioritise remediation immediately.'],
+          ['0 - 39',   'Critical Risk',   COLOURS.redBg,   COLOURS.red,   'Immediate action required — high exposure to attack and breach risk.'],
         ].map(([range, rating, bg, colour, meaning]) =>
           new TableRow({ children: [
             cell(para([run(range, { bold: true, colour })], { align: AlignmentType.CENTER }), { width: 2000, bg }),
@@ -715,19 +718,27 @@ function buildHeader(clientName) {
         children: [
           new TextRun({ text: `${clientName}  |  M365 Health Assessment  |  CONFIDENTIAL`, font: 'Arial', size: 18, color: COLOURS.slate, bold: false }),
         ],
+        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 4 } },
         spacing: { before: 0, after: 80 },
       }),
     ],
   });
 }
 
-function buildFooter() {
+function buildFooter(data) {
+  const email = consultant(data, 'consultantEmail', '');
+  const leftText = email
+    ? `M365 Assessment Toolkit  |  ${email}`
+    : 'M365 Assessment Toolkit';
   return new Footer({
     children: [
       new Paragraph({
         children: [
-          new TextRun({ text: 'M365 Assessment Toolkit  |  [consultant@email.com]', font: 'Arial', size: 16, color: COLOURS.slate }),
+          new TextRun({ text: leftText, font: 'Arial', size: 16, color: COLOURS.slate }),
+          new TextRun({ children: ['\t', 'Page ', PageNumber.CURRENT, ' of ', PageNumber.TOTAL_PAGES], font: 'Arial', size: 16, color: COLOURS.slate }),
         ],
+        tabStops: [{ type: TabStopType.RIGHT, position: 9360 }],
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 4 } },
         spacing: { before: 80, after: 0 },
       }),
     ],
@@ -1993,7 +2004,7 @@ function buildCompCoverPage(data) {
     new Paragraph({ children: [new TextRun({ text: '', font: 'Arial', size: 4 })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: COLOURS.navy } }, spacing: { before: 0, after: 480 } }),
     new Paragraph({ children: [new TextRun({ text: sA.orgName || 'Organisation', font: 'Arial', size: 48, bold: true, color: COLOURS.slate })], alignment: AlignmentType.CENTER, spacing: { before: 0, after: 160 } }),
     para([run(sA.assessDate + ' vs ' + sB.assessDate, { size: 24, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 60 }),
-    para([run('Prepared by [Consultant Name]', { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 0 }),
+    para([run(`Prepared by ${consultant(sA, 'consultantName', consultant(data, 'consultantName', '[Consultant Name]'))}`, { size: 22, colour: COLOURS.darkGrey })], { align: AlignmentType.CENTER, before: 0, after: 0 }),
     spacer(2),
     new Paragraph({ children: [new TextRun({ text: 'CONFIDENTIAL - For authorised recipients only', font: 'Arial', size: 18, italic: true, color: COLOURS.slate })], alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 6 }, bottom: { style: BorderStyle.SINGLE, size: 4, color: COLOURS.midGrey, space: 6 } }, spacing: { before: 120, after: 120 } }),
     pageBreak(),

@@ -7,7 +7,7 @@ This tool is not intended to replace enterprise security platforms. It fills a g
 ## What it does
 
 - Runs a security assessment against any M365 tenant across 6 workloads
-- Evaluates 30 findings covering identity, conditional access, Exchange, Teams, SharePoint and Intune
+- Evaluates 54 findings covering identity, AD sync, guest & B2B, conditional access, Exchange, Teams, SharePoint and Intune
 - Scores the tenant based on real attack paths — not just Microsoft Secure Score
 - Remediates findings with one click, with full rollback capability
 - Produces professional Word reports (Assessment Report, Remediation Report, Comparison Report)
@@ -122,6 +122,7 @@ DeviceManagementManagedDevices.Read.All
 DeviceManagementConfiguration.Read.All
 AuditLog.Read.All
 IdentityRiskyUser.Read.All
+AccessReview.Read.All
 ```
 
 7. Click **Grant admin consent**
@@ -159,6 +160,7 @@ Application.Read.All
 IdentityRiskyUser.Read.All
 DeviceManagementManagedDevices.Read.All
 DeviceManagementConfiguration.Read.All
+AccessReview.Read.All
 ```
 
 3. Click **Grant admin consent** — required, the tool will not work without this
@@ -387,6 +389,7 @@ DeviceManagementManagedDevices.Read.All
 DeviceManagementConfiguration.Read.All
 AuditLog.Read.All
 IdentityRiskyUser.Read.All
+AccessReview.Read.All
 ```
 
 > Exchange, Teams and SharePoint always use interactive login — these PowerShell modules do not support app-only authentication.

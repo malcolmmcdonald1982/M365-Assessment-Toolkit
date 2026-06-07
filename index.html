@@ -23,6 +23,9 @@
     --danger:  #ef4444;
     --mono: 'DM Mono', monospace;
     --sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    --fg:    #f7f8fd;
+    --text2: #9aa3b8;
+    --error: #ef4444;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; }
@@ -552,7 +555,7 @@
     margin-top: 8px;
   }
   /* Score breakdown tooltip */
-  .score-breakdown-popup { position:absolute;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1rem 1.25rem;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;font-size:12px; }
+  .score-breakdown-popup { background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:1rem 1.25rem;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:9000;font-size:12px; }
   .score-breakdown-popup h4 { font-size:13px;font-weight:700;margin:0 0 10px;color:var(--text); }
   .sbd-row { display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border); }
   .sbd-row:last-child { border-bottom:none; }
@@ -601,7 +604,8 @@
   .tab-badge.warn { background: var(--warning); }
 
   /* Post-scan report prompt */
-  .report-prompt { display: none; margin: 1rem 0 0; padding: 12px 16px; background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .report-prompt { display: none; margin: 1rem 0 0; padding: 12px 16px; background: rgba(59,130,246,0.07); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px; align-items: center; justify-content: space-between; gap: 12px; }
+  .report-prompt.visible { display: flex; }
   .report-prompt-text { font-size: 12px; color: var(--text); line-height: 1.5; }
   .report-prompt-text strong { color: var(--accent); }
   .report-prompt-btn { flex-shrink: 0; padding: 7px 16px; background: var(--accent); border: none; border-radius: 6px; color: #fff; font-family: var(--sans); font-size: 12px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; white-space: nowrap; }
@@ -830,7 +834,7 @@
 <!-- Permissions explainer modal (injected by JS when scan starts) -->
 <div id="permOverlay" class="perm-overlay" style="display:none;">
   <div class="perm-modal">
-    <h2>🔒 What this scan accesses</h2>
+    <h2>What this scan accesses</h2>
     <p class="perm-sub">Read-only · No changes are made to your tenant</p>
     <span class="perm-ro-badge">✓ READ ONLY — no data is modified</span>
     <div class="perm-item"><div class="perm-icon">👤</div><div class="perm-item-text"><strong>Identity &amp; Conditional Access</strong><span>Reads sign-in policies, CA rules, MFA registration — via Microsoft Graph (read permissions only)</span></div></div>
@@ -940,7 +944,7 @@
           <button onclick="setAllFrameworks(false)" style="font-size:10px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;">None</button>
         </div>
         <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;padding:7px 9px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);">
-          ℹ️ Only frameworks with stable, publicly accessible reference links are listed. Cyber Essentials, SOC 2, Essential Eight and EU NIS2 are excluded as their vendor documentation URLs are subject to change — findings are still internally mapped to these frameworks where applicable.
+          Only frameworks with stable, publicly accessible reference links are listed. Cyber Essentials, SOC 2, Essential Eight and EU NIS2 are excluded as their vendor documentation URLs are subject to change — findings are still internally mapped to these frameworks where applicable.
         </div>
       </div>
     </div>
@@ -1092,7 +1096,7 @@
     <div class="sidebar-section">
       <div class="sidebar-label">Assessment Modules</div>
       <button class="select-all-btn" onclick="toggleAll()">Select All</button>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;line-height:1.5;">💡 To re-run a single module after remediation, deselect all others and run again.</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.5;">Tip: to re-run a single module, deselect all others and run again.</div>
       <div class="module-list" id="moduleList">
         <div class="module-item checked" data-module="identity" onclick="toggleModule(this)">
           <div class="module-check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
@@ -1163,7 +1167,7 @@
 
     <!-- Stop Tool button — only visible while scan is running -->
     <div id="stopToolWrap" style="margin:0 1.25rem 1rem;text-align:center;">
-      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:var(--danger);cursor:pointer;font-family:var(--mono);">⏹ Stop Scan</button>
+      <button onclick="stopTool()" style="font-size:10px;padding:4px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;color:var(--danger);cursor:pointer;font-family:var(--mono);">Stop Scan</button>
     </div>
 
     <!-- 6. Remediation Settings -->
@@ -1220,7 +1224,7 @@
         <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="teams"> Teams</label>
         <label class="fw-check" style="font-size:11px;"><input type="checkbox" value="intune"> Intune</label>
       </div>
-      <button onclick="createScheduledScan()" style="width:100%;padding:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);">&#128197; Create Scheduled Scan</button>
+      <button onclick="createScheduledScan()" style="width:100%;padding:8px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#818cf8;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);">Create Scheduled Scan</button>
       <div id="schedStatus" style="display:none;margin-top:8px;padding:8px 10px;border-radius:6px;font-size:11.5px;font-family:var(--mono);line-height:1.5;"></div>
       </div><!-- end schedScansBody -->
     </div>
@@ -1265,7 +1269,7 @@
       <!-- Post-scan report prompt — shown after scan completes -->
       <div class="report-prompt" id="reportPrompt">
         <div class="report-prompt-text">
-          ✅ Assessment complete. <strong>Ready to generate your report?</strong><br>
+          Assessment complete. <strong>Ready to generate your report?</strong><br>
           <span style="font-size:11px;color:var(--muted);">Generate the full assessment, executive summary, or remediation plan as a Word document.</span>
         </div>
         <button class="report-prompt-btn" onclick="switchTab('report', document.querySelector('.tab:nth-child(4)'))">Go to Report →</button>
@@ -1282,7 +1286,7 @@
             <div class="posture-meta" id="overviewAuthMethod">—</div>
             <div class="posture-severity-row" id="postureSevRow"></div>
           </div>
-          <div class="posture-score-section" style="position:relative;">
+          <div class="posture-score-section">
             <div class="posture-score-value" id="overallScore" onclick="toggleScoreBreakdown(event)" title="Click to see how this score was calculated">—</div>
             <div class="posture-score-label">Attack Path Score <span style="font-size:9px;opacity:0.5;">(click for breakdown)</span></div>
             <div class="score-band" id="scoreBandLabel"></div>
@@ -1290,7 +1294,6 @@
             <div class="score-band-sub" id="scoreExcludedNote" style="color:var(--muted);margin-top:3px;font-style:italic;"></div>
             <div id="scoreBenchmarkRow" style="display:none;margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;"></div>
             <div id="scoreExposureRow" style="display:none;margin-top:6px;padding:6px 10px;background:rgba(245,158,11,0.08);border-radius:6px;border:1px solid rgba(245,158,11,0.3);font-family:var(--mono);font-size:10px;color:#f59e0b;text-align:center;" title="Aggregate potential breach cost across all open findings — IBM Cost of a Data Breach 2024 (UK)"></div>
-            <div id="scoreBreakdownPopup" class="score-breakdown-popup" style="display:none;position:absolute;right:0;top:110%;"></div>
           </div>
         </div>
         <div class="metrics-grid" id="metricsGrid"></div>
@@ -1302,15 +1305,17 @@
       <div class="section-head" style="margin-bottom:10px;">
         <div>
           <div class="section-title">Triggered Findings</div>
-          <div id="findingsSevSummary" style="display:none;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;"></div>
+          <div id="findingsSevSummary" style="display:none;margin-top:4px;gap:6px;flex-wrap:wrap;"></div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="section-count" id="findingsCount">0 findings</div>
           <button class="cc-export-btn" id="exportComplianceBtn" onclick="exportComplianceCSV()" style="display:none;" title="Download compliance mapping for all triggered findings as a spreadsheet-ready CSV">
-            ⬇ Compliance Annex (CSV)
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Compliance Annex (CSV)
           </button>
           <button class="cc-export-btn" id="exportGrcBtn" onclick="exportGrcCSV()" style="display:none;" title="Export all triggered findings as a GRC-ready spreadsheet (ID, title, severity, effort, cost, frameworks, status)">
-            ⬇ GRC Export (CSV)
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            GRC Export (CSV)
           </button>
         </div>
       </div>
@@ -1804,6 +1809,19 @@ function toggleScoreBreakdown(e) {
     <div class="sbd-note">Penalties are capped per severity band to prevent a single category from dominating the score. Minimum score is 10.</div>
   `;
   popup.style.display = 'block';
+
+  // Position below the score number, centred on it, within viewport
+  const scoreEl = document.getElementById('overallScore');
+  if (scoreEl) {
+    const rect = scoreEl.getBoundingClientRect();
+    const popupW = 300; // min-width from CSS
+    let left = rect.left + rect.width / 2 - popupW / 2;
+    // keep within viewport horizontally
+    left = Math.max(8, Math.min(left, window.innerWidth - popupW - 8));
+    popup.style.left = left + 'px';
+    popup.style.top  = (rect.bottom + 10) + 'px';
+    popup.style.right = 'auto';
+  }
 }
 // Close score popup when clicking elsewhere
 document.addEventListener('click', () => {
@@ -1862,7 +1880,7 @@ function setScanRunning(running) {
 // ── Show report prompt after scan ────────────────────────────────────────────
 function showReportPrompt() {
   const el = document.getElementById('reportPrompt');
-  if (el) { el.style.display = 'flex'; setTimeout(() => el.style.display = 'flex', 50); }
+  if (el) { el.classList.add('visible'); }
 }
 
 function showSaveToast() {
@@ -1881,6 +1899,7 @@ function handleLogoUpload(event) {
   const reader = new FileReader();
   reader.onload = e => {
     consultantLogoBase64 = e.target.result; // data URL
+    try { localStorage.setItem('m365tool_consultantLogo', consultantLogoBase64); } catch(e) {}
     const img = document.getElementById('logoPreview');
     const hint = document.getElementById('logoUploadHint');
     const clearBtn = document.getElementById('logoClearBtn');
@@ -1893,6 +1912,7 @@ function handleLogoUpload(event) {
 }
 function clearLogo() {
   consultantLogoBase64 = null;
+  localStorage.removeItem('m365tool_consultantLogo');
   document.getElementById('logoPreview').style.display = 'none';
   document.getElementById('logoUploadHint').style.display = 'block';
   document.getElementById('logoClearBtn').style.display = 'none';
@@ -2706,12 +2726,12 @@ async function applyUpdate() {
       banner.innerHTML = `
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         <span style="color:var(--success);font-weight:600;">Update applied.</span>
-        <span style="color:var(--muted);">Close the PowerShell window and reopen the tool to use the new version.</span>
+        <span style="color:var(--muted);">Close this browser tab, then relaunch the tool using the desktop shortcut to use the new version.</span>
         <div style="flex:1;"></div>
         <button class="update-dismiss" onclick="dismissUpdate()" title="Dismiss">&#x2715;</button>`;
       banner.style.background = 'rgba(16,185,129,0.08)';
       banner.style.borderBottomColor = 'rgba(16,185,129,0.25)';
-      addLog('Update applied successfully. Restart the tool to use the new version.', 'success');
+      addLog('Update applied successfully. Close this browser tab and relaunch the tool using the desktop shortcut.', 'success');
     } else {
       btn.textContent = 'Update Now';
       btn.disabled = false;
@@ -3583,6 +3603,18 @@ async function loadSession(filename) {
     // Restore organisation name fields
     if (data.clientName) document.getElementById('orgName').value = data.clientName;
     if (data.assessDate) document.getElementById('assessDate').value = data.assessDate;
+
+    // Restore consultant logo if saved with the session
+    const savedLogo = data.consultantLogo || data.logo || null;
+    if (savedLogo) {
+      consultantLogoBase64 = savedLogo;
+      const img = document.getElementById('logoPreview');
+      const hint = document.getElementById('logoUploadHint');
+      const clearBtn = document.getElementById('logoClearBtn');
+      if (img)  { img.src = savedLogo; img.style.display = 'block'; }
+      if (hint) { hint.style.display = 'none'; }
+      if (clearBtn) { clearBtn.style.display = 'block'; }
+    }
 
     // Render everything
     renderOverview(data);
@@ -4495,6 +4527,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // (already collapsed by default — .sidebar-collapsible-body is display:none)
 
   // ── localStorage form persistence ────────────────────────────
+  // Restore consultant logo
+  const savedLogoLS = localStorage.getItem('m365tool_consultantLogo');
+  if (savedLogoLS) {
+    consultantLogoBase64 = savedLogoLS;
+    const img = document.getElementById('logoPreview');
+    const hint = document.getElementById('logoUploadHint');
+    const clearBtn = document.getElementById('logoClearBtn');
+    if (img)  { img.src = savedLogoLS; img.style.display = 'block'; }
+    if (hint) { hint.style.display = 'none'; }
+    if (clearBtn) { clearBtn.style.display = 'block'; }
+  }
+
   const PERSIST_FIELDS = ['orgName','contactName','consultantName','consultantRole','consultantEmail','changeRefLabel','approverLabel'];
   PERSIST_FIELDS.forEach(id => {
     const el = document.getElementById(id);
@@ -4750,5 +4794,7 @@ async function downloadComparisonReport() {
   }
 }
 </script>
+<!-- Score breakdown popup — at body level so posture-banner overflow:hidden cannot clip it -->
+<div id="scoreBreakdownPopup" class="score-breakdown-popup" style="display:none;position:fixed;z-index:9000;"></div>
 </body>
 </html>

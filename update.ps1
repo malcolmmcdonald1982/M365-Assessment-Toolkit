@@ -81,6 +81,7 @@ $UpdateFiles = @(
     "scripts/Get-IntuneMetrics.ps1",
     "scripts/Test-AppRegistrationPermissions.ps1",
     "VERSION",
+    "install.ps1",
     "remediation/Remediate-LegacyAuth.ps1",    "remediation/Rollback-LegacyAuth.ps1",
     "remediation/Remediate-MailboxAudit.ps1",  "remediation/Rollback-MailboxAudit.ps1",
     "remediation/Remediate-ExternalForwarding.ps1", "remediation/Rollback-ExternalForwarding.ps1",

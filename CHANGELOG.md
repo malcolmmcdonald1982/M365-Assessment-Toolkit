@@ -2,6 +2,35 @@
 
 All notable changes to the M365 Assessment Toolkit are documented here.
 
+## [1.6.0] - 2026-06-07
+
+### New Features
+
+**Severity Justification Per Finding**
+- Every finding now includes a `severity_reason` field — one clear sentence explaining exactly why that severity level was assigned (e.g. "Critical because legacy protocols bypass MFA entirely…")
+- Displayed as an italic callout under the description on each finding card in the UI
+- Included in the Word assessment report as a dedicated "Why this severity" row per finding card
+- Answers the question consultants and clients always ask: "Why Critical and not High?"
+
+**Remediation Effort Estimates**
+- Every finding now carries `effort` (Low / Medium / High) and `effort_hours` (estimated hours) fields
+- Displayed as a colour-coded effort badge in each finding card header (green = Low, amber = Medium, red = High)
+- Shown in the recommendations table in all Word reports with estimated hours (e.g. "Low (~1h)")
+- Allows clients and project managers to plan remediation sprints with realistic time budgets
+
+**Scheduled / Automated Scans**
+- New "Scheduled Scans" sidebar panel for configuring unattended recurring assessments
+- Uses App Registration credentials (Tenant ID, Client ID, Client Secret) — no interactive login required
+- Creates a Windows Task Scheduler task (`M365Scan_<ClientName>`) running weekly, daily, or monthly at 06:00
+- Auto-generates `run_scheduled_scan.py` headless runner — calls the scan engine and saves JSON output to the output folder
+- `/schedule` and `/schedule/list` API endpoints for task creation and management
+
+### Bug Fixes / Improvements
+- Recommendations table effort column now uses live `effort`/`effort_hours` from finding data instead of a hardcoded lookup map
+- All 48 findings have been reviewed and updated with accurate severity justifications and effort estimates
+
+---
+
 ## [1.5.0] - 2026-06-06
 
 ### Bug Fixes (UAT)

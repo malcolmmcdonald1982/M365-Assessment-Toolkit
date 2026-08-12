@@ -9,7 +9,7 @@
     Run this script as Administrator for best results.
 
     Usage (one-line install):
-        irm https://raw.githubusercontent.com/malcolmmcdonald1982/m365-assessment-toolkit/main/install.ps1 | iex
+        & ([scriptblock]::Create((irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/install.ps1)))
 
     Or download and run locally:
         .\install.ps1

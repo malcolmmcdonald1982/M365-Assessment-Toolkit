@@ -9,7 +9,7 @@
     Run this script as Administrator for best results.
 
     Usage (one-line install):
-        & ([scriptblock]::Create((irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/install.ps1)))
+        irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/install.ps1 -OutFile "$env:TEMP\install.ps1"; & "$env:TEMP\install.ps1"
 
     Or download and run locally:
         .\install.ps1

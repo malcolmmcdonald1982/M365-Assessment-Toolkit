@@ -58,7 +58,7 @@ The installer handles all of these automatically:
 Open PowerShell as Administrator and run:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/install.ps1)))
+irm https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/install.ps1 -OutFile "$env:TEMP\install.ps1"; & "$env:TEMP\install.ps1"
 ```
 
 The installer downloads all files from GitHub, installs all prerequisites, and creates a desktop shortcut. Nothing else needed.

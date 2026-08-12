@@ -323,10 +323,8 @@ try {
         "echo.",
         "echo   Starting M365 Assessment Toolkit...",
         "echo   The tool will open automatically in your browser.",
-        "echo.",
         "cd /d `"$InstallPath`"",
-        "python backend.py",
-        "pause"
+        "start /B pythonw backend.py"
     )
     $BatLines | Out-File -FilePath $BatPath -Encoding ASCII -Force
 

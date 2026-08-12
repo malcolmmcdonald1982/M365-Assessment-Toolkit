@@ -2372,7 +2372,7 @@ _ver_file = os.path.join(BASE_DIR, "VERSION")
 CURRENT_VERSION       = open(_ver_file).read().strip() if os.path.exists(_ver_file) else "1.4.0"
 FINDINGS_LAST_UPDATED = "2026-06-07"   # Update whenever FINDINGS list is modified  (v1.7.0: SYNC-001/002, GUEST-001/002/003/004)
 VERSION_URL     = "https://raw.githubusercontent.com/malcolmmcdonald1982/M365-Assessment-Toolkit/main/VERSION"
-RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases"
+RELEASES_URL    = "https://github.com/malcolmmcdonald1982/M365-Assessment-Toolkit/releases/tag/v"
 
 
 @app.route("/status", methods=["GET"])
@@ -2398,7 +2398,7 @@ def check_update():
             "current":          CURRENT_VERSION,
             "latest":           latest,
             "update_available": update_available,
-            "releases_url":     RELEASES_URL
+            "releases_url":     RELEASES_URL + latest
         })
     except Exception as e:
         return jsonify({

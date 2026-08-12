@@ -19,22 +19,22 @@ This tool is not intended to replace enterprise security platforms. It fills a g
 ### Assessment Dashboard
 The dashboard shows a live risk score, colour-coded findings by severity, and module run status.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard](Docs/Screenshots/dashboard.png)
 
 ### Findings with Investigation Scripts
 Each finding card includes an inline PowerShell investigation script you can run directly to dig into the detail behind the finding.
 
-![Findings panel with investigation script](docs/screenshots/findings-investigate.png)
+![Findings panel with investigation script](Docs/Screenshots/findings-investigate.png)
 
 ### Generated Reports
 One click produces a professionally formatted Word document ready to hand to a client.
 
-![Word report sample](docs/screenshots/report-sample.png)
+![Word report sample](Docs/Screenshots/report-sample.png)
 
 ### Attack Simulation
 Maps your open findings to real attack chains — showing exactly which combination of misconfigurations an attacker would exploit, in sequence.
 
-![Attack simulation](docs/screenshots/attack-simulation.png)
+![Attack simulation](Docs/Screenshots/attack-simulation.png)
 
 ## Prerequisites
 

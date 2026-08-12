@@ -32,3 +32,9 @@ Thumbs.db
 
 # Release archives (large binaries)
 release/*.zip
+
+# Internal working docs
+Docs/*.txt
+Docs/product-story.md
+Docs/v1.5-*.md
+cis_benchmark_text.txt
